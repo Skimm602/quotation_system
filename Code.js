@@ -378,7 +378,9 @@ function getDashboardData(token) {
           addonTransportFee:   row[39] || 0,
           addonTransportLocation: String(row[40] || ''),
           paymentTermLabel: String(row[41] || ''),
-          paymentTermValue: String(row[41] || '').includes('No DP') ? 0 : String(row[41] || '').includes('25%') ? 0.25 : String(row[41] || '').includes('Full') ? 1 : 0.5,
+          paymentTermValue: String(row[41] || '').includes('No Down') ? 0 : String(row[41] || '').includes('25%') ? 0.25 : String(row[41] || '').includes('Full') ? 1 : 0.5,
+          taxType:      String(row[42] || 'non-vat'),
+          taxAmount:    parseFloat(row[43]) || 0,
           quoteType:           'signage',
         };
       });
@@ -420,8 +422,10 @@ function getDashboardData(token) {
           approvedBy:   String(row[24] || ''),
           salesStaff:   String(row[25] || ''),
           paymentTermLabel: String(row[26] || ''),
-          paymentTermValue: String(row[26] || '').includes('No DP') ? 0 : String(row[26] || '').includes('25%') ? 0.25 : String(row[26] || '').includes('Full') ? 1 : 0.5,
+          paymentTermValue: String(row[26] || '').includes('No Down') ? 0 : String(row[26] || '').includes('25%') ? 0.25 : String(row[26] || '').includes('Full') ? 1 : 0.5,
           items: (function() { try { const j = String(row[27]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e) { return []; } })(),
+          taxType:      String(row[28] || 'non-vat'),
+          taxAmount:    parseFloat(row[29]) || 0,
           quoteType:    'tarpaulin',
           signageType:  'Tarpaulin',
           address: '', delivery: '', lighting: '', material: '',
@@ -456,7 +460,9 @@ function getDashboardData(token) {
   dateNeeded:  String(row[17] || ''),
   totalAmount: row[18] || 0,
   paymentTermLabel: String(row[22] || ''),
-  paymentTermValue: String(row[22] || '').includes('No DP') ? 0 : String(row[22] || '').includes('25%') ? 0.25 : String(row[22] || '').includes('Full') ? 1 : 0.5,
+  paymentTermValue: String(row[22] || '').includes('No Down') ? 0 : String(row[22] || '').includes('25%') ? 0.25 : String(row[22] || '').includes('Full') ? 1 : 0.5,
+  taxType:      String(row[23] || 'non-vat'),
+  taxAmount:    parseFloat(row[24]) || 0,
   status:      String(row[19] || 'Pending'),
   approvedBy:  String(row[20] || ''),
   salesStaff:  String(row[20] || ''),
@@ -515,9 +521,11 @@ function getQuoteForPDF(token, quoteNum) {
         status:           String(r[19] || 'Pending'),
         salesStaff:       String(r[20] || ''),
         paymentTermLabel: String(r[22] || ''),
-        paymentTermValue: String(r[22]||'').includes('No DP') ? 0
+        paymentTermValue: String(r[22]||'').includes('No Down') ? 0
                         : String(r[22]||'').includes('25%')   ? 0.25
                         : String(r[22]||'').includes('Full')  ? 1 : 0.5,
+        taxType:   String(r[23] || 'non-vat'),
+        taxAmount: parseFloat(r[24]) || 0,
       };
     }
     return null;
@@ -554,10 +562,12 @@ function getQuoteForPDF(token, quoteNum) {
         status:           String(r[23] || 'Pending'),
         salesStaff:       String(r[25] || ''),
         paymentTermLabel: String(r[26] || ''),
-        paymentTermValue: String(r[26]||'').includes('No DP') ? 0
+        paymentTermValue: String(r[26]||'').includes('No Down') ? 0
                         : String(r[26]||'').includes('25%')   ? 0.25
                         : String(r[26]||'').includes('Full')  ? 1 : 0.5,
         items: (function() { try { const j = String(r[27]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e) { return []; } })(),
+        taxType:   String(r[28] || 'non-vat'),
+        taxAmount: parseFloat(r[29]) || 0,
         address: '', delivery: '', lighting: '', material: '',
         mounting: '', mountFee: 0, complexitySurcharge: 0,
         addonDesign: '', addonDesignFee: 0,
@@ -614,9 +624,11 @@ function getQuoteForPDF(token, quoteNum) {
       addonTransportFee:      r[39] || 0,
       addonTransportLocation: String(r[40] || ''),
       paymentTermLabel:       String(r[41] || ''),
-      paymentTermValue: String(r[41]||'').includes('No DP') ? 0
+      paymentTermValue: String(r[41]||'').includes('No Down') ? 0
                       : String(r[41]||'').includes('25%')   ? 0.25
                       : String(r[41]||'').includes('Full')  ? 1 : 0.5,
+      taxType:   String(r[42] || 'non-vat'),
+      taxAmount: parseFloat(r[43]) || 0,
     };
   }
   return null;
@@ -886,6 +898,7 @@ function saveTarpQuotation(data) {
       'Base Amount', 'Rush Fee Amt', 'Design Fee Amt',
       'TOTAL AMOUNT', 'Balance', 'Date Needed', 'Status',
       'Approved By', 'Sales Staff', 'Payment Term', 'Items JSON',
+      'Tax Type', 'Tax Amount',
     ];
     sheet.appendRow(headers);
     sheet.getRange(1, 1, 1, headers.length)
@@ -943,6 +956,8 @@ function saveTarpQuotation(data) {
     staffName,                         // Z  col 26 - Sales Staff
     '',                                // AA col 27 - Payment Term (set by savePaymentTerm)
     itemsJson,                         // AB col 28 - Items JSON
+    data.taxType  || 'non-vat',       // AC col 29 - Tax Type
+    parseFloat(data.taxAmount) || 0,  // AD col 30 - Tax Amount
   ]);
 
   sheet.getRange(sheet.getLastRow(), 18, 1, 4).setNumberFormat('₱#,##0.00');
@@ -1116,6 +1131,7 @@ function saveQuotation(data) {
       'Downpayment','Balance','Status','Approved By','Sales Staff','Date Needed',
       'Addon Design','Addon Design Fee','Addon Rush','Addon Rush Fee',
       'Addon Elec','Addon Elec Fee','Addon Transport','Addon Transport Fee','Addon Transport Location',
+      'Payment Term','Tax Type','Tax Amount',
     ];
     sheet.appendRow(headers);
     sheet.getRange(1,1,1,headers.length)
@@ -1169,6 +1185,9 @@ function saveQuotation(data) {
     data.addonTransport   || '',                 // AM col 39 - Addon Transport
     parseFloat(data.addonTransportFee) || 0,     // AN col 40 - Addon Transport Fee
     data.addonTransportLocation || '',           // AO col 41 - Addon Transport Location
+    '',                                          // AP col 42 - Payment Term (set by savePaymentTerm)
+    data.taxType  || 'non-vat',                 // AQ col 43 - Tax Type
+    parseFloat(data.taxAmount) || 0,            // AR col 44 - Tax Amount
   ]);
 
   sheet.getRange(sheet.getLastRow(), 22, 1, 7).setNumberFormat('₱#,##0.00');
@@ -1206,6 +1225,7 @@ function saveReceiptOrder(payload) {
       'Customer Type','Copies','Size','Pages/Booklet','Paper Type','Colors',
       'Perforation','Numbering','Starting No','Quantity','Date Needed',
       'Total Price','Status','Sales Staff','Notes',
+      'Payment Term','Tax Type','Tax Amount',
     ];
     sheet.appendRow(headers);
     sheet.getRange(1,1,1,headers.length)
@@ -1241,10 +1261,13 @@ function saveReceiptOrder(payload) {
     payload.startingNo||'',  // P  col 16 - Starting No
     payload.quantity || '',  // Q  col 17 - Quantity
     payload.dateNeeded||'',  // R  col 18 - Date Needed
-    payload.totalPrice|| 0,  // S  col 19 - Total Price
-    'Pending',               // T  col 20 - Status
-    staffName,  // U  col 21 - Sales Staff
-    payload.notes    || '',  // V  col 22 - Notes
+    payload.totalPrice|| 0,           // S  col 19 - Total Price
+    'Pending',                        // T  col 20 - Status
+    staffName,                        // U  col 21 - Sales Staff
+    payload.notes    || '',           // V  col 22 - Notes
+    '',                               // W  col 23 - Payment Term (set by savePaymentTerm)
+    payload.taxType  || 'non-vat',   // X  col 24 - Tax Type
+    parseFloat(payload.taxAmount)||0, // Y  col 25 - Tax Amount
   ]);
 
   sheet.getRange(sheet.getLastRow(), 19, 1, 1).setNumberFormat('₱#,##0.00');

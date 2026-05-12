@@ -556,6 +556,8 @@ function viewQuote(quoteNum) {
   const dpLabel = q.paymentTermLabel || '50% Downpayment';
   const dpAmt   = q.paymentTermValue !== undefined ? q.totalAmount * q.paymentTermValue : (q.downpayment || q.totalAmount * 0.5);
   const balAmt  = q.totalAmount - dpAmt;
+  const qTaxType = q.taxType || 'non-vat';
+  const qTaxAmt  = parseFloat(q.taxAmount) || 0;
 
   document.getElementById('quoteDetailContent').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
@@ -607,6 +609,7 @@ ${String(q.quoteNum).startsWith('RQ-') ? `
   ${q.addonTransport?row('Transport — '+q.addonTransport+(q.addonTransportLocation?' ('+q.addonTransportLocation+')':''), q.addonTransportFee>0?php(q.addonTransportFee):'<span style="color:#888;">FREE</span>'):''}
 `}
   <tr style="border-bottom:2px solid #E0E0E0;height:4px;"><td colspan="2"></td></tr>
+  ${qTaxType!=='non-vat'&&qTaxAmt>0?row(qTaxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)', php(qTaxAmt)):''}
   ${row('<span style="font-weight:700;font-size:15px;color:#E8151B;">TOTAL</span>', `<span style="font-weight:700;font-size:15px;color:#E8151B;">${php(q.totalAmount)}</span>`)}
   ${row(dpLabel, php(dpAmt))}
   <tr><td style="padding:8px 0;color:#888;">Balance</td><td style="text-align:right;">${php(balAmt)}</td></tr>

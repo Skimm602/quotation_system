@@ -182,6 +182,7 @@ table.items .blank td { height: 9mm; border-color: #DDD; }
     <div class="totals-wrap">
       <table class="totals-table">
         <tr><td>Others</td><td>—</td></tr>
+        <tr id="q-vat-row" style="display:none;"><td id="q-vat-label">VAT (12%)</td><td id="q-vat">—</td></tr>
         <tr class="grand"><td>TOTAL QUOTE in PhP</td><td id="q-total">—</td></tr>
         <tr class="dp-row"><td id="q-dp-label">Downpayment (50%)</td><td id="q-dp">—</td></tr>
         <tr><td>Balance</td><td id="q-balance">—</td></tr>
@@ -434,6 +435,16 @@ function fillWithData(q) {
   }
 
   document.getElementById('q-items').innerHTML = rows;
+
+  // VAT row
+  const qTaxType   = q.taxType || 'non-vat';
+  const qTaxAmount = parseFloat(q.taxAmount) || 0;
+  const vatRow = document.getElementById('q-vat-row');
+  if (qTaxType !== 'non-vat' && qTaxAmount > 0 && vatRow) {
+    vatRow.style.display = '';
+    setText('q-vat-label', qTaxType === 'vat-inclusive' ? 'VAT (12% included)' : 'VAT (12%)');
+    setText('q-vat', php(qTaxAmount));
+  }
 
   // Totals
   setText('q-total',    isQuotation ? 'TBD — Pending site visit' : php(totalAmount));

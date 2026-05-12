@@ -191,6 +191,7 @@ const d = {
   designCharge: false,
   rush: false,
   quantity: 1,
+  taxType: 'non-vat',
 };
 
 let pricing = { ratePerSqft: 0, rushFee: 0, designFee: 0 };
@@ -207,9 +208,22 @@ function currentItemSnap() {
     baseAmt: b, rushAmt: rf, desAmt: df, itemTotal: b + rf + df,
   };
 }
-function grandTotal() { return items.reduce((s,i) => s + i.itemTotal, 0) + total(); }
-function grandDp()    { return grandTotal() * 0.5; }
-function grandBal()   { return grandTotal() - grandDp(); }
+function grandTotal()     { return items.reduce((s,i) => s + i.itemTotal, 0) + total(); }
+const VAT = 0.12;
+function tarpTaxAmt()    { const s=grandTotal(); return d.taxType==='vat-exclusive'?s*VAT:d.taxType==='vat-inclusive'?s-s/(1+VAT):0; }
+function grandTotalFinal(){ return d.taxType==='vat-exclusive'?grandTotal()*(1+VAT):grandTotal(); }
+function grandDp()        { return grandTotalFinal() * 0.5; }
+function grandBal()       { return grandTotalFinal() - grandDp(); }
+
+function taxToggleHtml() {
+  const opts=[{key:'non-vat',label:'Non-VAT'},{key:'vat-inclusive',label:'VAT Incl. 12%'},{key:'vat-exclusive',label:'VAT Excl. 12%'}];
+  const tx=d.taxType||'non-vat';
+  const btns=opts.map(function(o){
+    const a=tx===o.key;
+    return '<button onclick="d.taxType=\''+o.key+'\';renderBody()" style="padding:6px 14px;border:1px solid '+(a?'#E8151B':'#E0E0E0')+';border-radius:3px;font-size:12px;font-weight:'+(a?'700':'500')+';cursor:pointer;background:'+(a?'#E8151B':'#FAFAFA')+';color:'+(a?'#fff':'#888')+';transition:all .15s;">'+o.label+'</button>';
+  }).join('');
+  return '<tr><td colspan="2" style="padding:12px 0 6px;"><div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:8px;">TAX</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+btns+'</div></td></tr>';
+}
 
 function addItem() {
   const w = parseFloat(d.width)||0, h = parseFloat(d.height)||0;
@@ -553,11 +567,13 @@ function renderBody() {
     const qty      = parseInt(d.quantity)||1;
     const sqftVal  = area * qty;
     const date     = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
-    const hasItems = items.length > 0;
-    const allItems = [...items, currentItemSnap()];
-    const gt       = grandTotal();
-    const gdp      = grandDp();
-    const gbal     = grandBal();
+    const hasItems  = items.length > 0;
+    const allItems  = [...items, currentItemSnap()];
+    const gt        = grandTotalFinal();
+    const gdp       = grandDp();
+    const gbal      = grandBal();
+    const taxAmt    = tarpTaxAmt();
+    const taxLabel  = d.taxType === 'vat-inclusive' ? 'VAT (12% incl.)' : 'VAT (12%)';
 
     el.innerHTML = `
       <div class="quote-client-box">
@@ -604,6 +620,8 @@ function renderBody() {
           ${d.designCharge ? `<tr><td>Design Fee</td><td>${php(desFeeAmt())}</td></tr>` : ''}
           <tr><td colspan="2" style="height:8px;"></td></tr>
         `}
+        ${taxToggleHtml()}
+        ${taxAmt>0?`<tr class="sub-row"><td>${taxLabel}</td><td>${php(taxAmt)}</td></tr>`:''}
         <tr class="total-row"><td>${hasItems ? `GRAND TOTAL (${allItems.length} items)` : 'TOTAL AMOUNT'}</td><td>${php(gt)}</td></tr>
         <tr class="sub-row"><td>Downpayment (50%)</td><td>${php(gdp)}</td></tr>
         <tr class="sub-row"><td>Balance</td><td>${php(gbal)}</td></tr>
@@ -779,7 +797,7 @@ function saveQuotation() {
   document.getElementById('loadingOverlay').style.display = 'flex';
 
   const allItems = [...items, currentItemSnap()];
-  const gt       = grandTotal();
+  const gt       = grandTotalFinal();
   const payload = {
     clientName:   d.clientName,
     contact:      d.contact,
@@ -801,6 +819,8 @@ function saveQuotation() {
     items:        allItems,
     totalAmount:  gt,
     downpayment:  gt * 0.5,
+    taxType:      d.taxType || 'non-vat',
+    taxAmount:    tarpTaxAmt(),
   };
 
   google.script.run
@@ -827,6 +847,7 @@ function resetForm() {
   d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
   d.width=''; d.height=''; d.quantity=1;
   d.eyelet='No Eyelet'; d.printLayout='Upload'; d.designCharge=false; d.rush=false;
+  d.taxType='non-vat';
   currentUnit = 'ft';
   items = [];
   step = 0; render();

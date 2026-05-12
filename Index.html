@@ -151,7 +151,8 @@
     width:'', height:'',
     mounting:'', installNotes:'',
     selectedComplexity: [],
-    designService:'No', artSpecs:'', fileFormat:'None'
+    designService:'No', artSpecs:'', fileFormat:'None',
+    taxType: 'non-vat',
   };
 
   let RATES        = {};
@@ -200,9 +201,22 @@
   }
   function designFeeAmt() { return d.designService === 'Yes' ? DESIGN_FEE : 0; }
   function addonTotal()   { return addons.designFeeAmt + addons.rushFeeAmt + addons.elecFeeAmt + addons.transportFeeAmt; }
-  function total()  { return base() + mountFee() + complexitySurcharge() + designFeeAmt() + addonTotal(); }
-  function dp()     { return total() * 0.5; }
-  function bal()    { return total() - dp(); }
+  const VAT = 0.12;
+  function subtotal() { return base() + mountFee() + complexitySurcharge() + designFeeAmt() + addonTotal(); }
+  function taxAmt()   { const s=subtotal(); return (d.taxType||'non-vat')==='vat-exclusive'?s*VAT:(d.taxType||'non-vat')==='vat-inclusive'?s-s/(1+VAT):0; }
+  function total()    { return (d.taxType||'non-vat')==='vat-exclusive'?subtotal()*(1+VAT):subtotal(); }
+  function dp()       { return total() * 0.5; }
+  function bal()      { return total() - dp(); }
+
+  function taxToggleHtml() {
+    const opts=[{key:'non-vat',label:'Non-VAT'},{key:'vat-inclusive',label:'VAT Incl. 12%'},{key:'vat-exclusive',label:'VAT Excl. 12%'}];
+    const tx=d.taxType||'non-vat';
+    const btns=opts.map(function(o){
+      const a=tx===o.key;
+      return '<button onclick="d.taxType=\''+o.key+'\';renderBody()" style="padding:6px 14px;border:1px solid '+(a?'#E8151B':'#E0E0E0')+';border-radius:3px;font-size:12px;font-weight:'+(a?'700':'500')+';cursor:pointer;background:'+(a?'#E8151B':'#FAFAFA')+';color:'+(a?'#fff':'#888')+';transition:all .15s;">'+o.label+'</button>';
+    }).join('');
+    return '<tr><td colspan="2" style="padding:12px 0 6px;"><div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:8px;">TAX</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+btns+'</div></td></tr>';
+  }
   function php(n)   { return '₱' + (n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function esc(s)   { return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function v(id)    { return document.getElementById(id)?.value || ''; }
@@ -722,7 +736,7 @@
 
     // ── STEP 6: QUOTATION SUMMARY ────────────────────────────────────────────
     else if (step === 6) {
-      const sf=sqft(), bsf=billableSqft(), b=base(), mf=mountFee(), cs=complexitySurcharge(), df=designFeeAmt(), t=total(), dpv=dp(), balv=bal();
+      const sf=sqft(), bsf=billableSqft(), b=base(), mf=mountFee(), cs=complexitySurcharge(), df=designFeeAmt(), t=total(), dpv=dp(), balv=bal(), tAmt=taxAmt(), tLabel=d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)';
       const selMount = MOUNT_OPTIONS.find(m => m.label === d.mounting);
       const complexityRows = (d.selectedComplexity||[]).map(c => `
         <tr><td style="padding-left:12px;color:#888;">↳ ${esc(c.label)} <span class="surcharge-badge">${esc(c.surchargeDisplay)}</span></td>
@@ -761,6 +775,8 @@
           ${addons.transportFeeAmt>0?`<tr><td>Transport — ${esc(addons.transport)}${addons.transportLocation?' ('+esc(addons.transportLocation)+')':''}</td><td>${php(addons.transportFeeAmt)}</td></tr>`:''}
           ${addons.transport&&addons.transportFeeAmt===0?`<tr><td>Transport — ${esc(addons.transport)}${addons.transportLocation?' ('+esc(addons.transportLocation)+')':''}</td><td style="color:#888;">FREE</td></tr>`:''}
           <tr><td colspan="2" style="height:8px;"></td></tr>
+          ${taxToggleHtml()}
+          ${tAmt>0?`<tr class="sub-row"><td>${tLabel}</td><td>${selMount?.isQuotation?'—':php(tAmt)}</td></tr>`:''}
           <tr class="total-row"><td>TOTAL AMOUNT</td><td>${selMount?.isQuotation?'<em style="font-size:14px;">Pending site visit</em>':php(t)}</td></tr>
           <tr class="sub-row"><td>Downpayment (50%)</td><td>${selMount?.isQuotation?'—':php(dpv)}</td></tr>
           <tr class="sub-row"><td>Balance</td><td>${selMount?.isQuotation?'—':php(balv)}</td></tr>
@@ -1037,7 +1053,7 @@
   function resetForm() {
     if(!confirm('Start a new quotation? Current data will be cleared.')) return;
     Object.keys(d).forEach(k=>d[k]='');
-    d.lighting='None'; d.material='Standard'; d.mounting=''; d.designService='No'; d.fileFormat='None'; d.selectedComplexity=[];
+    d.lighting='None'; d.material='Standard'; d.mounting=''; d.designService='No'; d.fileFormat='None'; d.selectedComplexity=[]; d.taxType='non-vat';
     addons.designService=''; addons.designFeeAmt=0; addons.rushOption=''; addons.rushFeeAmt=0;
     addons.selectedElec=[]; addons.elecFeeAmt=0; addons.transport=''; addons.transportFeeAmt=0;
     addons.transportLocation=''; addons.wiringMeters=0;
@@ -1078,6 +1094,8 @@
       addonTransportLocation: addons.transportLocation || '',
       addonTransportFee:   addons.transportFeeAmt || 0,
       addonTotal:          addonTotal(),
+      taxType:             d.taxType || 'non-vat',
+      taxAmount:           taxAmt(),
     };
     google.script.run
       .withSuccessHandler(function(quoteNum) {
