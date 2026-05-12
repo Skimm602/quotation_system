@@ -44,7 +44,11 @@ function doGet(e) {
     return serveWithToken_('Dashboard', 'SignQuote — Dashboard', token, appUrl);
   }
   if (page === 'quotation') {
-    return HtmlService.createHtmlOutputFromFile('Quotation')
+    const qn  = String(e?.parameter?.qn || '').trim();
+    const tpl = HtmlService.createTemplateFromFile('Quotation');
+    tpl.injectedToken    = token;
+    tpl.injectedQuoteNum = qn;
+    return tpl.evaluate()
       .setTitle('Quotation — Ormoc Printshoppe')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -479,11 +483,141 @@ function getDashboardData(token) {
 function getQuoteForPDF(token, quoteNum) {
   const session = getSessionData_(token);
   if (!session) return null;
-  const data = getDashboardData(token);
-  if (!data || !data.quotes) return null;
-  return data.quotes.find(function(q) {
-    return String(q.quoteNum).trim() === String(quoteNum).trim();
-  }) || null;
+
+  const ss = getMainSS_();
+  const qn = String(quoteNum || '').trim();
+  if (!qn) return null;
+
+  // ── Receipt ─────────────────────────────────────────────────────
+  if (qn.startsWith('RQ-')) {
+    const sheet = ss.getSheetByName(RECEIPT_SHEET);
+    if (!sheet) return null;
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]).trim() !== qn) continue;
+      const r = rows[i];
+      return {
+        quoteNum:         qn,
+        date:             r[1] ? new Date(r[1]).toISOString() : '',
+        clientName:       String(r[2]  || ''),
+        contact:          String(r[6]  || ''),
+        email:            String(r[5]  || ''),
+        signageType:      'Receipt — ' + String(r[8] || ''),
+        size:             r[9] instanceof Date ? '' : String(r[9] || ''),
+        paperType:        String(r[11] || ''),
+        paperColors:      String(r[12] || ''),
+        perforation:      String(r[13] || ''),
+        numbering:        String(r[14] || ''),
+        quantity:         r[16] || 0,
+        dateNeeded:       String(r[17] || ''),
+        totalAmount:      r[18] || 0,
+        status:           String(r[19] || 'Pending'),
+        salesStaff:       String(r[20] || ''),
+        paymentTermLabel: String(r[22] || ''),
+        paymentTermValue: String(r[22]||'').includes('No DP') ? 0
+                        : String(r[22]||'').includes('25%')   ? 0.25
+                        : String(r[22]||'').includes('Full')  ? 1 : 0.5,
+      };
+    }
+    return null;
+  }
+
+  // ── Tarpaulin ────────────────────────────────────────────────────
+  if (qn.startsWith('TQ-')) {
+    const sheet = ss.getSheetByName(TARP_SHEET);
+    if (!sheet) return null;
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]).trim() !== qn) continue;
+      const r = rows[i];
+      let dateStr = '';
+      try { dateStr = r[1] ? new Date(r[1]).toISOString() : ''; } catch(e) {}
+      return {
+        quoteNum:         qn,
+        date:             dateStr,
+        clientName:       String(r[2]  || ''),
+        contact:          String(r[3]  || ''),
+        email:            String(r[4]  || ''),
+        signageType:      'Tarpaulin',
+        width:            r[5]  || 0,
+        height:           r[6]  || 0,
+        sqft:             r[7]  || 0,
+        quantity:         r[8]  || 1,
+        eyelet:           String(r[10] || ''),
+        baseAmount:       r[17] || 0,
+        addonRushFee:     r[18] || 0,
+        designFee:        r[19] || 0,
+        totalAmount:      r[20] || 0,
+        balance:          r[21] || 0,
+        dateNeeded:       String(r[22] || ''),
+        status:           String(r[23] || 'Pending'),
+        salesStaff:       String(r[25] || ''),
+        paymentTermLabel: String(r[26] || ''),
+        paymentTermValue: String(r[26]||'').includes('No DP') ? 0
+                        : String(r[26]||'').includes('25%')   ? 0.25
+                        : String(r[26]||'').includes('Full')  ? 1 : 0.5,
+        address: '', delivery: '', lighting: '', material: '',
+        mounting: '', mountFee: 0, complexitySurcharge: 0,
+        addonDesign: '', addonDesignFee: 0,
+        addonRush: String(r[12] || ''),
+        addonElec: '', addonElecFee: 0,
+        addonTransport: '', addonTransportFee: 0,
+      };
+    }
+    return null;
+  }
+
+  // ── Signage ──────────────────────────────────────────────────────
+  const sheet = ss.getSheetByName(SHEET_QUOTATIONS);
+  if (!sheet) return null;
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]).trim() !== qn) continue;
+    const r = rows[i];
+    let dateStr = '';
+    try { dateStr = r[1] ? new Date(r[1]).toISOString() : ''; } catch(e) {}
+    return {
+      quoteNum:               qn,
+      date:                   dateStr,
+      clientName:             String(r[2]  || ''),
+      contact:                String(r[3]  || ''),
+      email:                  String(r[4]  || ''),
+      address:                String(r[5]  || ''),
+      delivery:               String(r[6]  || ''),
+      signageType:            String(r[7]  || ''),
+      lighting:               String(r[8]  || ''),
+      material:               String(r[9]  || ''),
+      width:                  r[10] || 0,
+      height:                 r[11] || 0,
+      sqft:                   r[12] || 0,
+      rate:                   r[13] || 0,
+      mounting:               String(r[16] || ''),
+      baseAmount:             r[21] || 0,
+      mountFee:               r[22] || 0,
+      complexitySurcharge:    r[23] || 0,
+      designFee:              r[24] || 0,
+      totalAmount:            r[25] || 0,
+      downpayment:            r[26] || 0,
+      balance:                r[27] || 0,
+      status:                 String(r[28] || 'Pending'),
+      salesStaff:             String(r[30] || ''),
+      dateNeeded:             String(r[31] || ''),
+      addonDesign:            String(r[32] || ''),
+      addonDesignFee:         r[33] || 0,
+      addonRush:              String(r[34] || ''),
+      addonRushFee:           r[35] || 0,
+      addonElec:              String(r[36] || ''),
+      addonElecFee:           r[37] || 0,
+      addonTransport:         String(r[38] || ''),
+      addonTransportFee:      r[39] || 0,
+      addonTransportLocation: String(r[40] || ''),
+      paymentTermLabel:       String(r[41] || ''),
+      paymentTermValue: String(r[41]||'').includes('No DP') ? 0
+                      : String(r[41]||'').includes('25%')   ? 0.25
+                      : String(r[41]||'').includes('Full')  ? 1 : 0.5,
+    };
+  }
+  return null;
 }
 
 // ══════════════════════════════════════════════════════════════════

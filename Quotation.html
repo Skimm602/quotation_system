@@ -427,9 +427,8 @@ rows += `<tr>
 }
 
 function fill() {
-  const params   = new URLSearchParams(window.location.search);
-  const quoteNum = params.get('qn');
-  const token    = params.get('token');
+  const quoteNum = '<?= injectedQuoteNum ?>';
+  const token    = '<?= injectedToken ?>';
 
   if (!quoteNum || !token) {
     showNoData();
