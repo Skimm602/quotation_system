@@ -3,7 +3,11 @@
     "allow": [
       "Bash(clasp push *)",
       "mcp__code-review-graph__semantic_search_nodes_tool",
-      "Bash(clasp --version)"
+      "Bash(clasp --version)",
+      "Bash(clasp status *)",
+      "Bash(clasp pull *)",
+      "Bash(clasp deployments *)",
+      "Bash(clasp deploy *)"
     ]
   }
 }
