@@ -126,7 +126,7 @@ body { font-family: 'DM Sans', sans-serif; background: #FFFFFF; color: #0A0A0A; 
       <div class="w-7 h-7 bg-brand flex items-center justify-center rounded-sm">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3 7h18v2H3V7zm0 4h18v2H3v-2zm0 4h12v2H3v-2z"/></svg>
       </div>
-      <span class="logo-text">Sign<span class="logo-slash">/</span>Quote</span>
+      <span class="logo-text">Quotation<span class="logo-slash"> System</span></span>
     </div>
     <div class="flex gap-2">
       <button class="btn-ghost text-xs" onclick="resetForm()">NEW ORDER</button>
@@ -194,6 +194,37 @@ const d = {
 };
 
 let pricing = { ratePerSqft: 0, rushFee: 0, designFee: 0 };
+
+// ─── MULTI-ITEM CART ──────────────────────────────────────────────────────
+let items = [];
+
+function currentItemSnap() {
+  const s = sqft(), b = base(), rf = rushFeeAmt(), df = desFeeAmt();
+  return {
+    width: parseFloat(d.width)||0, height: parseFloat(d.height)||0,
+    quantity: parseInt(d.quantity)||1, sqft: s, eyelet: d.eyelet,
+    rush: d.rush, designCharge: d.designCharge,
+    baseAmt: b, rushAmt: rf, desAmt: df, itemTotal: b + rf + df,
+  };
+}
+function grandTotal() { return items.reduce((s,i) => s + i.itemTotal, 0) + total(); }
+function grandDp()    { return grandTotal() * 0.5; }
+function grandBal()   { return grandTotal() - grandDp(); }
+
+function addItem() {
+  const w = parseFloat(d.width)||0, h = parseFloat(d.height)||0;
+  if (!w || !h) { showToast('⚠ Enter dimensions first before adding.', 'error'); return; }
+  items.push(currentItemSnap());
+  d.width = ''; d.height = ''; d.quantity = 1;
+  step = 1;
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  showToast('✓ Item ' + items.length + ' added! Set dimensions for the next item.', 'success');
+}
+function removeItem(i) {
+  items.splice(i, 1);
+  renderBody();
+}
 
 // ─── UNIT SYSTEM (new) ────────────────────────────────────────────────────
 // All internal values (d.width, d.height) are stored in FEET.
@@ -409,11 +440,43 @@ function renderBody() {
 
   // ── STEP 3: PRINT LAYOUT & RUSH ─────────────────────────────────────────
   else if (step === 3) {
+    const hasItems  = items.length > 0;
+    const itemsSub  = items.reduce((s,i) => s + i.itemTotal, 0);
+    const gt        = grandTotal();
+    const itemLabel = hasItems ? `Item ${items.length + 1} — ` : '';
+
     el.innerHTML = `
       <div class="flex flex-col gap-5">
 
+        ${hasItems ? `
         <div>
-          <label class="field-label" style="margin-bottom:10px;">Rush Order?</label>
+          <div class="field-label" style="margin-bottom:10px;">Added Items (${items.length})</div>
+          <div style="border:1px solid #E0E0E0;border-radius:3px;overflow:hidden;">
+            ${items.map((it,i) => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #F0F0F0;background:${i%2===0?'#FAFAFA':'#FFF'};">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:700;color:#0A0A0A;">Item ${i+1}</div>
+                  <div style="font-size:11px;color:#888;margin-top:1px;">${it.width.toFixed(2)} × ${it.height.toFixed(2)} ft × ${it.quantity} pc — ${it.sqft.toFixed(2)} sqft</div>
+                  <div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap;">
+                    <span style="font-size:10px;background:#F5F5F5;color:#666;padding:1px 5px;border-radius:2px;">${it.eyelet}</span>
+                    ${it.rush ? '<span style="font-size:10px;background:#FFF0F0;color:#E8151B;padding:1px 5px;border-radius:2px;font-weight:700;">RUSH</span>' : ''}
+                    ${it.designCharge ? '<span style="font-size:10px;background:#FFF0F0;color:#E8151B;padding:1px 5px;border-radius:2px;font-weight:700;">DESIGN</span>' : ''}
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                  <span style="font-weight:700;color:#E8151B;font-size:13px;">${php(it.itemTotal)}</span>
+                  <button onclick="removeItem(${i})" style="border:none;background:#FFF0F0;color:#E8151B;cursor:pointer;font-size:14px;padding:3px 8px;border-radius:2px;line-height:1;font-weight:900;" title="Remove">×</button>
+                </div>
+              </div>`).join('')}
+            <div style="padding:10px 14px;background:#F9F9F9;border-top:1px solid #E5E5E5;display:flex;justify-content:space-between;font-size:12px;font-weight:700;">
+              <span style="color:#888;text-transform:uppercase;letter-spacing:0.08em;">Items Subtotal</span>
+              <span style="color:#0A0A0A;">${php(itemsSub)}</span>
+            </div>
+          </div>
+        </div>` : ''}
+
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">${itemLabel}Rush Order?</label>
           <div class="flex flex-col gap-2">
             <label class="rush-card ${!d.rush?'selected':''}" onclick="setRush(false)">
               <input type="radio" name="rush" ${!d.rush?'checked':''}>
@@ -437,7 +500,7 @@ function renderBody() {
         </div>
 
         <div>
-          <label class="field-label" style="margin-bottom:10px;">Design Fee?</label>
+          <label class="field-label" style="margin-bottom:10px;">${itemLabel}Design Fee?</label>
           <div class="flex flex-col gap-2">
             <label class="rush-card ${!d.designCharge?'selected':''}" onclick="setDesign(false)">
               <input type="radio" name="design" ${!d.designCharge?'checked':''}>
@@ -462,22 +525,39 @@ function renderBody() {
 
         ${total() > 0 ? `
           <div style="background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;border-radius:3px;padding:14px 16px;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:10px;">Price Preview</div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:10px;">${hasItems ? `Item ${items.length+1} — ` : ''}Price Preview</div>
             <div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Base (${sqft().toFixed(2)} sqft × ${php(pricing.ratePerSqft)})</span><span>${php(base())}</span></div>
-            ${d.rush?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Rush Fee</span><span>${php(rushFeeAmt())}</span></div>`:''}
-            ${d.designCharge?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Design Fee</span><span>${php(desFeeAmt())}</span></div>`:''}
-            <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:#E8151B;border-top:1px solid #E0E0E0;padding-top:8px;margin-top:4px;"><span>TOTAL</span><span>${php(total())}</span></div>
+            ${d.rush ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Rush Fee</span><span>${php(rushFeeAmt())}</span></div>` : ''}
+            ${d.designCharge ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Design Fee</span><span>${php(desFeeAmt())}</span></div>` : ''}
+            <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:#E8151B;border-top:1px solid #E0E0E0;padding-top:8px;margin-top:4px;">
+              <span>${hasItems ? `Item ${items.length+1}` : 'TOTAL'}</span><span>${php(total())}</span>
+            </div>
+            ${hasItems ? `
+            <div style="display:flex;justify-content:space-between;font-size:17px;font-weight:800;color:#E8151B;border-top:2px solid #E8151B;padding-top:10px;margin-top:8px;">
+              <span>GRAND TOTAL (${items.length+1} items)</span><span>${php(gt)}</span>
+            </div>` : ''}
           </div>` : ''}
+
+        <button onclick="addItem()"
+          style="width:100%;padding:12px 16px;border:2px dashed #E8151B;background:transparent;color:#E8151B;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border-radius:3px;cursor:pointer;transition:background 0.15s;"
+          onmouseover="this.style.background='#FFF0F0'" onmouseout="this.style.background='transparent'">
+          + ADD ANOTHER ITEM
+        </button>
 
       </div>`;
   }
 
   // ── STEP 4: QUOTATION SUMMARY ────────────────────────────────────────────
   else if (step === 4) {
-    const area = (parseFloat(d.width)||0) * (parseFloat(d.height)||0);
-    const qty  = parseInt(d.quantity)||1;
-    const totalSqftVal = area * qty;
-    const date = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
+    const area     = (parseFloat(d.width)||0) * (parseFloat(d.height)||0);
+    const qty      = parseInt(d.quantity)||1;
+    const sqftVal  = area * qty;
+    const date     = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
+    const hasItems = items.length > 0;
+    const allItems = [...items, currentItemSnap()];
+    const gt       = grandTotal();
+    const gdp      = grandDp();
+    const gbal     = grandBal();
 
     el.innerHTML = `
       <div class="quote-client-box">
@@ -492,22 +572,41 @@ function renderBody() {
         </div>
       </div>
       <table class="q-table">
-        <tr><td colspan="2" class="sec-label">ORDER DETAILS</td></tr>
-        <tr><td>Product</td><td>Tarpaulin / Banner Print</td></tr>
-        <tr><td>Dimensions</td><td>${(parseFloat(d.width)||0).toFixed(4)} × ${(parseFloat(d.height)||0).toFixed(4)} ft</td></tr>
-        <tr><td>Quantity</td><td>${qty} pc(s)</td></tr>
-        <tr><td>Total Area</td><td><strong>${totalSqftVal.toFixed(2)} sq ft</strong></td></tr>
-        <tr><td>Eyelet Position</td><td>${esc(d.eyelet)}</td></tr>
-        <tr><td>Rush Order</td><td>${d.rush ? 'Yes' : 'No'}</td></tr>
-        <tr><td>Design Service</td><td>${d.designCharge ? 'Yes — design fee applies' : 'No — customer provides file'}</td></tr>
-        <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
-        <tr><td>Base (${totalSqftVal.toFixed(2)} sq ft × ${php(pricing.ratePerSqft)})</td><td>${php(base())}</td></tr>
-        ${d.rush ? `<tr><td>Rush Fee</td><td>${php(rushFeeAmt())}</td></tr>` : ''}
-        ${d.designCharge ? `<tr><td>Design Fee</td><td>${php(desFeeAmt())}</td></tr>` : ''}
-        <tr><td colspan="2" style="height:8px;"></td></tr>
-        <tr class="total-row"><td>TOTAL AMOUNT</td><td>${php(total())}</td></tr>
-        <tr class="sub-row"><td>Downpayment (50%)</td><td>${php(dp())}</td></tr>
-        <tr class="sub-row"><td>Balance</td><td>${php(bal())}</td></tr>
+        ${hasItems ? `
+          <tr><td colspan="2" class="sec-label">ORDER DETAILS — ${allItems.length} ITEMS</td></tr>
+          ${allItems.map((it,i) => `
+            <tr><td colspan="2" style="padding-top:${i>0?'16px':'10px'};padding-bottom:2px;${i>0?'border-top:1px solid #F0F0F0;':''}">
+              <span style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#E8151B;">Item ${i+1}</span>
+            </td></tr>
+            <tr><td style="padding-left:12px;color:#888;">Size & Qty</td><td>${it.width.toFixed(2)} × ${it.height.toFixed(2)} ft × ${it.quantity} pc (${it.sqft.toFixed(2)} sqft)</td></tr>
+            <tr><td style="padding-left:12px;color:#888;">Eyelet</td><td>${esc(it.eyelet)}</td></tr>
+            <tr><td style="padding-left:12px;color:#888;">Options</td><td>${[it.rush?'Rush':'', it.designCharge?'Design':''].filter(Boolean).join(' · ') || 'Standard'}</td></tr>
+            ${it.rushAmt > 0 || it.desAmt > 0 ? `
+              <tr><td style="padding-left:12px;color:#888;">Base</td><td>${php(it.baseAmt)}</td></tr>
+              ${it.rushAmt > 0 ? `<tr><td style="padding-left:12px;color:#888;">Rush Fee</td><td>${php(it.rushAmt)}</td></tr>` : ''}
+              ${it.desAmt > 0 ? `<tr><td style="padding-left:12px;color:#888;">Design Fee</td><td>${php(it.desAmt)}</td></tr>` : ''}
+            ` : ''}
+            <tr><td style="padding-left:12px;font-weight:600;color:#0A0A0A;">Item ${i+1} Total</td><td style="font-weight:700;color:#E8151B;">${php(it.itemTotal)}</td></tr>
+          `).join('')}
+          <tr><td colspan="2" style="height:12px;"></td></tr>
+        ` : `
+          <tr><td colspan="2" class="sec-label">ORDER DETAILS</td></tr>
+          <tr><td>Product</td><td>Tarpaulin / Banner Print</td></tr>
+          <tr><td>Dimensions</td><td>${(parseFloat(d.width)||0).toFixed(4)} × ${(parseFloat(d.height)||0).toFixed(4)} ft</td></tr>
+          <tr><td>Quantity</td><td>${qty} pc(s)</td></tr>
+          <tr><td>Total Area</td><td><strong>${sqftVal.toFixed(2)} sq ft</strong></td></tr>
+          <tr><td>Eyelet Position</td><td>${esc(d.eyelet)}</td></tr>
+          <tr><td>Rush Order</td><td>${d.rush ? 'Yes' : 'No'}</td></tr>
+          <tr><td>Design Service</td><td>${d.designCharge ? 'Yes — design fee applies' : 'No — customer provides file'}</td></tr>
+          <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
+          <tr><td>Base (${sqftVal.toFixed(2)} sq ft × ${php(pricing.ratePerSqft)})</td><td>${php(base())}</td></tr>
+          ${d.rush ? `<tr><td>Rush Fee</td><td>${php(rushFeeAmt())}</td></tr>` : ''}
+          ${d.designCharge ? `<tr><td>Design Fee</td><td>${php(desFeeAmt())}</td></tr>` : ''}
+          <tr><td colspan="2" style="height:8px;"></td></tr>
+        `}
+        <tr class="total-row"><td>${hasItems ? `GRAND TOTAL (${allItems.length} items)` : 'TOTAL AMOUNT'}</td><td>${php(gt)}</td></tr>
+        <tr class="sub-row"><td>Downpayment (50%)</td><td>${php(gdp)}</td></tr>
+        <tr class="sub-row"><td>Balance</td><td>${php(gbal)}</td></tr>
       </table>`;
   }
 }
@@ -679,6 +778,8 @@ function saveQuotation() {
   btn.classList.add('loading'); btn.textContent = '⏳ SAVING...';
   document.getElementById('loadingOverlay').style.display = 'flex';
 
+  const allItems = [...items, currentItemSnap()];
+  const gt       = grandTotal();
   const payload = {
     clientName:   d.clientName,
     contact:      d.contact,
@@ -697,6 +798,9 @@ function saveQuotation() {
     dateNeeded:   d.dateNeeded,
     salesStaff:   '',
     token:        SERVER_TOKEN,
+    items:        allItems,
+    totalAmount:  gt,
+    downpayment:  gt * 0.5,
   };
 
   google.script.run
@@ -724,6 +828,7 @@ function resetForm() {
   d.width=''; d.height=''; d.quantity=1;
   d.eyelet='No Eyelet'; d.printLayout='Upload'; d.designCharge=false; d.rush=false;
   currentUnit = 'ft';
+  items = [];
   step = 0; render();
 }
 
