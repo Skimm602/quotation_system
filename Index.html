@@ -209,14 +209,19 @@
   function bal()      { return total() - dp(); }
 
   function taxToggleHtml() {
-    const opts=[{key:'non-vat',label:'Non-VAT'},{key:'vat-inclusive',label:'VAT Incl. 12%'},{key:'vat-exclusive',label:'VAT Excl. 12%'}];
-    const tx=d.taxType||'non-vat';
-    const btns=opts.map(function(o){
-      const a=tx===o.key;
-      return '<button onclick="d.taxType=\''+o.key+'\';renderBody()" style="padding:6px 14px;border:1px solid '+(a?'#E8151B':'#E0E0E0')+';border-radius:3px;font-size:12px;font-weight:'+(a?'700':'500')+';cursor:pointer;background:'+(a?'#E8151B':'#FAFAFA')+';color:'+(a?'#fff':'#888')+';transition:all .15s;">'+o.label+'</button>';
+    var opts=[{key:'non-vat',label:'Non-VAT'},{key:'vat-inclusive',label:'VAT Incl. 12%'},{key:'vat-exclusive',label:'VAT Excl. 12%'}];
+    var tx=d.taxType||'non-vat';
+    var btns=opts.map(function(o){
+      var a=tx===o.key;
+      var border=a?'#E8151B':'#E0E0E0';
+      var bg=a?'#E8151B':'#FAFAFA';
+      var clr=a?'#fff':'#888';
+      var fw=a?'700':'500';
+      return '<button onclick="setTaxType(' + JSON.stringify(o.key) + ')" style="padding:6px 14px;border:1px solid '+border+';border-radius:3px;font-size:12px;font-weight:'+fw+';cursor:pointer;background:'+bg+';color:'+clr+';transition:all .15s;">'+o.label+'</button>';
     }).join('');
     return '<tr><td colspan="2" style="padding:12px 0 6px;"><div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:8px;">TAX</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+btns+'</div></td></tr>';
   }
+  function setTaxType(key) { d.taxType=key; renderBody(); }
   function php(n)   { return '₱' + (n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function esc(s)   { return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function v(id)    { return document.getElementById(id)?.value || ''; }

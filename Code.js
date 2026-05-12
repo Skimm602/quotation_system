@@ -50,6 +50,7 @@ function doGet(e) {
     tpl.injectedQuoteNum = qn;
     return tpl.evaluate()
       .setTitle('Quotation — Ormoc Printshoppe')
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME)
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   if (page === 'tarpaulin') {
@@ -69,6 +70,7 @@ function serveLogin_(appUrl) {
   tpl.appUrl = appUrl;
   return tpl.evaluate()
     .setTitle('Quotation System — Login')
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -80,6 +82,7 @@ function serveWithToken_(file, title, token, appUrl) {
   tpl.userName      = session ? session.name : '';
   return tpl.evaluate()
     .setTitle(title)
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
