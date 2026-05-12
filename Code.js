@@ -38,10 +38,10 @@ function doGet(e) {
   const role = (session.role || 'sales').toLowerCase();
 
   if (page === 'index') {
-    return serveWithToken_('Index', 'SignQuote — Quotation', token, appUrl);
+    return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
   }
   if (page === 'dashboard') {
-    return serveWithToken_('Dashboard', 'SignQuote — Dashboard', token, appUrl);
+    return serveWithToken_('Dashboard', 'Quotation System — Dashboard', token, appUrl);
   }
   if (page === 'quotation') {
     const qn  = String(e?.parameter?.qn || '').trim();
@@ -53,22 +53,22 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   if (page === 'tarpaulin') {
-    return serveWithToken_('Tarpauline', 'SignQuote — Tarpaulin', token, appUrl);
+    return serveWithToken_('Tarpauline', 'Quotation System — Tarpaulin', token, appUrl);
   }
   if (page === 'receipt') {
-    return serveWithToken_('Receipt', 'SignQuote — Receipt', token, appUrl);
+    return serveWithToken_('Receipt', 'Quotation System — Receipt', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
-    return serveWithToken_('Index', 'SignQuote — Quotation', token, appUrl);
+    return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
   }
-  return serveWithToken_('Dashboard', 'SignQuote — Dashboard', token, appUrl);
+  return serveWithToken_('Dashboard', 'Quotation System — Dashboard', token, appUrl);
 }
 
 function serveLogin_(appUrl) {
   const tpl = HtmlService.createTemplateFromFile('Login');
   tpl.appUrl = appUrl;
   return tpl.evaluate()
-    .setTitle('SignQuote — Login')
+    .setTitle('Quotation System — Login')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
