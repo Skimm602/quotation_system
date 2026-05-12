@@ -574,7 +574,7 @@
         return;
       }
 
-      const subtotal = base() + mountFee() + complexitySurcharge();
+      const baseSubtotal = base() + mountFee() + complexitySurcharge();
 
       // Build transport cards with location input box
       const transportCards = SECTION4.transport.map(t => {
@@ -650,7 +650,7 @@
             <label class="field-label" style="margin-bottom:10px;">Rush Production <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
             <div class="flex flex-col gap-2">
               ${SECTION4.rush.map(r => {
-                const fee = r.pct > 0 ? Math.round(subtotal * r.pct / 100) : r.flat;
+                const fee = r.pct > 0 ? Math.round(baseSubtotal * r.pct / 100) : r.flat;
                 const feeLabel = r.pct > 0 ? `+${r.pct}% (${php(fee)})` : (r.flat > 0 ? `+₱${r.flat}/day` : 'STANDARD');
                 return `<label class="mount-card ${addons.rushOption===r.label?'selected':''}" onclick="selectRush('${r.label.replace(/'/g,"\\'")}', ${r.pct}, ${r.flat}, ${fee})">
                   <input type="radio" name="rush" ${addons.rushOption===r.label?'checked':''}>
@@ -1198,9 +1198,11 @@
       .getPricing();
   }
 
-  loadPricing();
-  loadPaymentTerms(); // ← add ni
-  
+  try { loadPricing(); } catch(e) {
+    console.error('loadPricing error, retrying in 1s:', e);
+    setTimeout(function() { try { loadPricing(); } catch(e2) {} }, 1000);
+  }
+  try { loadPaymentTerms(); } catch(e) {}
   render();
   </script>
   </body>

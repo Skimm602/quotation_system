@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(clasp push *)"
+      "Bash(clasp push *)",
+      "mcp__code-review-graph__semantic_search_nodes_tool"
     ]
   }
 }
