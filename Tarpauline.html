@@ -411,35 +411,64 @@ function renderBody() {
   else if (step === 3) {
     el.innerHTML = `
       <div class="flex flex-col gap-5">
-        <label class="field-label" style="margin-bottom:10px;">Rush Order?</label>
-        <div class="flex flex-col gap-2">
-          <label class="rush-card ${!d.rush?'selected':''}" onclick="setRush(false, this)">
-            <input type="radio" name="rush" ${!d.rush?'checked':''}>
-            <div style="flex:1;">
-              <div style="font-size:13px;font-weight:600;color:#0A0A0A;">Standard — No Rush</div>
-              <div style="font-size:11px;color:#888;margin-top:2px;">Normal production timeline</div>
-            </div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#888;">STANDARD</div>
-          </label>
-          <label class="rush-card ${d.rush?'selected':''}" onclick="setRush(true, this)">
-            <input type="radio" name="rush" ${d.rush?'checked':''}>
-            <div style="flex:1;">
-              <div style="font-size:13px;font-weight:600;color:#0A0A0A;">Rush Order</div>
-              <div style="font-size:11px;color:#888;margin-top:2px;">Priority production — additional fee applies</div>
-            </div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#E8151B;">
-              ${pricing.rushFee > 0 ? '+'+php(pricing.rushFee) : '+₱—'}
-            </div>
-          </label>
+
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Rush Order?</label>
+          <div class="flex flex-col gap-2">
+            <label class="rush-card ${!d.rush?'selected':''}" onclick="setRush(false)">
+              <input type="radio" name="rush" ${!d.rush?'checked':''}>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;color:#0A0A0A;">Standard — No Rush</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">Normal production timeline</div>
+              </div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#888;">STANDARD</div>
+            </label>
+            <label class="rush-card ${d.rush?'selected':''}" onclick="setRush(true)">
+              <input type="radio" name="rush" ${d.rush?'checked':''}>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;color:#0A0A0A;">Rush Order</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">Priority production — additional fee applies</div>
+              </div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#E8151B;">
+                ${pricing.rushFee > 0 ? '+'+php(pricing.rushFee) : '+₱—'}
+              </div>
+            </label>
+          </div>
         </div>
+
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Design Fee?</label>
+          <div class="flex flex-col gap-2">
+            <label class="rush-card ${!d.designCharge?'selected':''}" onclick="setDesign(false)">
+              <input type="radio" name="design" ${!d.designCharge?'checked':''}>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;color:#0A0A0A;">No Design Needed</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">Customer will provide the ready-to-print file</div>
+              </div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#888;">FREE</div>
+            </label>
+            <label class="rush-card ${d.designCharge?'selected':''}" onclick="setDesign(true)">
+              <input type="radio" name="design" ${d.designCharge?'checked':''}>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;color:#0A0A0A;">Needs Design</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">We will create the layout — design fee applies</div>
+              </div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#E8151B;">
+                +${php(pricing.designFee > 0 ? pricing.designFee : 250)}
+              </div>
+            </label>
+          </div>
+        </div>
+
         ${total() > 0 ? `
-          <div style="background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;border-radius:3px;padding:14px 16px;margin-top:8px;">
+          <div style="background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;border-radius:3px;padding:14px 16px;">
             <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:10px;">Price Preview</div>
             <div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Base (${sqft().toFixed(2)} sqft × ${php(pricing.ratePerSqft)})</span><span>${php(base())}</span></div>
             ${d.rush?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Rush Fee</span><span>${php(rushFeeAmt())}</span></div>`:''}
             ${d.designCharge?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Design Fee</span><span>${php(desFeeAmt())}</span></div>`:''}
             <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:#E8151B;border-top:1px solid #E0E0E0;padding-top:8px;margin-top:4px;"><span>TOTAL</span><span>${php(total())}</span></div>
           </div>` : ''}
+
       </div>`;
   }
 
@@ -470,6 +499,7 @@ function renderBody() {
         <tr><td>Total Area</td><td><strong>${totalSqftVal.toFixed(2)} sq ft</strong></td></tr>
         <tr><td>Eyelet Position</td><td>${esc(d.eyelet)}</td></tr>
         <tr><td>Rush Order</td><td>${d.rush ? 'Yes' : 'No'}</td></tr>
+        <tr><td>Design Service</td><td>${d.designCharge ? 'Yes — design fee applies' : 'No — customer provides file'}</td></tr>
         <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
         <tr><td>Base (${totalSqftVal.toFixed(2)} sq ft × ${php(pricing.ratePerSqft)})</td><td>${php(base())}</td></tr>
         ${d.rush ? `<tr><td>Rush Fee</td><td>${php(rushFeeAmt())}</td></tr>` : ''}
@@ -563,6 +593,11 @@ function selectLayout(card, name, isDesign) {
 
 function setRush(yes) {
   d.rush = yes;
+  renderBody();
+}
+
+function setDesign(yes) {
+  d.designCharge = yes;
   renderBody();
 }
 

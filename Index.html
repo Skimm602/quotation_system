@@ -1183,12 +1183,6 @@
   loadPricing();
   loadPaymentTerms(); // ← add ni
   
-  function render(){
-    renderStepper(); renderHead(); renderBody(); renderFoot();
-    const fc=$('formCard'); fc.style.animation='none';
-    requestAnimationFrame(()=>{ fc.style.animation=''; });
-  }
-
   render();
   </script>
   </body>
