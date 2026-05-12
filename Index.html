@@ -134,8 +134,8 @@
 
   <script>
   // ─── TOKEN ────────────────────────────────────────────────────────────────
-  const SERVER_TOKEN = document.getElementById('server-token')?.value || '';
-  const APP_URL      = document.getElementById('app-url')?.value || '';
+  const SERVER_TOKEN = (document.getElementById('server-token')||{}).value || '';
+  const APP_URL      = (document.getElementById('app-url')||{}).value || '';
 
   function goToDashboard() {
     if (SERVER_TOKEN && APP_URL) {
@@ -224,7 +224,7 @@
   function setTaxType(key) { d.taxType=key; renderBody(); }
   function php(n)   { return '₱' + (n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function esc(s)   { return (s||'').split('<').join('&lt;').split('>').join('&gt;'); }
-  function v(id)    { return document.getElementById(id)?.value || ''; }
+  function v(id)    { return (document.getElementById(id)||{}).value || ''; }
 
   // ─── SIGNAGE TYPE GROUPING ─────────────────────────────────────────────────
   const GROUP_ORDER = [
@@ -772,7 +772,7 @@
           <tr><td>Base (${bsf.toFixed(2)} sq ft × ${php(RATES[d.signageType]||0)})</td><td>${php(bsf*(RATES[d.signageType]||0))}</td></tr>
           ${MIN_CHARGE[d.signageType]&&bsf*(RATES[d.signageType]||0)<MIN_CHARGE[d.signageType]?`<tr><td style="padding-left:12px;color:#888;font-size:12px;">↳ Min. charge applied</td><td>${php(MIN_CHARGE[d.signageType])}</td></tr>`:''}
           ${complexityRows}
-          <tr><td>Mounting — ${esc(d.mounting)}</td><td>${selMount?.isQuotation?'<em style="color:#888;">TBD</em>':(mf>0?php(mf):'—')}</td></tr>
+          <tr><td>Mounting — ${esc(d.mounting)}</td><td>${(selMount&&selMount.isQuotation)?'<em style="color:#888;">TBD</em>':(mf>0?php(mf):'—')}</td></tr>
           <tr><td>Design service</td><td>${df>0?php(df):'—'}</td></tr>
           ${addons.designFeeAmt>0?`<tr><td>Design & Artwork — ${esc(addons.designService)}</td><td>${php(addons.designFeeAmt)}</td></tr>`:''}
           ${addons.rushFeeAmt>0?`<tr><td>Rush fee — ${esc(addons.rushOption)}</td><td>${php(addons.rushFeeAmt)}</td></tr>`:''}
@@ -781,12 +781,12 @@
           ${addons.transport&&addons.transportFeeAmt===0?`<tr><td>Transport — ${esc(addons.transport)}${addons.transportLocation?' ('+esc(addons.transportLocation)+')':''}</td><td style="color:#888;">FREE</td></tr>`:''}
           <tr><td colspan="2" style="height:8px;"></td></tr>
           ${taxToggleHtml()}
-          ${tAmt>0?`<tr class="sub-row"><td>${tLabel}</td><td>${selMount?.isQuotation?'—':php(tAmt)}</td></tr>`:''}
-          <tr class="total-row"><td>TOTAL AMOUNT</td><td>${selMount?.isQuotation?'<em style="font-size:14px;">Pending site visit</em>':php(t)}</td></tr>
-          <tr class="sub-row"><td>Downpayment (50%)</td><td>${selMount?.isQuotation?'—':php(dpv)}</td></tr>
-          <tr class="sub-row"><td>Balance</td><td>${selMount?.isQuotation?'—':php(balv)}</td></tr>
+          ${tAmt>0?`<tr class="sub-row"><td>${tLabel}</td><td>${(selMount&&selMount.isQuotation)?'—':php(tAmt)}</td></tr>`:''}
+          <tr class="total-row"><td>TOTAL AMOUNT</td><td>${(selMount&&selMount.isQuotation)?'<em style="font-size:14px;">Pending site visit</em>':php(t)}</td></tr>
+          <tr class="sub-row"><td>Downpayment (50%)</td><td>${(selMount&&selMount.isQuotation)?'—':php(dpv)}</td></tr>
+          <tr class="sub-row"><td>Balance</td><td>${(selMount&&selMount.isQuotation)?'—':php(balv)}</td></tr>
         </table>
-        ${selMount?.isQuotation?`<div class="info-box mt-4"><span>⚠</span><span>Total is pending due to <strong>By Quotation</strong> mounting. A site visit will be scheduled.</span></div>`:''}`;
+        ${(selMount&&selMount.isQuotation)?`<div class="info-box mt-4"><span>⚠</span><span>Total is pending due to <strong>By Quotation</strong> mounting. A site visit will be scheduled.</span></div>`:''}`;
     }
   }
 
@@ -827,9 +827,9 @@
   }
 
   function liveCompute() {
-    d.rawWidth  = document.getElementById('f_width')?.value  || d.rawWidth  || '';
-    d.rawHeight = document.getElementById('f_height')?.value || d.rawHeight || '';
-    d.unit      = document.getElementById('f_unit')?.value   || d.unit      || 'ft';
+    d.rawWidth  = (document.getElementById('f_width')||{}).value  || d.rawWidth  || '';
+    d.rawHeight = (document.getElementById('f_height')||{}).value || d.rawHeight || '';
+    d.unit      = (document.getElementById('f_unit')||{}).value   || d.unit      || 'ft';
 
     d.width  = toFeet(d.rawWidth,  d.unit).toFixed(4);
     d.height = toFeet(d.rawHeight, d.unit).toFixed(4);
@@ -865,9 +865,9 @@
     const existing = (d.selectedComplexity||[]).findIndex(x => x.label === opt.label);
     if (existing >= 0) { d.selectedComplexity.splice(existing,1); cardEl.classList.remove('checked'); }
     else { if (!d.selectedComplexity) d.selectedComplexity=[]; d.selectedComplexity.push(opt); cardEl.classList.add('checked'); }
-    const typenotes=document.getElementById('f_typenotes')?.value;
-    const lit=document.getElementById('f_lighting')?.value;
-    const mat=document.getElementById('f_material')?.value;
+    const typenotes=(document.getElementById('f_typenotes')||{}).value;
+    const lit=(document.getElementById('f_lighting')||{}).value;
+    const mat=(document.getElementById('f_material')||{}).value;
     if (typenotes!==undefined) d.typeNotes=typenotes;
     if (lit) d.lighting=lit;
     if (mat) d.material=mat;
@@ -927,7 +927,7 @@
   }
 
   function liveDesign() {
-    d.designService = document.getElementById('f_design')?.value || d.designService;
+    d.designService = (document.getElementById('f_design')||{}).value || d.designService;
     renderBody();
   }
 
@@ -1085,7 +1085,7 @@
       totalAmount:         total(),
       downpayment:         dp(),
       balance:             bal(),
-      mountingIsQuotation: selMount?.isQuotation||false,
+      mountingIsQuotation: (selMount&&selMount.isQuotation)||false,
       quoteDate:           new Date().toISOString(),
       dateNeeded:          d.dateNeeded || '',
       salesStaff:          <?= JSON.stringify(userName) ?>,
