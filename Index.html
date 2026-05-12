@@ -223,7 +223,7 @@
   }
   function setTaxType(key) { d.taxType=key; renderBody(); }
   function php(n)   { return '₱' + (n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-  function esc(s)   { return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function esc(s)   { return (s||'').split('<').join('&lt;').split('>').join('&gt;'); }
   function v(id)    { return document.getElementById(id)?.value || ''; }
 
   // ─── SIGNAGE TYPE GROUPING ─────────────────────────────────────────────────
@@ -432,7 +432,7 @@
                   <div style="padding:8px 14px 5px;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#E8151B;background:#FFF5F5;border-bottom:1px solid #FFE8E8;position:sticky;top:0;z-index:1;">${esc(group)}</div>
                   ${items.map(p => `
                     <div class="signage-option" data-value="${esc(p.name)}"
-                      onclick="selectSignageType('${p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${p.rate||0},${p.minCharge||0},${p.minArea||0})"
+                      onclick="selectSignageType(${JSON.stringify(p.name).split('"').join('&quot;')},${p.rate||0},${p.minCharge||0},${p.minArea||0})"
                       style="padding:11px 14px;cursor:pointer;border-bottom:1px solid #F5F5F5;transition:background 0.1s;${sel===p.name?'background:#FFF0F0;':''}">
                       <div style="font-size:13px;font-weight:${sel===p.name?'700':'500'};color:${sel===p.name?'#E8151B':'#0A0A0A'};">${esc(p.name)}</div>
                       <div style="font-size:11px;color:#888;margin-top:3px;display:flex;gap:14px;">
@@ -538,7 +538,7 @@
       const mountCards = MOUNT_OPTIONS.length
         ? MOUNT_OPTIONS.map(m => {
             const isSelected = d.mounting === m.label;
-            return `<label class="mount-card ${isSelected?'selected':''} ${m.isQuotation?'quotation':''}" onclick="selectMount('${m.label.replace(/'/g,"\\'")}')">
+            return `<label class="mount-card ${isSelected?'selected':''} ${m.isQuotation?'quotation':''}" onclick="selectMount(${JSON.stringify(m.label).split('"').join('&quot;')})">
               <input type="radio" name="mounting" value="${esc(m.label)}" ${isSelected?'checked':''}>
               <div style="flex:1;">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
@@ -587,7 +587,7 @@
         const needsLocation = isSelected && t.label !== 'Ormoc City — all barangays';
         return `
           <div>
-            <label class="mount-card ${isSelected?'selected':''}" onclick="selectTransport('${t.label.replace(/'/g,"\\'")}', ${t.flat})">
+            <label class="mount-card ${isSelected?'selected':''}" onclick="selectTransport(${JSON.stringify(t.label).split('"').join('&quot;')}, ${t.flat})">
               <input type="radio" name="transport" ${isSelected?'checked':''}>
               <div style="flex:1;">
                 <div style="font-size:13px;font-weight:600;">${esc(t.label)}</div>
@@ -641,7 +641,7 @@
                 <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#888;">FREE</div>
               </label>
               ${SECTION4.design.map((d4,i) => `
-                <label class="mount-card ${addons.designService===d4.label?'selected':''}" onclick="selectDesignService('${d4.label.replace(/'/g,"\\'")}', ${d4.rate})">
+                <label class="mount-card ${addons.designService===d4.label?'selected':''}" onclick="selectDesignService(${JSON.stringify(d4.label).split('"').join('&quot;')}, ${d4.rate})">
                   <input type="radio" name="design_svc" ${addons.designService===d4.label?'checked':''}>
                   <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(d4.label)}</div>
                   <div style="font-size:11px;color:#888;margin-top:2px;">${esc(d4.notes)}</div></div>
@@ -657,7 +657,7 @@
               ${SECTION4.rush.map(r => {
                 const fee = r.pct > 0 ? Math.round(baseSubtotal * r.pct / 100) : r.flat;
                 const feeLabel = r.pct > 0 ? `+${r.pct}% (${php(fee)})` : (r.flat > 0 ? `+₱${r.flat}/day` : 'STANDARD');
-                return `<label class="mount-card ${addons.rushOption===r.label?'selected':''}" onclick="selectRush('${r.label.replace(/'/g,"\\'")}', ${r.pct}, ${r.flat}, ${fee})">
+                return `<label class="mount-card ${addons.rushOption===r.label?'selected':''}" onclick="selectRush(${JSON.stringify(r.label).split('"').join('&quot;')}, ${r.pct}, ${r.flat}, ${fee})">
                   <input type="radio" name="rush" ${addons.rushOption===r.label?'checked':''}>
                   <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(r.label)}</div>
                   ${r.notes?`<div style="font-size:11px;color:#888;margin-top:2px;">${esc(r.notes)}</div>`:''}
@@ -1088,7 +1088,7 @@
       mountingIsQuotation: selMount?.isQuotation||false,
       quoteDate:           new Date().toISOString(),
       dateNeeded:          d.dateNeeded || '',
-      salesStaff:          '<?= userName ?>',
+      salesStaff:          <?= JSON.stringify(userName) ?>,
       addonDesign:         addons.designService || '',
       addonDesignFee:      addons.designFeeAmt || 0,
       addonRush:           addons.rushOption || '',
