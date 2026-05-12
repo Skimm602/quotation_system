@@ -474,6 +474,19 @@ function getDashboardData(token) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET QUOTE FOR PDF
+// ══════════════════════════════════════════════════════════════════
+function getQuoteForPDF(token, quoteNum) {
+  const session = getSessionData_(token);
+  if (!session) return null;
+  const data = getDashboardData(token);
+  if (!data || !data.quotes) return null;
+  return data.quotes.find(function(q) {
+    return String(q.quoteNum).trim() === String(quoteNum).trim();
+  }) || null;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  UPDATE QUOTE STATUS
 // ══════════════════════════════════════════════════════════════════
 // ✅ FIX #3 — removed nested duplicate function; receipt branch now properly placed

@@ -275,7 +275,6 @@ let TOKEN       = '';
 let APP_URL     = '';
 
 function init() {
-  sessionStorage.removeItem('sqQuoteData');
   TOKEN   = document.getElementById('server-token')?.value || '';
   APP_URL = document.getElementById('app-url')?.value || '';
   if (!TOKEN) { showSessionExpired(); return; }
@@ -536,33 +535,12 @@ function updateStatus(quoteNum, status) {
 }
 
 function openQuotationPDF(quoteNum) {
-  const q = allQuotes.find(x => x.quoteNum === quoteNum);
-  if (!q) return;
-  const payload = {
-    quoteNum, date: q.date || new Date().toISOString(),
-    clientName: q.clientName || '', contact: q.contact || '',
-    address: q.address || '', delivery: q.delivery || '', email: q.email || '',
-    signageType: q.signageType || '', eyelet: q.eyelet || '', width: q.width || '', height: q.height || '',
-    size: q.size || '',paperType: q.paperType || '',paperColors: q.paperColors || '',perforation: q.perforation || '',numbering: q.numbering || '',quantity: q.quantity || 0,
-    sqft: q.sqft || '', lighting: q.lighting || '', material: q.material || '',
-    mounting: q.mounting || '', baseAmount: q.baseAmount || 0,
-    mountFee: q.mountSurcharge || 0, complexitySurcharge: q.complexitySurcharge || 0,
-    
-    totalAmount: q.totalAmount || 0, downpayment: q.downpayment || 0,
-    paymentTermValue: q.paymentTermValue !== undefined ? q.paymentTermValue : 0.5,
-    paymentTermLabel: q.paymentTermLabel || 'Downpayment (50%)',
-    balance: q.balance || 0, status: q.status || 'Pending',
-    salesStaff: q.salesStaff || '', dateNeeded: q.dateNeeded || '',
-    addonDesign: q.addonDesign || '', addonDesignFee: q.addonDesignFee || 0,
-    addonRush: q.addonRush || '', addonRushFee: q.addonRushFee || 0,
-    addonElec: q.addonElec || '', addonElecFee: q.addonElecFee || 0,
-    addonTransport: q.addonTransport || '', addonTransportLocation: q.addonTransportLocation || '',
-    addonTransportFee: q.addonTransportFee || 0,
-  };
-  try { localStorage.setItem('sqQuoteData', JSON.stringify(payload)); } catch(e) {}
   google.script.run
     .withSuccessHandler(function(appUrl) {
-      window.open(appUrl + '?page=quotation&token=' + encodeURIComponent(TOKEN), '_blank');
+      window.open(
+        appUrl + '?page=quotation&token=' + encodeURIComponent(TOKEN) + '&qn=' + encodeURIComponent(quoteNum),
+        '_blank'
+      );
     })
     .getAppUrl();
 }
@@ -575,6 +553,9 @@ function viewQuote(quoteNum) {
   const canAct = (role==='admin'||role==='tech_support') && (q.status||'Pending')==='Pending';
   const row = (label, val) => `<tr style="border-bottom:1px solid #F0F0F0;"><td style="padding:8px 0;color:#888;">${label}</td><td style="text-align:right;">${val}</td></tr>`;
   const isReceipt = String(q.quoteNum).startsWith('RQ-');
+  const dpLabel = q.paymentTermLabel || '50% Downpayment';
+  const dpAmt   = q.paymentTermValue !== undefined ? q.totalAmount * q.paymentTermValue : (q.downpayment || q.totalAmount * 0.5);
+  const balAmt  = q.totalAmount - dpAmt;
 
   document.getElementById('quoteDetailContent').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
@@ -617,8 +598,8 @@ ${String(q.quoteNum).startsWith('RQ-') ? `
 `}
   <tr style="border-bottom:2px solid #E0E0E0;height:4px;"><td colspan="2"></td></tr>
   ${row('<span style="font-weight:700;font-size:15px;color:#E8151B;">TOTAL</span>', `<span style="font-weight:700;font-size:15px;color:#E8151B;">${php(q.totalAmount)}</span>`)}
-  ${row('Downpayment (50%)', php(q.downpayment))}
-  <tr><td style="padding:8px 0;color:#888;">Balance</td><td style="text-align:right;">${php(q.balance)}</td></tr>
+  ${row(dpLabel, php(dpAmt))}
+  <tr><td style="padding:8px 0;color:#888;">Balance</td><td style="text-align:right;">${php(balAmt)}</td></tr>
 </table>
    <div style="margin-top:16px;padding:14px 16px;background:#F9F9F9;border:1px solid #E5E5E5;border-radius:3px;">
   <label class="field-label">Payment Terms (Admin Only)</label>
