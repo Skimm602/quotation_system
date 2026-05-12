@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SignQuote — Tarpaulin Quotation</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: '#E8151B', 'brand-dark': '#B00E12',
+        ink: '#0A0A0A', chalk: '#FFFFFF',
+      },
+      fontFamily: { display: ['Bebas Neue', 'sans-serif'], body: ['DM Sans', 'sans-serif'] },
+    }
+  }
+}
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #FFFFFF; color: #0A0A0A; min-height: 100vh; }
+.topnav { background: #FFFFFF; border-bottom: 1px solid #E5E5E5; position: sticky; top: 0; z-index: 100; }
+.logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 0.05em; color: #0A0A0A; }
+.logo-slash { color: #E8151B; }
+
+/* STEPPER */
+.step-circle { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid #E0E0E0; color: #999; transition: all 0.25s; background: #F5F5F5; cursor: pointer; flex-shrink: 0; }
+.step-circle.done   { background: #E8151B; border-color: #E8151B; color: white; }
+.step-circle.active { background: white; border-color: white; color: #0A0A0A; box-shadow: 0 0 0 4px rgba(232,21,27,0.3); }
+.step-line { height: 1px; flex: 1; background: #E0E0E0; transition: background 0.25s; }
+.step-line.done { background: #E8151B; }
+
+/* CARD */
+.card { background: #FFFFFF; border: 1px solid #E5E5E5; border-radius: 4px; overflow: hidden; animation: fadeUp 0.3s ease both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.card-header-bar { background: #E8151B; height: 4px; width: 100%; }
+
+/* FIELDS */
+.field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #666; display: block; margin-bottom: 6px; }
+.field-label .req { color: #E8151B; }
+.field-input { width: 100%; background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 3px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0A; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.field-input:focus { border-color: #E8151B; box-shadow: 0 0 0 2px rgba(232,21,27,0.2); }
+.field-input::placeholder { color: #BBB; }
+
+/* OPT BUTTONS (eyelet) */
+.opt-btn { padding: 9px 18px; border: 1px solid #E0E0E0; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; background: #FFFFFF; color: #888; transition: all 0.15s; }
+.opt-btn:hover { border-color: #E8151B; color: #E8151B; }
+.opt-btn.active { background: #E8151B; border-color: #E8151B; color: #fff; }
+
+/* LAYOUT CARDS */
+.layout-card { border: 1px solid #E0E0E0; border-radius: 3px; padding: 16px 12px; cursor: pointer; transition: all 0.15s; text-align: center; background: #FAFAFA; }
+.layout-card:hover { border-color: #E8151B; background: #FFF8F8; }
+.layout-card.active { border-color: #E8151B; background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
+.layout-card.active .lc-name { color: #E8151B; }
+.lc-name { font-size: 13px; font-weight: 700; color: #0A0A0A; margin-bottom: 2px; }
+.lc-sub { font-size: 11px; color: #AAA; }
+
+/* RUSH CARDS */
+.rush-card { border: 1px solid #E0E0E0; border-radius: 3px; padding: 12px 16px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 12px; }
+.rush-card:hover { border-color: #E8151B; background: #FFF8F8; }
+.rush-card.selected { border-color: #E8151B; background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
+.rush-card input[type=radio] { accent-color: #E8151B; flex-shrink: 0; }
+
+/* COMPUTED BOX */
+.computed-box { background: linear-gradient(135deg, #FFF0F0, #FFF8F8); border: 1px solid #FFCCCC; border-radius: 3px; padding: 16px 20px; }
+
+/* QUOTATION TABLE */
+.q-table { width: 100%; border-collapse: collapse; }
+.q-table tr { border-bottom: 1px solid #F0F0F0; }
+.q-table tr:last-child { border: none; }
+.q-table td { padding: 10px 0; font-size: 14px; color: #666; }
+.q-table td:last-child { text-align: right; color: #0A0A0A; font-weight: 500; }
+.q-table .sec-label { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #BBB; font-weight: 700; padding-top: 18px; }
+.q-table .total-row td { font-size: 20px; font-weight: 700; color: #E8151B; padding-top: 16px; border-top: 2px solid #E8151B; }
+.q-table .total-row td:last-child { color: #E8151B; }
+.q-table .sub-row td { font-size: 13px; color: #777; padding-top: 6px; }
+
+/* BUTTONS */
+.btn-ghost { padding: 10px 22px; border: 1px solid #E0E0E0; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: #888; background: transparent; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+.btn-ghost:hover { border-color: #999; color: #333; }
+.btn-primary { padding: 10px 26px; background: #E8151B; border: 1px solid #FFCCCC; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: white; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.04em; text-transform: uppercase; }
+.btn-primary:hover { background: #B00E12; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-save { padding: 11px 28px; background: white; border: 1px solid #333; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; color: #0A0A0A; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+.btn-save:hover { background: #E8151B; border-color: #E8151B; color: white; }
+.btn-save.loading { opacity: 0.6; pointer-events: none; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 28px; right: 28px; background: #0A0A0A; border: 1px solid #333; color: white; padding: 14px 20px; border-radius: 3px; font-size: 13px; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 10px; transform: translateY(80px); opacity: 0; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 999; max-width: 320px; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: #0A2A1A; border-color: #1A6A3A; }
+.toast.error   { background: #1A0000; border-color: #E8151B; }
+
+/* RATE PILL */
+.rate-pill { background: #F5F5F5; border: 1px solid #E0E0E0; border-radius: 3px; padding: 10px 14px; font-size: 13px; color: #666; display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.rate-pill strong { color: #E8151B; }
+
+/* SUCCESS */
+.quote-client-box { background: #FFFFFF; border: 1px solid #E0E0E0; border-left: 3px solid #E8151B; padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+
+/* LOADING OVERLAY */
+.spinner { width: 32px; height: 32px; border: 3px solid #EEE; border-top-color: #E8151B; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── UNIT TOGGLE (new) ── */
+.unit-tabs { display: flex; border: 1px solid #E0E0E0; border-radius: 3px; overflow: hidden; }
+.unit-tab  { flex: 1; padding: 8px 0; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; border: none; background: #FAFAFA; color: #999; cursor: pointer; transition: all 0.15s; }
+.unit-tab:not(:last-child) { border-right: 1px solid #E0E0E0; }
+.unit-tab.active { background: #E8151B; color: white; }
+.unit-hint { font-size: 11px; color: #AAA; margin-top: 5px; }
+
+@media (max-width: 600px) {
+  .fields-2col { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topnav">
+  <div class="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-7 h-7 bg-brand flex items-center justify-center rounded-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3 7h18v2H3V7zm0 4h18v2H3v-2zm0 4h12v2H3v-2z"/></svg>
+      </div>
+      <span class="logo-text">Sign<span class="logo-slash">/</span>Quote</span>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn-ghost text-xs" onclick="resetForm()">NEW ORDER</button>
+      <button class="btn-ghost text-xs" onclick="goToDashboard()" style="border-color:#0A0A0A;color:#0A0A0A;">← DASHBOARD</button>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="relative z-10 max-w-4xl mx-auto px-6 py-10 pb-20">
+  <div class="mb-8">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;color:#0A0A0A;line-height:1;">
+      TARPAULIN <span style="color:#E8151B;">QUOTATION</span>
+      <span id="ratePillInline" style="display:inline-block;background:#E8151B;color:white;font-size:14px;padding:4px 12px;border-radius:2px;margin-left:12px;vertical-align:middle;">₱— / sq.ft</span>
+    </div>
+    <p class="text-sm mt-1 tracking-wide" style="color:#999;">Complete each step to generate a tarpaulin quotation.</p>
+  </div>
+
+  <!-- STEPPER -->
+  <div id="stepper-wrap" class="mb-6 bg-gray-50 border border-gray-200 rounded-sm p-5 flex items-center gap-2 overflow-x-auto"></div>
+
+  <!-- CARD -->
+  <div class="card" id="formCard">
+    <div class="card-header-bar"></div>
+    <div class="px-7 py-5 border-b border-gray-100 flex items-center gap-4" id="cardHeader"></div>
+    <div class="px-7 py-7" id="cardBody"></div>
+    <div class="px-7 py-5 border-t border-gray-100 flex justify-between items-center bg-gray-50" id="cardFooter"></div>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay" style="display:none;" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+  <div style="background:white;border:1px solid #E5E5E5;border-top:4px solid #E8151B;border-radius:4px;padding:32px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.12);">
+    <div class="spinner"></div>
+    <div style="font-size:13px;color:#888;font-family:'DM Sans',sans-serif;">Saving quotation...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<input type="hidden" id="server-token" value="<?= injectedToken ?>">
+<input type="hidden" id="app-url"      value="<?= appUrl ?>">
+
+<script>
+// ─── TOKEN ────────────────────────────────────────────────────────────────
+const SERVER_TOKEN = document.getElementById('server-token')?.value || '';
+const APP_URL      = document.getElementById('app-url')?.value || '';
+
+function goToDashboard() {
+  if (SERVER_TOKEN && APP_URL) {
+    window.top.location.href = APP_URL + '?page=dashboard&token=' + encodeURIComponent(SERVER_TOKEN);
+  }
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────
+let step = 0;
+const d = {
+  clientName: '', contact: '', email: '', dateNeeded: '',
+  width: '', height: '',
+  eyelet: 'No Eyelet',
+  printLayout: 'Upload',
+  designCharge: false,
+  rush: false,
+  quantity: 1,
+};
+
+let pricing = { ratePerSqft: 0, rushFee: 0, designFee: 0 };
+
+// ─── UNIT SYSTEM (new) ────────────────────────────────────────────────────
+// All internal values (d.width, d.height) are stored in FEET.
+// The unit selector only affects display and input parsing.
+let currentUnit = 'ft'; // 'ft' | 'm' | 'cm' | 'in'
+
+const UNIT_LABELS = { ft: 'ft', m: 'm', cm: 'cm', in: 'in' };
+const UNIT_NAMES  = { ft: 'Feet', m: 'Meters', cm: 'Centimeters', in: 'Inches' };
+const UNIT_HINTS  = {
+  ft: '1 ft = 1 sq.ft base unit',
+  m:  '1 m = 3.28084 ft — auto-converted to sq.ft',
+  cm: '1 cm = 0.0328084 ft — auto-converted to sq.ft',
+  in: '1 in = 0.0833333 ft — auto-converted to sq.ft',
+};
+
+// Convert from any unit → feet
+function toFt(val, unit) {
+  const n = parseFloat(val) || 0;
+  if (unit === 'ft') return n;
+  if (unit === 'm')  return n * 3.28084;
+  if (unit === 'cm') return n * 0.0328084;
+  if (unit === 'in') return n * 0.0833333;
+  return n;
+}
+
+// Convert feet → display unit (for showing stored value back in input)
+function fromFt(valFt, unit) {
+  const n = parseFloat(valFt) || 0;
+  if (unit === 'ft') return n;
+  if (unit === 'm')  return n / 3.28084;
+  if (unit === 'cm') return n / 0.0328084;
+  if (unit === 'in') return n / 0.0833333;
+  return n;
+}
+
+function setUnit(unit) {
+  // Save current raw input values (in current display unit) → convert to feet first
+  const rawW = parseFloat(document.getElementById('f_width')?.value)  || 0;
+  const rawH = parseFloat(document.getElementById('f_height')?.value) || 0;
+  d.width  = rawW > 0 ? toFt(rawW, currentUnit) : d.width;
+  d.height = rawH > 0 ? toFt(rawH, currentUnit) : d.height;
+
+  currentUnit = unit;
+  renderBody(); // re-render step 1 with converted values in inputs
+}
+
+// ─── CALCULATIONS ─────────────────────────────────────────────────────────
+// sqft() always works in feet — d.width / d.height are stored in feet
+function sqft()       { return (parseFloat(d.width)||0) * (parseFloat(d.height)||0) * (parseInt(d.quantity)||1); }
+function base()       { return sqft() * (pricing.ratePerSqft||0); }
+function rushFeeAmt() { return d.rush ? (pricing.rushFee||0) : 0; }
+function desFeeAmt()  { return d.designCharge ? (pricing.designFee||0) : 0; }
+function total()      { return base() + rushFeeAmt() + desFeeAmt(); }
+function dp()         { return total() * 0.5; }
+function bal()        { return total() - dp(); }
+function php(n)       { return '₱' + (n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s)       { return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function v(id)        { return document.getElementById(id)?.value || ''; }
+
+// ─── STEPS ────────────────────────────────────────────────────────────────
+const STEPS = [
+  { label: 'Client Info',   sub: 'Name, contact & date needed' },
+  { label: 'Dimensions',    sub: 'Width × height, quantity & sq ft' },
+  { label: 'Eyelet',        sub: 'Eyelet position for hanging' },
+  { label: 'Print Layout',  sub: 'File type & rush order' },
+  { label: 'Quotation',     sub: 'Full breakdown & downpayment' },
+];
+
+function renderStepper() {
+  const el = document.getElementById('stepper-wrap');
+  el.innerHTML = '';
+  STEPS.forEach((s, i) => {
+    const st = i < step ? 'done' : i === step ? 'active' : '';
+    el.innerHTML += `
+      <div class="flex flex-col items-center gap-1 cursor-pointer min-w-fit" onclick="goTo(${i})">
+        <div class="step-circle ${st}">${i < step ? '✓' : i+1}</div>
+        <span style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${i===step?'#E8151B':i<step?'#999':'#BBB'};white-space:nowrap;">${s.label}</span>
+      </div>
+      ${i < STEPS.length-1 ? `<div class="step-line flex-1 ${i < step ? 'done' : ''}" style="margin-bottom:18px;"></div>` : ''}
+    `;
+  });
+}
+
+function goTo(i) { if (i < step) { save(); step = i; render(); } }
+
+function renderHeader() {
+  const s = STEPS[step];
+  document.getElementById('cardHeader').innerHTML = `
+    <div style="width:42px;height:42px;background:#E8151B;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:white;letter-spacing:0.05em;">${step+1}</span>
+    </div>
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:#0A0A0A;line-height:1.1;">${s.label.toUpperCase()}</div>
+      <div style="font-size:12px;color:#555;margin-top:2px;">${s.sub}</div>
+    </div>`;
+}
+
+function renderBody() {
+  const el = document.getElementById('cardBody');
+
+  // ── STEP 0: CLIENT INFO ──────────────────────────────────────────────────
+  if (step === 0) {
+    el.innerHTML = `
+      <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
+        <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+          <label class="field-label">Client Name <span class="req">*</span></label>
+          <input class="field-input" id="f_name" value="${esc(d.clientName)}" placeholder="Juan dela Cruz / ABC Corp">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Contact Number <span class="req">*</span></label>
+          <input class="field-input" id="f_contact" value="${esc(d.contact)}" placeholder="09XX XXX XXXX" maxlength="13"
+            oninput="formatPhone(this)" onkeypress="return event.charCode>=48&&event.charCode<=57">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Email <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+          <input class="field-input" id="f_email" type="email" value="${esc(d.email||'')}" placeholder="email@example.com">
+        </div>
+        <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+          <label class="field-label">Date Needed <span class="req">*</span></label>
+          <input class="field-input" id="f_dateneeded" type="date" value="${esc(d.dateNeeded||'')}" min="${new Date().toISOString().split('T')[0]}" style="max-width:240px;">
+        </div>
+      </div>`;
+  }
+
+  // ── STEP 1: DIMENSIONS ───────────────────────────────────────────────────
+  else if (step === 1) {
+    // Convert stored feet values to current display unit for input fields
+    const displayW = d.width  ? fromFt(d.width,  currentUnit).toFixed(4).replace(/\.?0+$/, '') : '';
+    const displayH = d.height ? fromFt(d.height, currentUnit).toFixed(4).replace(/\.?0+$/, '') : '';
+
+    const qty = parseInt(d.quantity)||1;
+    const totalSqft = sqft();
+
+    // Display dimensions in ft for the label regardless of input unit
+    const wFt = parseFloat(d.width)||0;
+    const hFt = parseFloat(d.height)||0;
+
+    el.innerHTML = `
+      <!-- Unit Selector -->
+      <div class="flex flex-col gap-1 mb-5">
+        <label class="field-label">Unit of Measurement</label>
+        <div class="unit-tabs">
+          ${['ft','m','cm','in'].map(u => `
+            <button class="unit-tab ${currentUnit===u?'active':''}" onclick="setUnit('${u}')">${UNIT_LABELS[u].toUpperCase()}</button>
+          `).join('')}
+        </div>
+        <div class="unit-hint">${UNIT_HINTS[currentUnit]}</div>
+      </div>
+
+      <!-- Dimension Inputs -->
+      <div class="grid gap-5" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Width (${UNIT_LABELS[currentUnit]}) <span class="req">*</span></label>
+          <input class="field-input" id="f_width" type="number" min="0" step="any" value="${displayW}" placeholder="0" oninput="liveCompute()">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Height (${UNIT_LABELS[currentUnit]}) <span class="req">*</span></label>
+          <input class="field-input" id="f_height" type="number" min="0" step="any" value="${displayH}" placeholder="0" oninput="liveCompute()">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Quantity <span class="req">*</span></label>
+          <input class="field-input" id="f_quantity" type="number" min="1" value="${qty}" oninput="liveCompute()">
+        </div>
+      </div>
+
+      <!-- Computed Area Box -->
+      <div class="computed-box mt-5">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#666;">Total Billable Area</div>
+            <div style="font-size:12px;color:#555;margin-top:2px;" id="dimLabel">
+              ${wFt||'?'} × ${hFt||'?'} ft × ${qty} pc(s)
+            </div>
+            ${currentUnit !== 'ft' && (wFt > 0 || hFt > 0) ? `
+              <div style="font-size:11px;color:#E8151B;margin-top:3px;" id="ftConvLabel">
+                = ${displayW||'?'} × ${displayH||'?'} ${UNIT_LABELS[currentUnit]} (input) → ${wFt.toFixed(4)} × ${hFt.toFixed(4)} ft
+              </div>` : ''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:#E8151B;line-height:1;" id="sqftVal">
+              ${totalSqft > 0 ? totalSqft.toFixed(2) : '—'}
+            </div>
+            <div style="font-size:11px;color:#555;">sq ft total</div>
+          </div>
+        </div>
+      </div>
+      ${pricing.ratePerSqft > 0 && totalSqft > 0 ? `
+        <div class="rate-pill">
+          <span>At <strong>${php(pricing.ratePerSqft)}/sq ft</strong></span>
+          <strong id="baseVal" style="margin-left:auto;color:#E8151B;">= ${php(base())}</strong>
+        </div>` : ''}`;
+  }
+
+  // ── STEP 2: EYELET ───────────────────────────────────────────────────────
+  else if (step === 2) {
+    const opts = ['No Eyelet','Top Only','Top & Bottom','All Sides'];
+    el.innerHTML = `
+      <div class="flex flex-col gap-2">
+        <label class="field-label" style="margin-bottom:10px;">Select Eyelet Position</label>
+        ${opts.map(o => `
+          <label class="rush-card ${d.eyelet===o?'selected':''}" onclick="selectEyelet('${o}')">
+            <input type="radio" name="eyelet" ${d.eyelet===o?'checked':''}>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;color:#0A0A0A;">${esc(o)}</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">${eyeletDesc(o)}</div>
+            </div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#888;">
+              ${o === 'No Eyelet' ? 'NONE' : 'INCLUDED'}
+            </div>
+          </label>`).join('')}
+      </div>`;
+  }
+
+  // ── STEP 3: PRINT LAYOUT & RUSH ─────────────────────────────────────────
+  else if (step === 3) {
+    el.innerHTML = `
+      <div class="flex flex-col gap-5">
+        <label class="field-label" style="margin-bottom:10px;">Rush Order?</label>
+        <div class="flex flex-col gap-2">
+          <label class="rush-card ${!d.rush?'selected':''}" onclick="setRush(false, this)">
+            <input type="radio" name="rush" ${!d.rush?'checked':''}>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;color:#0A0A0A;">Standard — No Rush</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">Normal production timeline</div>
+            </div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#888;">STANDARD</div>
+          </label>
+          <label class="rush-card ${d.rush?'selected':''}" onclick="setRush(true, this)">
+            <input type="radio" name="rush" ${d.rush?'checked':''}>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;color:#0A0A0A;">Rush Order</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">Priority production — additional fee applies</div>
+            </div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#E8151B;">
+              ${pricing.rushFee > 0 ? '+'+php(pricing.rushFee) : '+₱—'}
+            </div>
+          </label>
+        </div>
+        ${total() > 0 ? `
+          <div style="background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;border-radius:3px;padding:14px 16px;margin-top:8px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:10px;">Price Preview</div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Base (${sqft().toFixed(2)} sqft × ${php(pricing.ratePerSqft)})</span><span>${php(base())}</span></div>
+            ${d.rush?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Rush Fee</span><span>${php(rushFeeAmt())}</span></div>`:''}
+            ${d.designCharge?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Design Fee</span><span>${php(desFeeAmt())}</span></div>`:''}
+            <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:#E8151B;border-top:1px solid #E0E0E0;padding-top:8px;margin-top:4px;"><span>TOTAL</span><span>${php(total())}</span></div>
+          </div>` : ''}
+      </div>`;
+  }
+
+  // ── STEP 4: QUOTATION SUMMARY ────────────────────────────────────────────
+  else if (step === 4) {
+    const area = (parseFloat(d.width)||0) * (parseFloat(d.height)||0);
+    const qty  = parseInt(d.quantity)||1;
+    const totalSqftVal = area * qty;
+    const date = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
+
+    el.innerHTML = `
+      <div class="quote-client-box">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:#0A0A0A;">${esc(d.clientName)||'—'}</div>
+          <div style="font-size:12px;color:#555;margin-top:2px;">${esc(d.contact)||''}</div>
+          ${d.dateNeeded ? `<div style="font-size:12px;color:#E8151B;margin-top:4px;font-weight:600;">📅 Date Needed: ${date}</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#444;font-weight:700;">Quote Date</div>
+          <div style="font-size:13px;color:#888;margin-top:2px;">${new Date().toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>
+        </div>
+      </div>
+      <table class="q-table">
+        <tr><td colspan="2" class="sec-label">ORDER DETAILS</td></tr>
+        <tr><td>Product</td><td>Tarpaulin / Banner Print</td></tr>
+        <tr><td>Dimensions</td><td>${(parseFloat(d.width)||0).toFixed(4)} × ${(parseFloat(d.height)||0).toFixed(4)} ft</td></tr>
+        <tr><td>Quantity</td><td>${qty} pc(s)</td></tr>
+        <tr><td>Total Area</td><td><strong>${totalSqftVal.toFixed(2)} sq ft</strong></td></tr>
+        <tr><td>Eyelet Position</td><td>${esc(d.eyelet)}</td></tr>
+        <tr><td>Rush Order</td><td>${d.rush ? 'Yes' : 'No'}</td></tr>
+        <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
+        <tr><td>Base (${totalSqftVal.toFixed(2)} sq ft × ${php(pricing.ratePerSqft)})</td><td>${php(base())}</td></tr>
+        ${d.rush ? `<tr><td>Rush Fee</td><td>${php(rushFeeAmt())}</td></tr>` : ''}
+        ${d.designCharge ? `<tr><td>Design Fee</td><td>${php(desFeeAmt())}</td></tr>` : ''}
+        <tr><td colspan="2" style="height:8px;"></td></tr>
+        <tr class="total-row"><td>TOTAL AMOUNT</td><td>${php(total())}</td></tr>
+        <tr class="sub-row"><td>Downpayment (50%)</td><td>${php(dp())}</td></tr>
+        <tr class="sub-row"><td>Balance</td><td>${php(bal())}</td></tr>
+      </table>`;
+  }
+}
+
+function renderFooter() {
+  const el   = document.getElementById('cardFooter');
+  const back = step > 0 ? `<button class="btn-ghost" onclick="prev()">← BACK</button>` : `<span></span>`;
+  const next = step < STEPS.length - 1
+    ? `<div class="flex items-center gap-4">
+        <span style="font-size:11px;color:#444;letter-spacing:0.06em;text-transform:uppercase;">Step ${step+1} of ${STEPS.length}</span>
+        <button class="btn-primary" onclick="next()">CONTINUE →</button>
+      </div>`
+    : `<div class="flex items-center gap-3">
+        <button class="btn-save" id="saveBtn" onclick="saveQuotation()">💾 SAVE QUOTATION</button>
+      </div>`;
+  el.innerHTML = back + next;
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────
+function eyeletDesc(o) {
+  if (o === 'No Eyelet')    return 'Flat banner, no holes';
+  if (o === 'Top Only')     return 'Holes along the top edge';
+  if (o === 'Top & Bottom') return 'Holes top and bottom';
+  if (o === 'All Sides')    return 'Holes on all four sides';
+  return '';
+}
+
+function formatPhone(input) {
+  let digits = input.value.replace(/\D/g, '');
+  if (digits.length > 11) digits = digits.slice(0, 11);
+  let fmt = digits;
+  if (digits.length > 4 && digits.length <= 7) fmt = digits.slice(0,4)+' '+digits.slice(4);
+  else if (digits.length > 7) fmt = digits.slice(0,4)+' '+digits.slice(4,7)+' '+digits.slice(7);
+  input.value = fmt;
+  d.contact = fmt;
+}
+
+function liveCompute() {
+  // Read raw input in current display unit, convert to feet for storage
+  const rawW = parseFloat(document.getElementById('f_width')?.value)  || 0;
+  const rawH = parseFloat(document.getElementById('f_height')?.value) || 0;
+  d.width    = rawW > 0 ? toFt(rawW, currentUnit) : 0;
+  d.height   = rawH > 0 ? toFt(rawH, currentUnit) : 0;
+  d.quantity = parseInt(v('f_quantity'))||1;
+
+  const wFt  = parseFloat(d.width)||0;
+  const hFt  = parseFloat(d.height)||0;
+  const qty  = d.quantity;
+  const totalSqft = wFt * hFt * qty;
+
+  const sqEl  = document.getElementById('sqftVal');
+  const dimEl = document.getElementById('dimLabel');
+  const bsEl  = document.getElementById('baseVal');
+  const cvEl  = document.getElementById('ftConvLabel');
+
+  if (sqEl)  sqEl.textContent  = totalSqft > 0 ? totalSqft.toFixed(2) : '—';
+  if (dimEl) dimEl.textContent = `${wFt.toFixed(4)||'?'} × ${hFt.toFixed(4)||'?'} ft × ${qty} pc(s)`;
+  if (bsEl)  bsEl.textContent  = totalSqft > 0 ? '= ' + php(totalSqft * pricing.ratePerSqft) : '';
+
+  // Show/hide the ft conversion hint
+  if (cvEl) {
+    if (currentUnit !== 'ft' && (wFt > 0 || hFt > 0)) {
+      cvEl.style.display = 'block';
+      cvEl.textContent   = `= ${rawW||'?'} × ${rawH||'?'} ${UNIT_LABELS[currentUnit]} → ${wFt.toFixed(4)} × ${hFt.toFixed(4)} ft`;
+    } else {
+      cvEl.style.display = 'none';
+    }
+  }
+}
+
+function selectEyelet(val) {
+  d.eyelet = val;
+  renderBody();
+}
+
+function selectLayout(card, name, isDesign) {
+  document.querySelectorAll('.layout-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+  d.printLayout   = name;
+  d.designCharge  = isDesign;
+  renderBody();
+}
+
+function setRush(yes) {
+  d.rush = yes;
+  renderBody();
+}
+
+// ─── SAVE ─────────────────────────────────────────────────────────────────
+function save() {
+  if (step === 0) {
+    d.clientName = v('f_name');
+    d.contact    = v('f_contact');
+    d.email      = v('f_email');
+    d.dateNeeded = v('f_dateneeded');
+  }
+  if (step === 1) {
+    // Convert from display unit → feet before saving
+    const rawW = parseFloat(v('f_width'))  || 0;
+    const rawH = parseFloat(v('f_height')) || 0;
+    d.width    = rawW > 0 ? toFt(rawW, currentUnit) : 0;
+    d.height   = rawH > 0 ? toFt(rawH, currentUnit) : 0;
+    d.quantity = parseInt(v('f_quantity'))||1;
+  }
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────
+function next() {
+  save();
+
+  if (step === 0) {
+    const fields = [
+      { id:'f_name',       val:d.clientName,  label:'Client Name' },
+      { id:'f_contact',    val:d.contact,     label:'Contact Number' },
+      { id:'f_dateneeded', val:d.dateNeeded,  label:'Date Needed' },
+    ];
+    fields.forEach(f => { const el=document.getElementById(f.id); if(el) el.style.borderColor=''; });
+    const empty = fields.filter(f => !f.val.trim());
+    if (empty.length) {
+      empty.forEach(f => { const el=document.getElementById(f.id); if(el) el.style.borderColor='#E8151B'; });
+      showToast('⚠ Please fill in: ' + empty.map(f=>f.label).join(', '), 'error'); return;
+    }
+    const digits = d.contact.replace(/\D/g,'');
+    if (digits.length !== 11) {
+      const el = document.getElementById('f_contact');
+      if (el) el.style.borderColor = '#E8151B';
+      showToast('⚠ Contact number must be 11 digits.', 'error'); return;
+    }
+  }
+
+  if (step === 1) {
+    const w = parseFloat(d.width)||0, h = parseFloat(d.height)||0;
+    const wEl = document.getElementById('f_width'), hEl = document.getElementById('f_height');
+    if (wEl) wEl.style.borderColor=''; if (hEl) hEl.style.borderColor='';
+    if (!w || !h) {
+      if (!w && wEl) wEl.style.borderColor='#E8151B';
+      if (!h && hEl) hEl.style.borderColor='#E8151B';
+      showToast('⚠ Please enter Width and Height.', 'error'); return;
+    }
+  }
+
+  if (step < STEPS.length - 1) {
+    step++;
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function prev() {
+  save();
+  if (step > 0) { step--; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+}
+
+function render() {
+  renderStepper(); renderHeader(); renderBody(); renderFooter();
+  const fc = document.getElementById('formCard');
+  fc.style.animation = 'none';
+  requestAnimationFrame(() => { fc.style.animation = ''; });
+}
+
+// ─── SAVE QUOTATION ───────────────────────────────────────────────────────
+function saveQuotation() {
+  const btn = document.getElementById('saveBtn');
+  btn.classList.add('loading'); btn.textContent = '⏳ SAVING...';
+  document.getElementById('loadingOverlay').style.display = 'flex';
+
+  const payload = {
+    clientName:   d.clientName,
+    contact:      d.contact,
+    email:        d.email,
+    width:        parseFloat(d.width)||0,
+    height:       parseFloat(d.height)||0,
+    sqft:         sqft(),
+    quantity:     parseInt(d.quantity)||1,
+    eyelet:       d.eyelet,
+    printLayout:  d.printLayout,
+    rushOrder:    d.rush,
+    designCharge: d.designCharge,
+    ratePerSqft:  pricing.ratePerSqft,
+    rushFee:      pricing.rushFee,
+    designFee:    pricing.designFee,
+    dateNeeded:   d.dateNeeded,
+    salesStaff:   '',
+    token:        SERVER_TOKEN,
+  };
+
+  google.script.run
+    .withSuccessHandler(function(quoteNum) {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      showToast('✓ Saved — ' + quoteNum, 'success');
+      btn.classList.remove('loading');
+      btn.textContent = '✓ SAVED';
+      btn.style.background = '#0A2A1A';
+      btn.style.borderColor = '#1A6A3A';
+      btn.style.color = '#4AE89A';
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      btn.classList.remove('loading'); btn.textContent = '💾 SAVE QUOTATION';
+      showToast('⚠ ' + (err.message || 'Could not save.'), 'error');
+    })
+    .saveTarpQuotation(payload);
+}
+
+// ─── RESET ────────────────────────────────────────────────────────────────
+function resetForm() {
+  if (!confirm('Start a new tarpaulin order? Current data will be cleared.')) return;
+  d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
+  d.width=''; d.height=''; d.quantity=1;
+  d.eyelet='No Eyelet'; d.printLayout='Upload'; d.designCharge=false; d.rush=false;
+  currentUnit = 'ft';
+  step = 0; render();
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => { t.className = 'toast ' + type; }, 3500);
+}
+
+// ─── LOAD PRICING ─────────────────────────────────────────────────────────
+render();
+
+function loadPricing() {
+  if (typeof google === 'undefined' || !google.script) {
+    pricing = { ratePerSqft: 20, rushFee: 100, designFee: 250 };
+    const pill = document.getElementById('ratePillInline');
+    if (pill) pill.textContent = '₱' + pricing.ratePerSqft.toFixed(2) + ' / sq.ft';
+    render();
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(function(p) {
+      if (!p) return;
+      pricing = p;
+      const pill = document.getElementById('ratePillInline');
+      if (pill) pill.textContent = '₱' + p.ratePerSqft.toFixed(2) + ' / sq.ft';
+      render();
+    })
+    .withFailureHandler(function() {
+      pricing = { ratePerSqft: 20, rushFee: 100, designFee: 250 };
+      render();
+    })
+    .getTarpPricing();
+}
+
+loadPricing();
+</script>
+</body>
+</html>

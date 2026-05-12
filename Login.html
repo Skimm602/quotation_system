@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SignQuote — Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #0A0A0A; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.bg-grid {
+  position: fixed; inset: 0; z-index: 0;
+  background-image: linear-gradient(rgba(232,21,27,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(232,21,27,0.04) 1px, transparent 1px);
+  background-size: 48px 48px; animation: gridDrift 20s linear infinite;
+}
+@keyframes gridDrift { from { background-position: 0 0; } to { background-position: 48px 48px; } }
+.bg-glow {
+  position: fixed; width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(232,21,27,0.12) 0%, transparent 70%);
+  top: -100px; left: -100px; z-index: 0; animation: blobFloat 8s ease-in-out infinite;
+}
+@keyframes blobFloat { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(60px,40px) scale(1.1); } }
+.login-card {
+  position: relative; z-index: 10; background: #fff;
+  width: 100%; max-width: 400px; border-radius: 2px; overflow: hidden;
+  animation: cardRise 0.5s cubic-bezier(0.22,1,0.36,1) both;
+  box-shadow: 0 0 0 1px rgba(232,21,27,0.15), 0 32px 80px rgba(0,0,0,0.6);
+}
+@keyframes cardRise { from { opacity:0; transform:translateY(32px) scale(0.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+.accent-bar { height: 4px; background: #E8151B; }
+.brand-strip { background: #0A0A0A; padding: 28px 36px 24px; display: flex; align-items: center; gap: 12px; }
+.logo-icon { width: 36px; height: 36px; background: #E8151B; display: flex; align-items: center; justify-content: center; border-radius: 2px; flex-shrink: 0; }
+.logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.05em; color: #fff; }
+.logo-slash { color: #E8151B; }
+.brand-sub { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #555; margin-top: 2px; }
+.form-area { padding: 32px 36px 36px; }
+.error-msg {
+  background: #FFF0F0; border: 1px solid #FFCCCC; border-radius: 2px;
+  padding: 12px 14px; font-size: 12px; color: #CC1015;
+  display: flex; gap: 8px; align-items: flex-start; margin-bottom: 20px;
+  animation: shakeIn 0.35s ease both;
+}
+@keyframes shakeIn { 0% { transform:translateX(-6px);opacity:0; } 40% { transform:translateX(4px); } 70% { transform:translateX(-2px); } 100% { transform:translateX(0);opacity:1; } }
+.status-box {
+  background: #F5F5F5; border: 1px solid #E5E5E5; border-radius: 2px;
+  padding: 14px 16px; font-size: 13px; color: #555;
+  display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+}
+.spinner {
+  width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.12);
+  border-top-color: #E8151B; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.card-footer { background: #F9F9F9; border-top: 1px solid #F0F0F0; padding: 14px 36px; font-size: 11px; color: #AAA; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<div class="login-card">
+  <div class="accent-bar"></div>
+  <div class="brand-strip">
+    <div class="logo-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M3 7h18v2H3V7zm0 4h18v2H3v-2zm0 4h12v2H3v-2z"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">Sign<span class="logo-slash">/</span>Quote</div>
+      <div class="brand-sub">Signage Quotation System</div>
+    </div>
+  </div>
+
+  <div class="form-area">
+    <div style="margin-bottom:24px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:#0A0A0A;line-height:1;">STAFF ACCESS</div>
+      <div style="font-size:12px;color:#999;margin-top:4px;">Access is granted based on your Google account.</div>
+    </div>
+
+    <!-- Error -->
+    <div id="errorBox" style="display:none;" class="error-msg">
+      <span style="margin-top:1px;">⚠</span>
+      <span id="errorText">Your Google account is not authorized.</span>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingBox" class="status-box">
+      <div class="spinner"></div>
+      <span>Checking your Google account...</span>
+    </div>
+
+    <!-- Detected email -->
+    <div id="emailBox" class="status-box" style="display:none;">
+      <span>👤</span>
+      <div style="font-size:13px;">
+        <div style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:2px;">Signed in as</div>
+        <div style="font-weight:700;color:#0A0A0A;" id="userEmail">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-footer">© SignQuote · Ormoc Printshoppe</div>
+</div>
+
+<input type="hidden" id="app-url" value="<?= appUrl ?>">
+
+<script>
+const APP_URL = document.getElementById('app-url').value;
+
+function showError(msg) {
+  document.getElementById('loadingBox').style.display = 'none';
+  document.getElementById('emailBox').style.display = 'none';
+  const box = document.getElementById('errorBox');
+  document.getElementById('errorText').textContent = msg;
+  box.style.display = 'flex';
+  box.style.animation = 'none';
+  requestAnimationFrame(() => { box.style.animation = ''; });
+}
+
+// Step 1 — get active user email
+google.script.run
+  .withSuccessHandler(function(email) {
+    if (!email) {
+      showError('Could not detect your Google account. Make sure you are signed in to Google.');
+      return;
+    }
+
+    // Show detected email + spinner
+    document.getElementById('loadingBox').style.display = 'none';
+    const emailBox = document.getElementById('emailBox');
+    emailBox.style.display = 'flex';
+    emailBox.innerHTML = `
+      <div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:#E8151B;flex-shrink:0;width:18px;height:18px;border-width:2px;border-style:solid;border-radius:50;animation:spin 0.7s linear infinite;"></div>
+      <div style="font-size:13px;">
+        <div style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:2px;">Signing in as</div>
+        <div style="font-weight:700;color:#0A0A0A;">${email}</div>
+      </div>`;
+
+    // Step 2 — attempt login
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (!result || !result.success) {
+          showError((result && result.message) || 'Your Google account (' + email + ') is not authorized. Contact your administrator.');
+          return;
+        }
+        // Show button with correct page based on role
+        const page = (result.role === 'sales' || result.role === 'staff') ? 'index' : 'dashboard';
+        document.getElementById('loadingBox').style.display = 'none';
+        document.getElementById('emailBox').style.display = 'none';
+        const formArea = document.querySelector('.form-area');
+        formArea.innerHTML = `
+          <div style="text-align:center;padding:20px 0;">
+            <div style="font-size:40px;margin-bottom:12px;">✅</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.05em;margin-bottom:6px;">Login Successful!</div>
+            <div style="font-size:12px;color:#888;margin-bottom:24px;">Signed in as <strong>${email}</strong></div>
+            <a href="${APP_URL}?page=${page}&token=${encodeURIComponent(result.token)}" target="_top"
+               style="display:inline-block;background:#E8151B;color:white;text-decoration:none;padding:13px 32px;border-radius:2px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
+              ENTER SYSTEM →
+            </a>
+          </div>`;
+      })
+      .withFailureHandler(function(err) {
+        showError('Server error: ' + (err && err.message ? err.message : 'Please refresh and try again.'));
+      })
+      .googleLogin();
+  })
+  .withFailureHandler(function(err) {
+    showError('Could not detect your Google account. Please refresh the page.');
+  })
+  .getActiveUserEmail();
+</script>
+</body>
+</html>

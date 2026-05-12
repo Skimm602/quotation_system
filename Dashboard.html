@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SignQuote — Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; min-height: 100vh; }
+.sidebar { width:220px; background:#0A0A0A; min-height:100vh; position:fixed; left:0; top:0; display:flex; flex-direction:column; z-index:50; }
+.main { margin-left:220px; min-height:100vh; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:11px 20px; font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#555; cursor:pointer; border-left:3px solid transparent; transition:all 0.15s; text-decoration:none; }
+.nav-item:hover { color:#fff; background:rgba(255,255,255,0.04); }
+.nav-item.active { color:#fff; border-left-color:#E8151B; background:rgba(232,21,27,0.08); }
+.nav-section { font-size:9px; font-weight:700; letter-spacing:0.14em; color:#333; padding:20px 20px 6px; text-transform:uppercase; }
+.topbar { background:white; border-bottom:1px solid #E5E5E5; height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; position:sticky; top:0; z-index:40; }
+.stat-card { background:white; border:1px solid #E5E5E5; border-radius:4px; padding:20px 24px; position:relative; overflow:hidden; }
+.stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:#E8151B; }
+.data-table { width:100%; border-collapse:collapse; }
+.data-table th { font-size:9px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#999; padding:10px 16px; text-align:left; border-bottom:1px solid #F0F0F0; background:#FAFAFA; }
+.data-table td { padding:12px 16px; font-size:13px; border-bottom:1px solid #F5F5F5; color:#444; }
+.data-table tr:hover td { background:#FAFAFA; }
+.data-table tr:last-child td { border-bottom:none; }
+.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:2px; font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; }
+.badge-pending  { background:#FFF8E6; color:#B8860B; border:1px solid #F0D060; }
+.badge-approved { background:#E6FFF3; color:#0A7A45; border:1px solid #60D090; }
+.badge-rejected { background:#FFF0F0; color:#CC1015; border:1px solid #FFCCCC; }
+.btn-approve { padding:5px 12px; background:#0A7A45; color:white; border:none; border-radius:2px; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer; transition:all 0.15s; }
+.btn-approve:hover { background:#065A32; }
+.btn-reject { padding:5px 12px; background:#E8151B; color:white; border:none; border-radius:2px; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer; transition:all 0.15s; }
+.btn-reject:hover { background:#B00E12; }
+.btn-sm { padding:6px 14px; border:1px solid #E5E5E5; border-radius:2px; font-size:11px; font-weight:600; letter-spacing:0.04em; cursor:pointer; background:white; color:#555; transition:all 0.15s; }
+.btn-sm:hover { border-color:#999; color:#0A0A0A; }
+.btn-primary { padding:8px 18px; background:#E8151B; color:white; border:none; border-radius:3px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer; transition:all 0.15s; }
+.btn-primary:hover { background:#B00E12; }
+.toast { position:fixed; bottom:24px; right:24px; background:#0A0A0A; color:white; padding:12px 18px; border-radius:3px; font-size:13px; transform:translateY(60px); opacity:0; transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index:999; }
+.toast.show { transform:translateY(0); opacity:1; }
+.toast.success { background:#0A7A45; }
+.toast.error   { background:#E8151B; }
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; display:none; align-items:center; justify-content:center; }
+.modal-bg.show { display:flex; }
+.modal { background:white; border-radius:4px; width:500px; max-width:90vw; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3); animation:fadeIn 0.2s ease both; }
+@keyframes fadeIn { from{opacity:0;transform:scale(0.97);}to{opacity:1;transform:scale(1);} }
+.modal-header { background:#E8151B; height:4px; }
+.field-label { font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;display:block;margin-bottom:5px; }
+.field-input { width:100%;background:#F9F9F9;border:1.5px solid #E5E5E5;border-radius:3px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:#0A0A0A;outline:none;transition:all 0.15s; }
+.field-input:focus { border-color:#E8151B; box-shadow:0 0 0 2px rgba(232,21,27,0.1); }
+.page-section { display:none; }
+.page-section.active { display:block; }
+@keyframes slideIn { from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);} }
+.page-section.active { animation:slideIn 0.25s ease both; }
+
+/* ── NEW QUOTE DROPDOWN ── */
+.nq-wrapper { position:relative; display:inline-block; }
+.nq-dropdown {
+  display:none; position:absolute; top:calc(100% + 6px); right:0;
+  background:#fff; border:1px solid #E5E5E5; border-radius:4px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.12); min-width:190px;
+  z-index:200; overflow:hidden; animation:fadeIn 0.15s ease both;
+}
+.nq-dropdown.open { display:block; }
+.nq-option {
+  display:flex; align-items:center; gap:10px; padding:12px 16px;
+  font-size:12px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+  color:#0A0A0A; cursor:pointer; border-bottom:1px solid #F0F0F0; transition:background 0.12s;
+}
+.nq-option:last-child { border-bottom:none; }
+.nq-option:hover { background:#FFF5F5; color:#E8151B; }
+.nq-option .nq-icon { font-size:16px; line-height:1; }
+</style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<div class="sidebar">
+  <div style="padding:24px 20px 16px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:white;letter-spacing:0.05em;">SIGN<span style="color:#E8151B;">/</span>QUOTE</div>
+    <div style="font-size:10px;color:#444;margin-top:2px;letter-spacing:0.04em;">Management Console</div>
+  </div>
+  <div style="margin:0 12px 16px;background:#161616;border-radius:3px;padding:12px;border-left:3px solid #E8151B;">
+    <div style="font-size:11px;font-weight:700;color:white;" id="sidebarName">—</div>
+    <div style="font-size:10px;color:#555;margin-top:2px;text-transform:uppercase;letter-spacing:0.06em;" id="sidebarRole">—</div>
+  </div>
+  <nav id="sidebarNav"></nav>
+  <div style="margin-top:auto;padding:16px 20px;border-top:1px solid #1A1A1A;">
+    <button onclick="doLogout()" style="width:100%;padding:9px;background:transparent;border:1px solid #2A2A2A;border-radius:3px;color:#555;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:all 0.15s;"
+      onmouseover="this.style.borderColor='#E8151B';this.style.color='#E8151B';"
+      onmouseout="this.style.borderColor='#2A2A2A';this.style.color='#555';">
+      ← SIGN OUT
+    </button>
+  </div>
+</div>
+<!-- ── END SIDEBAR ── -->
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;color:#0A0A0A;" id="topbarTitle">DASHBOARD</div>
+    <div class="flex gap-2 items-center">
+      <span style="font-size:12px;color:#AAA;" id="topbarUser"></span>
+
+      <!-- NEW QUOTE DROPDOWN -->
+      <div class="nq-wrapper" id="nqWrapper">
+        <button class="btn-primary" onclick="toggleNewQuoteMenu(event)">+ NEW QUOTE ▾</button>
+        <div class="nq-dropdown" id="nqDropdown">
+          <div class="nq-option" onclick="newQuote()">
+            <span class="nq-icon">🪧</span>
+            <span>Signage Quote</span>
+          </div>
+          <div class="nq-option" onclick="goToTarpaulin()">
+            <span class="nq-icon">🖨️</span>
+            <span>Tarpaulin Quote</span>
+          </div>
+          <div class="nq-option" onclick="goToReceipt()">
+            <span class="nq-icon">🧾</span>
+            <span>Receipt Quote</span>
+          </div>
+        </div>
+      </div>
+      <!-- END NEW QUOTE DROPDOWN -->
+
+    </div>
+  </div>
+  <!-- END TOPBAR -->
+
+  <!-- PAGE CONTENT -->
+  <div style="padding:28px;">
+
+    <!-- OVERVIEW -->
+    <div class="page-section active" id="sec-overview">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;margin-bottom:20px;">OVERVIEW <span style="color:#E8151B;">DASHBOARD</span></div>
+
+      <!-- TABS -->
+      <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid #E5E5E5;">
+        <button onclick="switchTab('all')" id="tab-all"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid #E8151B;margin-bottom:-2px;color:#0A0A0A;">
+          ALL
+        </button>
+        <button onclick="switchTab('signage')" id="tab-signage"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          SIGNAGE
+        </button>
+        <button onclick="switchTab('tarpaulin')" id="tab-tarpaulin"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          TARPAULIN
+        </button>
+        <button onclick="switchTab('receipt')" id="tab-receipt"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          RECEIPT
+        </button>
+      </div>
+
+      <!-- STAT CARDS -->
+      <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="stat-card">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#999;">Total Quotes</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;color:#0A0A0A;line-height:1.1;" id="statTotal">—</div>
+        </div>
+        <div class="stat-card">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#999;">Pending</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;color:#B8860B;line-height:1.1;" id="statPending">—</div>
+        </div>
+        <div class="stat-card">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#999;">Approved</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;color:#0A7A45;line-height:1.1;" id="statApproved">—</div>
+        </div>
+        <div class="stat-card">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#999;">Total Revenue</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:#E8151B;line-height:1.1;" id="statRevenue">—</div>
+        </div>
+      </div>
+
+      <!-- RECENT TABLE -->
+      <div style="background:white;border:1px solid #E5E5E5;border-radius:4px;overflow:hidden;">
+        <div style="padding:16px 20px;border-bottom:1px solid #F0F0F0;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;">
+            RECENT <span style="color:#E8151B;" id="recentLabel">QUOTATIONS</span>
+          </div>
+          <button class="btn-sm" onclick="showSection('sec-quotes')">View All</button>
+        </div>
+        <div id="recentTable"><div style="padding:40px;text-align:center;color:#CCC;font-size:13px;">Loading...</div></div>
+      </div>
+    </div>
+    <!-- END OVERVIEW -->
+
+    <!-- ALL QUOTES -->
+    <div class="page-section" id="sec-quotes">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;">ALL <span style="color:#E8151B;">QUOTATIONS</span></div>
+        <input id="searchInput" placeholder="Search client, quote #..." oninput="filterTable()"
+          style="padding:8px 14px;border:1.5px solid #E5E5E5;border-radius:3px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:240px;"
+          onfocus="this.style.borderColor='#E8151B'" onblur="this.style.borderColor='#E5E5E5'">
+      </div>
+      <div style="background:white;border:1px solid #E5E5E5;border-radius:4px;overflow:hidden;">
+        <div id="allQuotesTable"><div style="padding:40px;text-align:center;color:#CCC;">Loading...</div></div>
+      </div>
+    </div>
+    <!-- END ALL QUOTES -->
+
+    <!-- APPROVALS -->
+    <div class="page-section" id="sec-approvals">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;margin-bottom:20px;">PENDING <span style="color:#E8151B;">APPROVALS</span></div>
+      <div style="background:white;border:1px solid #E5E5E5;border-radius:4px;overflow:hidden;">
+        <div id="approvalsTable"><div style="padding:40px;text-align:center;color:#CCC;">Loading...</div></div>
+      </div>
+    </div>
+    <!-- END APPROVALS -->
+
+    <!-- USER MANAGEMENT -->
+    <div class="page-section" id="sec-users">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;">USER <span style="color:#E8151B;">MANAGEMENT</span></div>
+        <button class="btn-primary" onclick="showAddUserModal()">+ ADD USER</button>
+      </div>
+      <div style="background:white;border:1px solid #E5E5E5;border-radius:4px;overflow:hidden;">
+        <div id="usersTable"><div style="padding:40px;text-align:center;color:#CCC;">Loading...</div></div>
+      </div>
+    </div>
+    <!-- END USER MANAGEMENT -->
+
+  </div>
+  <!-- END PAGE CONTENT -->
+
+</div>
+<!-- ── END MAIN ── -->
+
+<!-- ADD USER MODAL -->
+<div class="modal-bg" id="addUserModal">
+  <div class="modal">
+    <div class="modal-header"></div>
+    <div style="padding:24px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;margin-bottom:20px;">ADD NEW USER</div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div><label class="field-label">Full Name</label><input class="field-input" id="nu_name" placeholder="Juan dela Cruz"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="field-label">Username</label><input class="field-input" id="nu_username" placeholder="juandc"></div>
+          <div><label class="field-label">Password</label><input class="field-input" id="nu_password" type="password" placeholder="••••••••"></div>
+        </div>
+        <div><label class="field-label">Role</label>
+          <select class="field-input" id="nu_role">
+            <option value="sales">Sales — Quotation input only</option>
+            <option value="admin">Admin — Can approve/reject</option>
+            <option value="tech_support">Tech Support — Full access</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:24px;">
+        <button class="btn-primary" onclick="addUser()">ADD USER</button>
+        <button class="btn-sm" onclick="closeModal('addUserModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- QUOTE DETAIL MODAL -->
+<div class="modal-bg" id="quoteDetailModal">
+  <div class="modal" style="width:600px;">
+    <div class="modal-header"></div>
+    <div style="padding:24px;" id="quoteDetailContent"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="hidden" id="server-token" value="<?= injectedToken ?>">
+<input type="hidden" id="app-url"      value="<?= appUrl ?>">
+
+<script>
+let currentUser = null;
+let allQuotes   = [];
+let TOKEN       = '';
+let APP_URL     = '';
+
+function init() {
+  sessionStorage.removeItem('sqQuoteData');
+  TOKEN   = document.getElementById('server-token')?.value || '';
+  APP_URL = document.getElementById('app-url')?.value || '';
+  if (!TOKEN) { showSessionExpired(); return; }
+
+  document.getElementById('recentTable').innerHTML = '<div style="padding:40px;text-align:center;color:#CCC;font-size:13px;">Loading data...</div>';
+
+  function tryLoad(attempt) {
+    google.script.run
+      .withSuccessHandler(function(data) {
+        if (!data || !data.name) {
+          if (attempt < 5) { setTimeout(() => tryLoad(attempt + 1), 8000); }
+          else { showSessionExpired(); }
+          return;
+        }
+        currentUser = { name:data.name, username:data.username, role:data.role, token:TOKEN };
+        allQuotes = data.quotes || [];
+        setupDashboard(); renderStats(); renderRecentTable(); renderAllQuotes(); renderApprovals();
+      })
+      .withFailureHandler(function(err) {
+        if (attempt < 3) { setTimeout(() => tryLoad(attempt + 1), 2000); }
+        else { showSessionExpired(); }
+      })
+      .getDashboardData(TOKEN);
+  }
+  tryLoad(1);
+}
+
+function showSessionExpired() {
+  google.script.run.withSuccessHandler(function(url) {
+    document.body.innerHTML = `
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0A0A0A;">
+        <div style="background:#fff;border-radius:4px;padding:40px;text-align:center;max-width:380px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;margin-bottom:8px;">SESSION EXPIRED</div>
+          <div style="font-size:13px;color:#888;margin-bottom:24px;">Please log in again.</div>
+          <a href="${url}" target="_top" style="display:inline-block;background:#E8151B;color:#fff;text-decoration:none;border-radius:3px;padding:12px 28px;font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">GO TO LOGIN</a>
+        </div>
+      </div>`;
+  }).getAppUrl();
+}
+
+function gasNavigate(url) {
+  const form = document.createElement('form');
+  form.method = 'GET'; form.action = url; form.target = '_top';
+  document.body.appendChild(form); form.submit();
+}
+
+function goToLogin() { google.script.run.withSuccessHandler(function(url) { gasNavigate(url); }).getAppUrl(); }
+function redirectLogin() { goToLogin(); }
+
+function doLogout() {
+  const t = TOKEN; TOKEN = '';
+  google.script.run
+    .withSuccessHandler(function() {
+      google.script.run.withSuccessHandler(function(url) {
+        document.body.innerHTML = `<div style="display:none"><a id="logoutLink" href="${url}" target="_top"></a></div>`;
+        document.getElementById('logoutLink').click();
+      }).getAppUrl();
+    })
+    .withFailureHandler(function() {
+      google.script.run.withSuccessHandler(function(url) {
+        document.body.innerHTML = `<div style="display:none"><a id="logoutLink" href="${url}" target="_top"></a></div>`;
+        document.getElementById('logoutLink').click();
+      }).getAppUrl();
+    })
+    .logoutUser(t);
+}
+
+// ── NEW QUOTE DROPDOWN ──
+function toggleNewQuoteMenu(e) {
+  e.stopPropagation();
+  document.getElementById('nqDropdown').classList.toggle('open');
+}
+document.addEventListener('click', function() {
+  document.getElementById('nqDropdown')?.classList.remove('open');
+});
+
+function newQuote() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=index&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
+function goToTarpaulin() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=tarpaulin&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
+function goToReceipt() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=receipt&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
+function setupDashboard() {
+  const u = currentUser, role = (u.role||'').toLowerCase();
+  document.getElementById('sidebarName').textContent = u.name;
+  document.getElementById('sidebarRole').textContent = u.role.replace('_',' ');
+  document.getElementById('topbarUser').textContent  = u.name;
+
+  const items = [
+    { id:'sec-overview',  label:'Overview',   icon:'▣', roles:['admin','tech_support','sales','staff'] },
+    { id:'sec-quotes',    label:'All Quotes', icon:'≡', roles:['admin','tech_support','sales','staff'] },
+    { id:'sec-approvals', label:'Approvals',  icon:'✓', roles:['admin','tech_support']                 },
+    { id:'sec-users',     label:'Users',      icon:'◉', roles:['tech_support']                         },
+  ];
+
+  let html = `<div class="nav-section">Main Menu</div>`;
+  items.forEach(item => {
+    if (!item.roles.includes(role)) return;
+    html += `<a class="nav-item" onclick="showSection('${item.id}')" id="nav-${item.id}"><span style="font-size:14px;">${item.icon}</span><span>${item.label}</span></a>`;
+  });
+  document.getElementById('sidebarNav').innerHTML = html;
+  setTimeout(() => { document.getElementById('nav-sec-overview')?.classList.add('active'); }, 0);
+}
+
+function showSection(id) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+  document.getElementById('nav-'+id)?.classList.add('active');
+  const titles = { 'sec-overview':'DASHBOARD','sec-quotes':'ALL QUOTATIONS','sec-approvals':'APPROVALS','sec-users':'USER MANAGEMENT' };
+  document.getElementById('topbarTitle').textContent = titles[id] || 'DASHBOARD';
+  if (id === 'sec-users')     loadUsers();
+  if (id === 'sec-approvals') renderApprovals();
+  if (id === 'sec-quotes')    renderAllQuotes();
+}
+
+function loadDashboardData() {
+  google.script.run
+    .withSuccessHandler(function(data) { allQuotes=data.quotes||[]; renderStats(); renderRecentTable(); renderAllQuotes(); renderApprovals(); })
+    .withFailureHandler(err => showToast('Error: '+err.message,'error'))
+    .getDashboardData(TOKEN);
+}
+
+// ── TABS ──
+let currentTab = 'all';
+
+function switchTab(tab) {
+  currentTab = tab;
+  ['all','signage','tarpaulin'].forEach(t => {
+    const btn = document.getElementById('tab-' + t);
+    if (!btn) return;
+    btn.style.borderBottom = t === tab ? '3px solid #E8151B' : '3px solid transparent';
+    btn.style.color        = t === tab ? '#0A0A0A' : '#999';
+  });
+  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT' };
+  const el = document.getElementById('recentLabel');
+  if (el) el.textContent = labels[tab] || 'QUOTATIONS';
+  renderStats(); renderRecentTable();
+}
+
+function getFilteredByTab() {
+  if (currentTab === 'signage')   return allQuotes.filter(q => String(q.quoteNum).startsWith('SQ-'));
+  if (currentTab === 'tarpaulin') return allQuotes.filter(q => String(q.quoteNum).startsWith('TQ-'));
+  if (currentTab === 'receipt') return allQuotes.filter(q => String(q.quoteNum).startsWith('RQ-'));
+  return allQuotes;
+}
+
+function renderStats() {
+  const q = getFilteredByTab();
+  const total    = q.length;
+  const pending  = q.filter(x => (x.status||'').trim().toLowerCase() === 'pending').length;
+  const approved = q.filter(x => (x.status||'').trim().toLowerCase() === 'approved').length;
+  const revenue  = q.filter(x => (x.status||'').trim().toLowerCase() === 'approved').reduce((s,x) => s + (parseFloat(x.totalAmount)||0), 0);
+  document.getElementById('statTotal').textContent    = total;
+  document.getElementById('statPending').textContent  = pending;
+  document.getElementById('statApproved').textContent = approved;
+  document.getElementById('statRevenue').textContent  = '₱' + revenue.toLocaleString('en-PH',{minimumFractionDigits:0,maximumFractionDigits:0});
+}
+
+function renderRecentTable() {
+  const filtered = getFilteredByTab();
+  const recent = [...filtered].reverse().slice(0, 8);
+  if (!recent.length) {
+    document.getElementById('recentTable').innerHTML = '<div style="padding:32px;text-align:center;color:#CCC;font-size:13px;">No quotations yet.</div>';
+    return;
+  }
+  let html = `<table class="data-table"><thead><tr><th>Quote #</th><th>Client</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>`;
+  recent.forEach(q => {
+    const isTarp    = String(q.quoteNum).startsWith('TQ-');
+    const isReceipt = String(q.quoteNum).startsWith('RQ-');
+    const typeLabel = isTarp
+  ? `<span style="color:#888;">Tarpaulin</span>`
+  : isReceipt
+  ? `<span style="color:#888;">Receipt</span>`
+  : `<span style="color:#888;">${q.signageType||'—'}</span>`; 
+    html += `<tr>
+      <td style="font-weight:600;color:#0A0A0A;">${q.quoteNum}</td>
+      <td>${q.clientName||'—'}</td>
+      <td>${typeLabel}</td>
+      <td style="font-weight:600;">${php(q.totalAmount)}</td>
+      <td>${badgeHtml(q.status)}</td>
+      <td><button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('recentTable').innerHTML = html;
+}
+
+function php(n) { return '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function badgeHtml(status) {
+  const cls=status==='Approved'?'badge-approved':status==='Rejected'?'badge-rejected':'badge-pending';
+  return `<span class="badge ${cls}">${status||'Pending'}</span>`;
+}
+
+function renderAllQuotes() {
+  const search=(document.getElementById('searchInput')?.value||'').toLowerCase();
+  const filtered=allQuotes.filter(q=>!search||(q.quoteNum||'').toLowerCase().includes(search)||(q.clientName||'').toLowerCase().includes(search)||(q.signageType||'').toLowerCase().includes(search)).reverse();
+  if (!filtered.length) { document.getElementById('allQuotesTable').innerHTML='<div style="padding:32px;text-align:center;color:#CCC;">No quotations found.</div>'; return; }
+  const role=(currentUser?.role||'').toLowerCase(), canApprove=role==='admin'||role==='tech_support';
+  let html=`<table class="data-table"><thead><tr><th>Quote #</th><th>Date</th><th>Client</th><th>Contact</th><th>Type</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
+  filtered.forEach(q => {
+    const date=q.date?new Date(q.date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
+    let actions=`<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button>`;
+    if (canApprove&&q.status==='Pending') actions+=` <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓</button> <button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕</button>`;
+    html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${String(q.quoteNum).startsWith('TQ-')?'Tarpaulin':String(q.quoteNum).startsWith('RQ-')?'Receipt':q.signageType||'—'}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('allQuotesTable').innerHTML=html;
+}
+
+function filterTable() { renderAllQuotes(); }
+
+function renderApprovals() {
+  const pending=allQuotes.filter(q=>(q.status||'Pending')==='Pending').reverse();
+  if (!pending.length) { document.getElementById('approvalsTable').innerHTML='<div style="padding:40px;text-align:center;color:#CCC;font-size:13px;">🎉 No pending approvals!</div>'; return; }
+  let html=`<table class="data-table"><thead><tr><th>Quote #</th><th>Client</th><th>Signage Type</th><th>Total Amount</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>`;
+  pending.forEach(q => {
+    const date=q.date?new Date(q.date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
+    html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td><div style="font-weight:600;">${q.clientName||'—'}</div><div style="font-size:11px;color:#AAA;">${q.contact||''}</div></td><td style="color:#666;">${q.signageType||'—'}</td><td style="font-weight:700;color:#E8151B;font-size:15px;">${php(q.totalAmount)}</td><td style="color:#888;">${date}</td><td style="display:flex;gap:6px;"><button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓ APPROVE</button><button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕ REJECT</button><button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">Details</button></td></tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('approvalsTable').innerHTML=html;
+}
+
+function updateStatus(quoteNum, status) {
+  if (!confirm(`${status==='Approved'?'Approve':'Reject'} quote ${quoteNum}?`)) return;
+  google.script.run
+    .withSuccessHandler(function() { showToast(`${quoteNum} ${status.toLowerCase()}!`,status==='Approved'?'success':'error'); loadDashboardData(); })
+    .withFailureHandler(err => showToast('Error: '+err.message,'error'))
+    .updateQuoteStatus(TOKEN,quoteNum,status);
+}
+
+function openQuotationPDF(quoteNum) {
+  const q = allQuotes.find(x => x.quoteNum === quoteNum);
+  if (!q) return;
+  const payload = {
+    quoteNum, date: q.date || new Date().toISOString(),
+    clientName: q.clientName || '', contact: q.contact || '',
+    address: q.address || '', delivery: q.delivery || '', email: q.email || '',
+    signageType: q.signageType || '', eyelet: q.eyelet || '', width: q.width || '', height: q.height || '',
+    size: q.size || '',paperType: q.paperType || '',paperColors: q.paperColors || '',perforation: q.perforation || '',numbering: q.numbering || '',quantity: q.quantity || 0,
+    sqft: q.sqft || '', lighting: q.lighting || '', material: q.material || '',
+    mounting: q.mounting || '', baseAmount: q.baseAmount || 0,
+    mountFee: q.mountSurcharge || 0, complexitySurcharge: q.complexitySurcharge || 0,
+    
+    totalAmount: q.totalAmount || 0, downpayment: q.downpayment || 0,
+    paymentTermValue: q.paymentTermValue !== undefined ? q.paymentTermValue : 0.5,
+    paymentTermLabel: q.paymentTermLabel || 'Downpayment (50%)',
+    balance: q.balance || 0, status: q.status || 'Pending',
+    salesStaff: q.salesStaff || '', dateNeeded: q.dateNeeded || '',
+    addonDesign: q.addonDesign || '', addonDesignFee: q.addonDesignFee || 0,
+    addonRush: q.addonRush || '', addonRushFee: q.addonRushFee || 0,
+    addonElec: q.addonElec || '', addonElecFee: q.addonElecFee || 0,
+    addonTransport: q.addonTransport || '', addonTransportLocation: q.addonTransportLocation || '',
+    addonTransportFee: q.addonTransportFee || 0,
+  };
+  try { localStorage.setItem('sqQuoteData', JSON.stringify(payload)); } catch(e) {}
+  google.script.run
+    .withSuccessHandler(function(appUrl) {
+      window.open(appUrl + '?page=quotation&token=' + encodeURIComponent(TOKEN), '_blank');
+    })
+    .getAppUrl();
+}
+
+function viewQuote(quoteNum) {
+  const q = allQuotes.find(x => x.quoteNum === quoteNum);
+  if (!q) return;
+  const date = q.date ? new Date(q.date).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
+  const role = (currentUser?.role||'').toLowerCase();
+  const canAct = (role==='admin'||role==='tech_support') && (q.status||'Pending')==='Pending';
+  const row = (label, val) => `<tr style="border-bottom:1px solid #F0F0F0;"><td style="padding:8px 0;color:#888;">${label}</td><td style="text-align:right;">${val}</td></tr>`;
+  const isReceipt = String(q.quoteNum).startsWith('RQ-');
+
+  document.getElementById('quoteDetailContent').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;">${q.quoteNum}</div>
+        <div style="font-size:12px;color:#888;">${date}</div>
+      </div>
+      <div>${badgeHtml(q.status||'Pending')}</div>
+    </div>
+    <div style="background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;padding:14px 16px;margin-bottom:16px;border-radius:3px;">
+      <div style="font-weight:600;font-size:15px;">${q.clientName||'—'}</div>
+      <div style="font-size:12px;color:#888;margin-top:2px;">${q.contact||''} ${q.email?'· '+q.email:''}</div>
+      <div style="font-size:12px;color:#888;">${q.address||''}</div>
+      ${q.dateNeeded?`<div style="font-size:12px;color:#E8151B;font-weight:600;margin-top:4px;">📅 Date Needed: ${new Date(q.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>`:''}
+    </div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+${String(q.quoteNum).startsWith('RQ-') ? `
+  ${row('Copies', (q.signageType||'').replace('Receipt — ','')||'—')}
+  ${row('Size', q.size||'—')}
+  ${row('Paper Type', q.paperType||'—')}
+  ${row('Colors', q.paperColors||'—')}
+  ${row('Perforation', q.perforation||'—')}
+  ${row('Numbering', q.numbering||'—')}
+  ${row('Quantity', q.quantity ? q.quantity+' booklets' : '—')}
+  ${q.quantity && q.totalAmount ? row('Price / Booklet', php(q.totalAmount / q.quantity)) : ''}
+` : `
+  ${row('Signage Type', '<span style="font-weight:500;">'+(q.signageType||'—')+'</span>')}
+  ${row('Dimensions', (q.width||'?')+' × '+(q.height||'?')+' ft = '+(q.sqft||'?')+' sqft')}
+  ${row('Rate', php(q.rate)+' / sqft')}
+  ${row('Mounting', q.mounting||'—')}
+  ${q.eyelet && q.eyelet !== 'No Eyelet' ? row('Eyelet Position', q.eyelet) : ''}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.mountSurcharge>0?row('Mounting Fee', php(q.mountSurcharge)):''}
+  ${q.complexitySurcharge>0?row('Complexity Surcharge', php(q.complexitySurcharge)):''}
+  ${q.designFeeAmt>0?row('Design Fee', php(q.designFeeAmt)):''}
+  ${q.addonDesignFee>0?row('Design & Artwork', php(q.addonDesignFee)):''}
+  ${q.addonRushFee>0?row('Rush Production', php(q.addonRushFee)):''}
+  ${q.addonElecFee>0?row('Electrical Add-ons', php(q.addonElecFee)):''}
+  ${q.addonTransport?row('Transport — '+q.addonTransport+(q.addonTransportLocation?' ('+q.addonTransportLocation+')':''), q.addonTransportFee>0?php(q.addonTransportFee):'<span style="color:#888;">FREE</span>'):''}
+`}
+  <tr style="border-bottom:2px solid #E0E0E0;height:4px;"><td colspan="2"></td></tr>
+  ${row('<span style="font-weight:700;font-size:15px;color:#E8151B;">TOTAL</span>', `<span style="font-weight:700;font-size:15px;color:#E8151B;">${php(q.totalAmount)}</span>`)}
+  ${row('Downpayment (50%)', php(q.downpayment))}
+  <tr><td style="padding:8px 0;color:#888;">Balance</td><td style="text-align:right;">${php(q.balance)}</td></tr>
+</table>
+   <div style="margin-top:16px;padding:14px 16px;background:#F9F9F9;border:1px solid #E5E5E5;border-radius:3px;">
+  <label class="field-label">Payment Terms (Admin Only)</label>
+  <div style="display:flex;gap:8px;margin-top:6px;">
+    <select id="payTermSelect" class="field-input" style="flex:1;">
+      <option value="">— Select Payment Term —</option>
+      <option value="No Downpayment Required">No Downpayment Required</option>
+      <option value="50% Downpayment">50% Downpayment</option>
+      <option value="25% Downpayment">25% Downpayment</option>
+      <option value="Full Payment">Full Payment</option>
+    </select>
+    <button class="btn-primary" onclick="savePaymentTerm('${q.quoteNum}')">SAVE</button>
+  </div>
+</div>
+<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+  ${canAct ? `
+    <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved');closeModal('quoteDetailModal')">✓ APPROVE</button>
+    <button class="btn-reject"  onclick="updateStatus('${q.quoteNum}','Rejected');closeModal('quoteDetailModal')">✕ REJECT</button>
+  ` : ''}
+  <button class="btn-sm" onclick="openQuotationPDF('${q.quoteNum}')" style="border-color:#E8151B;color:#E8151B;font-weight:700;">📄 VIEW PDF</button>
+  <button class="btn-sm" onclick="closeModal('quoteDetailModal')">Close</button>
+</div>`;
+  document.getElementById('quoteDetailModal').classList.add('show');
+}
+
+// ── USERS ──
+function loadUsers() {
+  google.script.run
+    .withSuccessHandler(function(users) {
+      if (!users||!users.length) { document.getElementById('usersTable').innerHTML='<div style="padding:32px;text-align:center;color:#CCC;">No users found.</div>'; return; }
+      let html=`<table class="data-table"><thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>`;
+      users.forEach(u => {
+        const rc=u.role==='tech_support'?'#E8151B':u.role==='admin'?'#0A7A45':'#666';
+        html+=`<tr><td style="font-weight:600;">${u.name}</td><td style="color:#888;font-family:monospace;">${u.username}</td><td><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${rc};">${u.role.replace('_',' ')}</span></td><td><button class="btn-reject" style="font-size:10px;padding:4px 10px;" onclick="deleteUser('${u.username}')">DELETE</button></td></tr>`;
+      });
+      html+='</tbody></table>';
+      document.getElementById('usersTable').innerHTML=html;
+    })
+    .withFailureHandler(err => showToast('Error: '+err.message,'error'))
+    .getUsers(TOKEN);
+}
+
+function showAddUserModal() {
+  ['nu_name','nu_username','nu_password'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('addUserModal').classList.add('show');
+}
+
+function addUser() {
+  const name=document.getElementById('nu_name').value.trim();
+  const username=document.getElementById('nu_username').value.trim();
+  const password=document.getElementById('nu_password').value.trim();
+  const role=document.getElementById('nu_role').value;
+  if (!name||!username||!password) { showToast('Fill in all fields.','error'); return; }
+  google.script.run
+    .withSuccessHandler(function() { showToast('User added!','success'); closeModal('addUserModal'); loadUsers(); })
+    .withFailureHandler(err => showToast('Error: '+err.message,'error'))
+    .addUser(TOKEN,{name,username,password,role});
+}
+
+function deleteUser(username) {
+  if (!confirm(`Delete user "${username}"?`)) return;
+  google.script.run
+    .withSuccessHandler(() => { showToast('User deleted.','success'); loadUsers(); })
+    .withFailureHandler(err => showToast('Error: '+err.message,'error'))
+    .deleteUser(TOKEN,username);
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-bg').forEach(m => { m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('show'); }); });
+
+function showToast(msg,type='') {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show '+type;
+  setTimeout(()=>{ t.className='toast '+type; },3000);
+}
+function savePaymentTerm(quoteNum) {
+  const sel = document.getElementById('payTermSelect');
+  if (!sel || !sel.value) { showToast('Please select a payment term.', 'error'); return; }
+  google.script.run
+    .withSuccessHandler(function() { showToast('Payment term saved!', 'success'); })
+    .withFailureHandler(function(err) { showToast('Error: ' + err.message, 'error'); })
+    .savePaymentTerm(TOKEN, quoteNum, sel.value, sel.value);
+}
+init();
+</script>
+</body>
+</html>

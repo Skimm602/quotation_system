@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+  <html lang="en">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quotation System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: '#E8151B', 'brand-dark': '#B00E12', 'brand-dim': '#FF4A4F',
+          ink: '#0A0A0A', 'ink-soft': '#1A1A1A', 'ink-muted': '#2C2C2C',
+          chalk: '#FFFFFF', 'chalk-off': '#F5F5F5', 'chalk-dim': '#E0E0E0', 'chalk-hint': '#999999',
+        },
+        fontFamily: { display: ['Bebas Neue', 'sans-serif'], body: ['DM Sans', 'sans-serif'] },
+      }
+    }
+  }
+  </script>
+  <style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: #FFFFFF; color: #0A0A0A; min-height: 100vh; }
+  .topnav { background: #FFFFFF; border-bottom: 1px solid #E5E5E5; position: sticky; top: 0; z-index: 100; }
+  .logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 0.05em; color: #0A0A0A; }
+  .logo-slash { color: #E8151B; }
+  .step-circle { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid #E0E0E0; color: #999; transition: all 0.25s; background: #F5F5F5; cursor: pointer; flex-shrink: 0; }
+  .step-circle.done { background: #E8151B; border-color: #E8151B; color: white; }
+  .step-circle.active { background: white; border-color: white; color: #0A0A0A; box-shadow: 0 0 0 4px rgba(232,21,27,0.3); }
+  .step-line { height: 1px; flex: 1; background: #E0E0E0; transition: background 0.25s; }
+  .step-line.done { background: #E8151B; }
+  .card { background: #FFFFFF; border: 1px solid #E5E5E5; border-radius: 4px; overflow: hidden; animation: fadeUp 0.3s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .card-header-bar { background: #E8151B; height: 4px; width: 100%; }
+  .field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #666; display: block; margin-bottom: 6px; }
+  .field-input { width: 100%; background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 3px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0A; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+  .field-input:focus { border-color: #E8151B; box-shadow: 0 0 0 2px rgba(232,21,27,0.2); }
+  .field-input::placeholder { color: #BBB; }
+  select.field-input option { background: #F5F5F5; }
+  textarea.field-input { min-height: 80px; resize: vertical; }
+  .computed-box { background: linear-gradient(135deg, #FFF0F0, #FFF8F8); border: 1px solid #FFCCCC; border-radius: 3px; padding: 16px 20px; }
+  .rate-pill { background: #F5F5F5; border: 1px solid #E0E0E0; border-radius: 3px; padding: 10px 14px; font-size: 13px; color: #666; display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .rate-pill strong { color: #E8151B; }
+  .info-box { background: #FFF5F5; border: 1px solid #FFCCCC; border-radius: 3px; padding: 12px 14px; font-size: 13px; color: #CC1015; display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; }
+  .info-box-blue { background: #F0F4FF; border: 1px solid #C5D3FF; border-radius: 3px; padding: 12px 14px; font-size: 13px; color: #2244AA; display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; }
+  .mount-card { border: 1px solid #E0E0E0; border-radius: 3px; padding: 14px 16px; cursor: pointer; transition: all 0.15s; display: flex; align-items: flex-start; gap: 12px; }
+  .mount-card:hover { border-color: #E8151B; background: #FFF8F8; }
+  .mount-card.selected { border-color: #E8151B; background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
+  .mount-card.quotation { border-style: dashed; }
+  .mount-card input[type=radio] { accent-color: #E8151B; margin-top: 3px; flex-shrink: 0; }
+  .complexity-card { border: 1px solid #E0E0E0; border-radius: 3px; padding: 12px 14px; cursor: pointer; transition: all 0.15s; display: flex; align-items: flex-start; gap: 10px; }
+  .complexity-card:hover { border-color: #E8151B; background: #FFF8F8; }
+  .complexity-card.checked { border-color: #E8151B; background: #FFF5F5; }
+  .complexity-card input[type=checkbox] { accent-color: #E8151B; margin-top: 3px; flex-shrink: 0; }
+  .q-table { width: 100%; border-collapse: collapse; }
+  .q-table tr { border-bottom: 1px solid #F0F0F0; }
+  .q-table tr:last-child { border: none; }
+  .q-table td { padding: 10px 0; font-size: 14px; color: #666; }
+  .q-table td:last-child { text-align: right; color: #0A0A0A; font-weight: 500; }
+  .q-table .sec-label { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #BBB; font-weight: 700; padding-top: 18px; }
+  .q-table .total-row td { font-size: 20px; font-weight: 700; color: #E8151B; padding-top: 16px; border-top: 2px solid #E8151B; }
+  .q-table .total-row td:last-child { color: #E8151B; }
+  .q-table .sub-row td { font-size: 13px; color: #777; padding-top: 6px; }
+  .btn-ghost { padding: 10px 22px; border: 1px solid #E0E0E0; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: #888; background: transparent; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.02em; }
+  .btn-ghost:hover { border-color: #999; color: #333; }
+  .btn-primary { padding: 10px 26px; background: #E8151B; border: 1px solid #FFCCCC; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: white; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .btn-primary:hover { background: #B00E12; border-color: #B00E12; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-save { padding: 11px 28px; background: white; border: 1px solid #333; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; color: #0A0A0A; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .btn-save:hover { background: #E8151B; border-color: #E8151B; color: white; }
+  .btn-save.loading { opacity: 0.6; pointer-events: none; }
+  .toast { position: fixed; bottom: 28px; right: 28px; background: #0A0A0A; border: 1px solid #333; color: white; padding: 14px 20px; border-radius: 3px; font-size: 13px; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 10px; transform: translateY(80px); opacity: 0; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 999; max-width: 320px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: #0A2A1A; border-color: #1A6A3A; }
+  .toast.error   { background: #1A0000; border-color: #E8151B; }
+  .auto-tag { display: inline-flex; align-items: center; gap: 4px; background: #1A0000; color: #E8151B; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; border: 1px solid #FFCCCC; margin-left: 8px; }
+  .section-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.05em; color: #0A0A0A; line-height: 1; }
+  .section-title span { color: #E8151B; }
+  .quote-client-box { background: #FFFFFF; border: 1px solid #E0E0E0; border-left: 3px solid #E8151B; padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+  .surcharge-badge { display: inline-block; background: #FFF0F0; border: 1px solid #FFCCCC; color: #E8151B; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 2px; margin-left: 6px; }
+  .transport-location-box { background: #FFFBF0; border: 1px solid #FFE0A0; border-radius: 3px; padding: 12px 14px; margin-top: 10px; animation: fadeUp 0.2s ease both; }
+  .signage-option:hover { background: #FFF5F5 !important; }
+  @media print {
+    .topnav, #stepper-wrap, .card-footer-bar, .toast, .page-title-area { display: none !important; }
+    body { background: white; }
+    .card { border: 1px solid #ddd; }
+  }
+  @media (max-width: 600px) {
+    .fields-2col { grid-template-columns: 1fr !important; }
+  }
+  </style>
+  </head>
+  <body>
+
+  <!-- NAV -->
+  <nav class="topnav">
+    <div class="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 bg-brand flex items-center justify-center rounded-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3 7h18v2H3V7zm0 4h18v2H3v-2zm0 4h12v2H3v-2z"/></svg>
+        </div>
+        <span class="logo-text">Quotation</span><span>Sytem</span>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn-ghost text-xs" onclick="resetForm()">NEW QUOTE</button>
+        <button class="btn-ghost text-xs" onclick="goToDashboard()" style="border-color:#0A0A0A;color:#0A0A0A;">← DASHBOARD</button>
+        <button class="btn-primary text-xs" onclick="viewQuotations()">VIEW RECORDS</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="relative z-10 max-w-4xl mx-auto px-6 py-10 pb-20">
+    <div class="page-title-area mb-8">
+      <div class="section-title">NEW SIGNAGE <span>QUOTATION</span></div>
+      <p class="text-sm mt-1 tracking-wide" style="color:#999;">Complete each step to generate a client quotation.</p>
+    </div>
+    <div id="stepper-wrap" class="mb-6 bg-gray-50 border border-gray-200 rounded-sm p-5 flex items-center gap-2 overflow-x-auto"></div>
+    <div class="card" id="formCard">
+      <div class="card-header-bar"></div>
+      <div class="px-7 py-5 border-b border-gray-100 flex items-center gap-4" id="cardHeader"></div>
+      <div class="px-7 py-7" id="cardBody"></div>
+      <div class="card-footer-bar px-7 py-5 border-t border-gray-100 flex justify-between items-center bg-gray-50" id="cardFooter"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- GAS injects token and appUrl at serve time -->
+  <input type="hidden" id="server-token" value="<?= injectedToken ?>">
+  <input type="hidden" id="app-url"      value="<?= appUrl ?>">
+
+  <script>
+  // ─── TOKEN ────────────────────────────────────────────────────────────────
+  const SERVER_TOKEN = document.getElementById('server-token')?.value || '';
+  const APP_URL      = document.getElementById('app-url')?.value || '';
+
+  function goToDashboard() {
+    if (SERVER_TOKEN && APP_URL) {
+      window.top.location.href = APP_URL + '?page=dashboard&token=' + encodeURIComponent(SERVER_TOKEN);
+    }
+  }
+
+  // ─── STATE ────────────────────────────────────────────────────────────────
+  let step = 0;
+  const d = {
+    clientName:'', contact:'', email:'', address:'', delivery:'',
+    signageType:'', lighting:'None', material:'Standard', typeNotes:'',
+    width:'', height:'',
+    mounting:'', installNotes:'',
+    selectedComplexity: [],
+    designService:'No', artSpecs:'', fileFormat:'None'
+  };
+
+  let RATES        = {};
+  let MIN_CHARGE   = {};
+  let MIN_AREA     = {};
+  let DESIGN_FEE   = 800;
+  let PRODUCTS     = [];
+  let MOUNT_OPTIONS      = [];
+  let COMPLEXITY_OPTIONS = [];
+  let SECTION4           = { design:[], rush:[], electrical:[], transport:[] };
+
+  // Section 4 add-on state
+  const addons = {
+    designService:    '',
+    designFeeAmt:     0,
+    rushOption:       '',
+    rushFeeAmt:       0,
+    selectedElec:     [],
+    elecFeeAmt:       0,
+    transport:        '',
+    transportFeeAmt:  0,
+    transportLocation: '',   // ← NEW: specific location within the cluster
+    wiringMeters:     0,
+  };
+
+  // ─── CALCULATIONS ─────────────────────────────────────────────────────────
+  function sqft()  { return (parseFloat(d.width)||0) * (parseFloat(d.height)||0); }
+  function billableSqft() { return sqft(); }
+  function base()  {
+    const sf   = sqft();
+    const rate = RATES[d.signageType]||0;
+    const mc   = MIN_CHARGE[d.signageType]||0;
+    return Math.max(sf * rate, mc);
+  }
+  function mountFee() {
+    const opt = MOUNT_OPTIONS.find(m => m.label === d.mounting);
+    return (!opt || opt.isQuotation) ? 0 : (opt.fee || 0);
+  }
+  function complexitySurcharge() {
+    let total = 0;
+    (d.selectedComplexity||[]).forEach(c => {
+      if (c.type === 'percent') total += base() * (c.pct/100);
+      else total += c.flat;
+    });
+    return total;
+  }
+  function designFeeAmt() { return d.designService === 'Yes' ? DESIGN_FEE : 0; }
+  function addonTotal()   { return addons.designFeeAmt + addons.rushFeeAmt + addons.elecFeeAmt + addons.transportFeeAmt; }
+  function total()  { return base() + mountFee() + complexitySurcharge() + designFeeAmt() + addonTotal(); }
+  function dp()     { return total() * 0.5; }
+  function bal()    { return total() - dp(); }
+  function php(n)   { return '₱' + (n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function esc(s)   { return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function v(id)    { return document.getElementById(id)?.value || ''; }
+
+  // ─── SIGNAGE TYPE GROUPING ─────────────────────────────────────────────────
+  const GROUP_ORDER = [
+    'Single Face Signage (Metal Frame)',
+    'Double Face Signage (Metal Frame)',
+    '3D Build Up Signage',
+    'Other',
+  ];
+
+  function buildGrouped() {
+    const grouped = {};
+    GROUP_ORDER.forEach(g => { grouped[g] = []; });
+    PRODUCTS.forEach(p => {
+      const g = p.section || 'Other';
+      if (!grouped[g]) grouped[g] = [];
+      grouped[g].push(p);
+    });
+    return grouped;
+  }
+
+  // ─── SIGNAGE DROPDOWN FUNCTIONS ───────────────────────────────────────────
+  function showSignageDropdown() {
+    const dd = document.getElementById('signage-dropdown');
+    if (dd) dd.style.display = 'block';
+  }
+
+  function filterSignageTypes(query) {
+    const dd = document.getElementById('signage-dropdown');
+    if (!dd) return;
+    dd.style.display = 'block';
+    const q = query.toLowerCase();
+    dd.querySelectorAll('.signage-option').forEach(el => {
+      const name = (el.dataset.value || '').toLowerCase();
+      el.style.display = name.includes(q) ? '' : 'none';
+    });
+    dd.querySelectorAll('.signage-group').forEach(group => {
+      const visible = [...group.querySelectorAll('.signage-option')].some(o => o.style.display !== 'none');
+      group.style.display = visible ? '' : 'none';
+    });
+  }
+
+  function selectSignageType(name, rate, minCharge, minArea) {
+    d.signageType = name;
+    RATES[name]     = rate;
+    MIN_CHARGE[name]= minCharge;
+    MIN_AREA[name]  = minArea;
+
+    const sb = document.getElementById('type-search');
+    if (sb) sb.value = name;
+
+    const dd = document.getElementById('signage-dropdown');
+    if (dd) dd.style.display = 'none';
+
+    const pc = document.getElementById('product-card');
+    if (pc) {
+      pc.innerHTML = `
+        <div style="margin-top:10px;background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;border-radius:3px;padding:12px 16px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.05em;color:#0A0A0A;margin-bottom:8px;">${esc(name)}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div>
+              <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#BBB;margin-bottom:2px;">Rate / sq ft</div>
+              <div style="font-size:18px;font-weight:700;color:#E8151B;font-family:'Bebas Neue',sans-serif;letter-spacing:0.05em;">${php(rate)}</div>
+            </div>
+            ${minCharge ? `<div><div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#BBB;margin-bottom:2px;">Min. Charge</div><div style="font-size:18px;font-weight:700;color:#0A0A0A;font-family:'Bebas Neue',sans-serif;">${php(minCharge)}</div></div>` : ''}
+            ${minArea   ? `<div><div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#BBB;margin-bottom:2px;">Min. Area</div><div style="font-size:18px;font-weight:700;color:#0A0A0A;font-family:'Bebas Neue',sans-serif;">${minArea} sq ft</div></div>` : ''}
+          </div>
+        </div>`;
+    }
+    document.querySelectorAll('.signage-option').forEach(el => {
+      const isSelected = el.dataset.value === name;
+      el.style.background = isSelected ? '#FFF0F0' : '';
+      el.querySelector('div').style.color = isSelected ? '#E8151B' : '#0A0A0A';
+      el.querySelector('div').style.fontWeight = isSelected ? '700' : '500';
+    });
+  }
+
+  // ─── STEPS ────────────────────────────────────────────────────────────────
+  const STEPS = [
+    { label:'Client Info',     sub:'Name, contact & delivery location' },
+    { label:'Signage Type',    sub:'Type, lighting & material' },
+    { label:'Dimensions',      sub:'Width × height → sq ft auto-computed' },
+    { label:'Mounting',        sub:'Live mounting options from pricelist' },
+    { label:'Add-ons',         sub:'Design, rush, electrical & transport fees' },
+    { label:'Design',          sub:'Artwork specs & service details' },
+    { label:'Quotation',       sub:'Full breakdown & downpayment' },
+  ];
+
+  function renderStepper() {
+    const el = document.getElementById('stepper-wrap');
+    el.innerHTML = '';
+    STEPS.forEach((s, i) => {
+      const state = i < step ? 'done' : i === step ? 'active' : '';
+      el.innerHTML += `
+        <div class="flex flex-col items-center gap-1 cursor-pointer min-w-fit" onclick="goTo(${i})">
+          <div class="step-circle ${state}">${i < step ? '✓' : i+1}</div>
+          <span style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${i===step?'#E8151B':i<step?'#999':'#BBB'};white-space:nowrap;">${s.label}</span>
+        </div>
+        ${i < STEPS.length-1 ? `<div class="step-line flex-1 ${i < step ? 'done' : ''}" style="margin-bottom:18px;"></div>` : ''}
+      `;
+    });
+  }
+
+  function goTo(i) { if(i < step) { save(); step=i; render(); } }
+
+  function renderHeader() {
+    const s = STEPS[step];
+    document.getElementById('cardHeader').innerHTML = `
+      <div style="width:42px;height:42px;background:#E8151B;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:white;letter-spacing:0.05em;">${step+1}</span>
+      </div>
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:#0A0A0A;line-height:1.1;">${s.label.toUpperCase()}</div>
+        <div style="font-size:12px;color:#555;margin-top:2px;">${s.sub}</div>
+      </div>`;
+  }
+
+  function renderBody() {
+    const el = document.getElementById('cardBody');
+
+    // ── STEP 0 ──────────────────────────────────────────────────────────────
+    if (step === 0) {
+      el.innerHTML = `
+        <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
+          <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+            <label class="field-label">Full Name</label>
+            <input class="field-input" id="f_name" value="${esc(d.clientName)}" placeholder="Juan dela Cruz">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Contact Number</label>
+            <input class="field-input" id="f_contact" value="${esc(d.contact)}" placeholder="09XX XXX XXXX" maxlength="13" oninput="formatPhone(this)" onkeypress="return event.charCode>=48&&event.charCode<=57">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Email Address <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <input class="field-input" id="f_email" value="${esc(d.email||'')}" placeholder="email@example.com" type="email">
+          </div>
+          <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+            <label class="field-label">Address</label>
+            <input class="field-input" id="f_address" value="${esc(d.address)}" placeholder="Street, Barangay, City">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Delivery / Installation Location</label>
+            <input class="field-input" id="f_delivery" value="${esc(d.delivery)}" placeholder="Same as address, or specify a different location">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Date Needed</label>
+            <input class="field-input" id="f_dateneeded" type="date" value="${esc(d.dateNeeded||'')}" min="${new Date().toISOString().split('T')[0]}">
+          </div>
+        </div>`;
+    }
+
+    // ── STEP 1: GROUPED SEARCHABLE SIGNAGE TYPE ──────────────────────────────
+    else if (step === 1) {
+      const litOpts = ['None','Frontlit','Backlit','LED'].map(l => `<option ${d.lighting===l?'selected':''}>${l}</option>`).join('');
+      const matOpts = ['Standard','Premium','UV-resistant'].map(m => `<option ${d.material===m?'selected':''}>${m}</option>`).join('');
+      const grouped = buildGrouped();
+      const sel     = d.signageType;
+      const selP    = PRODUCTS.find(p => p.name === sel);
+
+      const productCard = selP ? `
+        <div style="margin-top:10px;background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;border-radius:3px;padding:12px 16px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.05em;color:#0A0A0A;margin-bottom:8px;">${esc(selP.name)}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div><div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#BBB;margin-bottom:2px;">Rate / sq ft</div>
+            <div style="font-size:18px;font-weight:700;color:#E8151B;font-family:'Bebas Neue',sans-serif;">${php(selP.rate)}</div></div>
+            ${selP.minCharge ? `<div><div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#BBB;margin-bottom:2px;">Min. Charge</div><div style="font-size:18px;font-weight:700;color:#0A0A0A;font-family:'Bebas Neue',sans-serif;">${php(selP.minCharge)}</div></div>` : ''}
+            ${selP.minArea   ? `<div><div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#BBB;margin-bottom:2px;">Min. Area</div><div style="font-size:18px;font-weight:700;color:#0A0A0A;font-family:'Bebas Neue',sans-serif;">${selP.minArea} sq ft</div></div>` : ''}
+          </div>
+        </div>` : '';
+
+      const complexitySection = COMPLEXITY_OPTIONS.length ? `
+        <div style="grid-column:1/-1;">
+          <label class="field-label" style="margin-bottom:10px;">Complexity Surcharges <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(select all that apply)</span></label>
+          <div class="flex flex-col gap-2">
+            ${COMPLEXITY_OPTIONS.map((c, i) => {
+              const isChecked = (d.selectedComplexity||[]).some(x => x.label === c.label);
+              return `<label class="complexity-card ${isChecked?'checked':''}" onclick="toggleComplexity(${i}, this)">
+                <input type="checkbox" ${isChecked?'checked':''} onclick="event.stopPropagation();toggleComplexity(${i}, this.closest('.complexity-card'))">
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:600;color:#0A0A0A;">${esc(c.label)}</div>
+                  <div style="font-size:11px;color:#E8151B;margin-top:2px;font-weight:700;">${esc(c.surchargeDisplay)}</div>
+                </div>
+              </label>`;
+            }).join('')}
+          </div>
+          ${(d.selectedComplexity||[]).length > 0 ? `
+            <div class="info-box mt-3"><span>▸</span>
+            <span>Selected: <strong>${(d.selectedComplexity||[]).map(c=>c.surchargeDisplay).join(', ')}</strong> — will be added to base amount</span></div>` : ''}
+        </div>` : '';
+
+      el.innerHTML = `
+        <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
+          <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+            <label class="field-label">Signage Type <span class="auto-tag">⚡ RATE AUTO-FILLS</span></label>
+            <div style="position:relative;">
+              <input id="type-search" class="field-input" placeholder="Search signage type..." autocomplete="off"
+                value="${esc(sel)}"
+                oninput="filterSignageTypes(this.value)"
+                onfocus="showSignageDropdown()"
+                style="padding-right:36px;">
+              <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#BBB;font-size:14px;pointer-events:none;">▾</span>
+            </div>
+            <div id="signage-dropdown" style="display:none;border:1px solid #E0E0E0;border-radius:3px;background:#fff;max-height:340px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,0.12);margin-top:2px;">
+              ${Object.entries(grouped).filter(([,items])=>items.length>0).map(([group, items]) => `
+                <div class="signage-group" data-group="${esc(group)}">
+                  <div style="padding:8px 14px 5px;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#E8151B;background:#FFF5F5;border-bottom:1px solid #FFE8E8;position:sticky;top:0;z-index:1;">${esc(group)}</div>
+                  ${items.map(p => `
+                    <div class="signage-option" data-value="${esc(p.name)}"
+                      onclick="selectSignageType('${p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${p.rate||0},${p.minCharge||0},${p.minArea||0})"
+                      style="padding:11px 14px;cursor:pointer;border-bottom:1px solid #F5F5F5;transition:background 0.1s;${sel===p.name?'background:#FFF0F0;':''}">
+                      <div style="font-size:13px;font-weight:${sel===p.name?'700':'500'};color:${sel===p.name?'#E8151B':'#0A0A0A'};">${esc(p.name)}</div>
+                      <div style="font-size:11px;color:#888;margin-top:3px;display:flex;gap:14px;">
+                        <span>₱${(p.rate||0).toLocaleString()}/sqft</span>
+                        ${p.minCharge ? `<span>Min charge: ₱${(p.minCharge||0).toLocaleString()}</span>` : ''}
+                        ${p.minArea   ? `<span>Min area: ${p.minArea} sqft</span>` : ''}
+                      </div>
+                    </div>`).join('')}
+                </div>`).join('')}
+              ${PRODUCTS.length===0?'<div style="padding:18px;text-align:center;color:#BBB;font-size:13px;">No products loaded.</div>':''}
+            </div>
+            <div id="product-card">${productCard}</div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Lighting</label>
+            <select class="field-input" id="f_lighting">${litOpts}</select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Material</label>
+            <select class="field-input" id="f_material">${matOpts}</select>
+          </div>
+          ${complexitySection}
+          <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+            <label class="field-label">Special Notes</label>
+            <textarea class="field-input" id="f_typenotes" placeholder="Additional specifications...">${esc(d.typeNotes||'')}</textarea>
+          </div>
+        </div>`;
+
+      setTimeout(() => {
+        document.addEventListener('click', function handler(e) {
+          const dd = document.getElementById('signage-dropdown');
+          const sb = document.getElementById('type-search');
+          if (dd && sb && !dd.contains(e.target) && e.target !== sb) {
+            dd.style.display = 'none';
+            document.removeEventListener('click', handler);
+          }
+        });
+      }, 100);
+    }
+
+    // ── STEP 2 ──────────────────────────────────────────────────────────────
+    else if (step === 2) {
+      const sf = sqft();
+      const unit = d.unit || 'ft';
+      const unitOpts = ['ft','cm','m'].map(u => `<option ${unit===u?'selected':''}>${u}</option>`).join('');
+      const minSqft = 10;
+      const belowMin = sf > 0 && sf < minSqft;
+
+      el.innerHTML = `
+        <div class="grid gap-5" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Width</label>
+            <input class="field-input" id="f_width" type="number" min="0" step="0.1" value="${d.rawWidth||''}" placeholder="0.0" oninput="liveCompute()">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Height</label>
+            <input class="field-input" id="f_height" type="number" min="0" step="0.1" value="${d.rawHeight||''}" placeholder="0.0" oninput="liveCompute()">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Unit</label>
+            <select class="field-input" id="f_unit" onchange="liveCompute()">${unitOpts}</select>
+          </div>
+        </div>
+        <div class="computed-box mt-5">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${sf>0?'12px':'0'};">
+            <div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#666;">Billable Area</div>
+              <div style="font-size:12px;color:#555;margin-top:2px;" id="dimLabel">
+                ${d.rawWidth||'?'} × ${d.rawHeight||'?'} ${unit}
+                ${sf>0&&unit!=='ft'?`<span style="color:#AAA;"> = ${d.width||'?'} × ${d.height||'?'} ft</span>`:''}
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:${belowMin?'#CC6600':'#E8151B'};line-height:1;" id="sqftVal">${sf>0?sf.toFixed(2):'—'}</div>
+              <div style="font-size:11px;color:#555;">sq ft</div>
+            </div>
+          </div>
+          ${belowMin ? `
+            <div style="background:#FFF0F0;border:1px solid #E8151B;border-radius:3px;padding:10px 14px;font-size:12px;color:#CC1015;display:flex;gap:8px;align-items:flex-start;">
+              <span>✕</span>
+              <span>Area is <strong>${sf.toFixed(2)} sq ft</strong> — below the <strong>10 sq ft minimum</strong>. Please increase the dimensions to proceed.</span>
+            </div>` : ''}
+        </div>
+        ${d.signageType && sf > 0 ? `
+          <div class="rate-pill">
+            <span>At <strong>${php(RATES[d.signageType])}/sq ft</strong> (${esc(d.signageType)})</span>
+            <strong id="baseVal" style="margin-left:auto;color:#E8151B;">= ${php(base())}</strong>
+          </div>` : ''}
+        ${MIN_CHARGE[d.signageType] ? `
+          <div class="info-box-blue mt-2">
+            <span>ℹ</span>
+            <span>Minimum charge of <strong>${php(MIN_CHARGE[d.signageType])}</strong> applies — billed whichever is higher.</span>
+          </div>` : ''}
+        <div class="info-box-blue mt-2" style="background:#F0FFF4;border-color:#A7F3D0;">
+          <span style="color:#065F46;">ℹ</span>
+          <span style="color:#065F46;">Minimum billable area is <strong>10 sq ft</strong>. Orders below this size are billed at the 10 sq ft minimum rate.</span>
+        </div>
+      `;
+    }
+
+    // ── STEP 3 ──────────────────────────────────────────────────────────────
+    else if (step === 3) {
+      const mountCards = MOUNT_OPTIONS.length
+        ? MOUNT_OPTIONS.map(m => {
+            const isSelected = d.mounting === m.label;
+            return `<label class="mount-card ${isSelected?'selected':''} ${m.isQuotation?'quotation':''}" onclick="selectMount('${m.label.replace(/'/g,"\\'")}')">
+              <input type="radio" name="mounting" value="${esc(m.label)}" ${isSelected?'checked':''}>
+              <div style="flex:1;">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+                  <div style="font-size:13px;font-weight:600;color:#0A0A0A;">${esc(m.label)}</div>
+                  <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.05em;color:${m.isQuotation?'#888':'#E8151B'};">
+                    ${m.isQuotation ? 'BY QUOTATION' : (m.fee > 0 ? php(m.fee) : 'FREE')}
+                  </div>
+                </div>
+                ${m.notes ? `<div style="font-size:11px;color:#888;margin-top:4px;">${esc(m.notes)}</div>` : ''}
+                ${m.isQuotation ? `<div style="font-size:11px;color:#CC6600;margin-top:4px;font-weight:600;">⚠ Site visit required — price given upon assessment</div>` : ''}
+              </div>
+            </label>`;
+          }).join('')
+        : `<div class="info-box"><span>⚠</span><span>No mounting options loaded.</span></div>`;
+
+      const selMount = MOUNT_OPTIONS.find(m => m.label === d.mounting);
+      el.innerHTML = `
+        <div class="flex flex-col gap-3">
+          <label class="field-label">Select Mounting Type <span class="auto-tag">⚡ LIVE FROM PRICELIST</span></label>
+          ${mountCards}
+          ${selMount && !selMount.isQuotation && selMount.fee > 0 ? `<div class="info-box mt-1"><span>▸</span><span>Mounting fee of <strong>${php(selMount.fee)}</strong> will be added to the total.</span></div>` : ''}
+          ${selMount && selMount.isQuotation ? `<div class="info-box mt-1"><span>⚠</span><span>This mounting type requires a <strong>site visit</strong>. Final price to be determined upon assessment.</span></div>` : ''}
+          <div class="flex flex-col gap-1 mt-2">
+            <label class="field-label">Installation Notes</label>
+            <textarea class="field-input" id="f_instnotes" placeholder="Access constraints, obstacles, height requirements...">${esc(d.installNotes)}</textarea>
+          </div>
+        </div>`;
+    }
+
+    // ── STEP 4: ADDITIONAL FEES (Section 4) ─────────────────────────────────
+    else if (step === 4) {
+      if (!SECTION4.rush.length && !SECTION4.transport.length) {
+        el.innerHTML = `<div style="text-align:center;padding:40px;color:#888;font-size:13px;">
+          <div style="font-size:24px;margin-bottom:12px;">⏳</div>
+          Loading add-on options... Please wait.
+        </div>`;
+        setTimeout(() => { if (step === 4) renderBody(); }, 1500);
+        return;
+      }
+
+      const subtotal = base() + mountFee() + complexitySurcharge();
+
+      // Build transport cards with location input box
+      const transportCards = SECTION4.transport.map(t => {
+        const isSelected = addons.transport === t.label;
+        const needsLocation = isSelected && t.label !== 'Ormoc City — all barangays';
+        return `
+          <div>
+            <label class="mount-card ${isSelected?'selected':''}" onclick="selectTransport('${t.label.replace(/'/g,"\\'")}', ${t.flat})">
+              <input type="radio" name="transport" ${isSelected?'checked':''}>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;">${esc(t.label)}</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">${esc(t.notes)}</div>
+              </div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:${t.flat===0?'#888':'#E8151B'};">${t.flat===0?'FREE':(t.flatMax?'₱'+t.flat+'–₱'+t.flatMax:php(t.flat))}</div>
+            </label>
+            ${needsLocation ? `
+              <div class="transport-location-box">
+                <label style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#AA7700;display:block;margin-bottom:6px;">
+                  📍 Specific Location / Barangay / Municipality
+                </label>
+                <input
+                  class="field-input"
+                  id="transport_location_input"
+                  value="${esc(addons.transportLocation)}"
+                  placeholder="e.g. Brgy. Libertad, Ormoc — specify exact drop-off point"
+                  oninput="addons.transportLocation = this.value"
+                  style="border-color:#E0A020;"
+                >
+                <div style="font-size:11px;color:#AA7700;margin-top:6px;">This will be included in the quotation for reference.</div>
+              </div>` : ''}
+            ${isSelected && t.label === 'Ormoc City — all barangays' ? `
+              <div class="transport-location-box" style="background:#F0FFF4;border-color:#A7F3D0;">
+                <label style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#065F46;display:block;margin-bottom:6px;">
+                  📍 Specific Barangay (optional)
+                </label>
+                <input
+                  class="field-input"
+                  id="transport_location_input"
+                  value="${esc(addons.transportLocation)}"
+                  placeholder="e.g. Brgy. Cogon, Ormoc City"
+                  oninput="addons.transportLocation = this.value"
+                  style="border-color:#6EE7B7;"
+                >
+              </div>` : ''}
+          </div>`;
+      }).join('');
+
+      el.innerHTML = `
+        <div class="flex flex-col gap-7">
+
+          <!-- DESIGN & ARTWORK -->
+          <div>
+            <label class="field-label" style="margin-bottom:10px;">Design & Artwork <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <div class="flex flex-col gap-2">
+              <label class="mount-card ${!addons.designService?'selected':''}" onclick="selectDesignService('', 0)">
+                <input type="radio" name="design_svc" ${!addons.designService?'checked':''}>
+                <div style="flex:1;"><div style="font-size:13px;font-weight:600;">No design service needed</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">Client provides ready-to-print file</div></div>
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#888;">FREE</div>
+              </label>
+              ${SECTION4.design.map((d4,i) => `
+                <label class="mount-card ${addons.designService===d4.label?'selected':''}" onclick="selectDesignService('${d4.label.replace(/'/g,"\\'")}', ${d4.rate})">
+                  <input type="radio" name="design_svc" ${addons.designService===d4.label?'checked':''}>
+                  <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(d4.label)}</div>
+                  <div style="font-size:11px;color:#888;margin-top:2px;">${esc(d4.notes)}</div></div>
+                  <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#E8151B;">${d4.rateMax?'₱'+d4.rate+'–₱'+d4.rateMax:php(d4.rate)}</div>
+                </label>`).join('')}
+            </div>
+          </div>
+
+          <!-- RUSH PRODUCTION -->
+          <div>
+            <label class="field-label" style="margin-bottom:10px;">Rush Production <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <div class="flex flex-col gap-2">
+              ${SECTION4.rush.map(r => {
+                const fee = r.pct > 0 ? Math.round(subtotal * r.pct / 100) : r.flat;
+                const feeLabel = r.pct > 0 ? `+${r.pct}% (${php(fee)})` : (r.flat > 0 ? `+₱${r.flat}/day` : 'STANDARD');
+                return `<label class="mount-card ${addons.rushOption===r.label?'selected':''}" onclick="selectRush('${r.label.replace(/'/g,"\\'")}', ${r.pct}, ${r.flat}, ${fee})">
+                  <input type="radio" name="rush" ${addons.rushOption===r.label?'checked':''}>
+                  <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(r.label)}</div>
+                  ${r.notes?`<div style="font-size:11px;color:#888;margin-top:2px;">${esc(r.notes)}</div>`:''}
+                  </div>
+                  <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:${r.pct===0&&r.flat===0?'#888':'#E8151B'};">${feeLabel}</div>
+                </label>`;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- ELECTRICAL ADD-ONS -->
+          <div>
+            <label class="field-label" style="margin-bottom:10px;">Electrical & Lighting Add-ons <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional — select all that apply)</span></label>
+            <div class="flex flex-col gap-2">
+              ${SECTION4.electrical.map((e4, i) => {
+                const isChecked = addons.selectedElec.some(x => x.label === e4.label);
+                return `<label class="complexity-card ${isChecked?'checked':''}" onclick="toggleElec(${i}, this)">
+                  <input type="checkbox" ${isChecked?'checked':''} onclick="event.stopPropagation();toggleElec(${i},this.closest('.complexity-card'))">
+                  <div style="flex:1;">
+                    <div style="font-size:13px;font-weight:600;">${esc(e4.label)}</div>
+                    ${e4.perUnit ? `<div style="margin-top:4px;display:flex;align-items:center;gap:8px;">
+                      <span style="font-size:11px;color:#888;">Extra meters:</span>
+                      <input type="number" min="0" id="wiring_meters" value="${addons.wiringMeters||0}"
+                        style="width:70px;border:1px solid #E0E0E0;border-radius:3px;padding:4px 8px;font-size:12px;"
+                        oninput="addons.wiringMeters=parseInt(this.value)||0;calcElecTotal()">
+                    </div>` : ''}
+                  </div>
+                  <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#E8151B;">${e4.perUnit?'₱'+e4.unitRate+'/m':(e4.flatMax?'₱'+e4.flat+'–₱'+e4.flatMax:php(e4.flat))}</div>
+                </label>`;
+              }).join('')}
+            </div>
+            ${addons.selectedElec.length > 0 ? `<div class="info-box mt-2"><span>▸</span><span>Electrical add-ons: <strong>${php(addons.elecFeeAmt)}</strong></span></div>` : ''}
+          </div>
+
+          <!-- TRANSPORT & DELIVERY -->
+          <div>
+            <label class="field-label" style="margin-bottom:10px;">Transport & Delivery <span class="auto-tag">⚡ REQUIRED</span></label>
+            <div class="flex flex-col gap-2">
+              ${transportCards}
+            </div>
+            ${addons.transport && addons.transportLocation ? `
+              <div style="margin-top:8px;background:#FFFBF0;border:1px solid #FFE0A0;border-radius:3px;padding:10px 14px;font-size:12px;color:#7A5500;display:flex;gap:8px;align-items:center;">
+                <span>📍</span><span>Delivery to: <strong>${esc(addons.transportLocation)}</strong></span>
+              </div>` : ''}
+          </div>
+
+          <!-- ADDON TOTAL PREVIEW -->
+          ${addonTotal() > 0 ? `
+            <div style="background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;border-radius:3px;padding:14px 16px;">
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:8px;">Add-on Total</div>
+              ${addons.designFeeAmt>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Design service</span><span>${php(addons.designFeeAmt)}</span></div>`:''}
+              ${addons.rushFeeAmt>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Rush fee</span><span>${php(addons.rushFeeAmt)}</span></div>`:''}
+              ${addons.elecFeeAmt>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Electrical</span><span>${php(addons.elecFeeAmt)}</span></div>`:''}
+              ${addons.transportFeeAmt>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Transport</span><span>${php(addons.transportFeeAmt)}</span></div>`:''}
+              <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#E8151B;border-top:1px solid #E0E0E0;padding-top:8px;margin-top:4px;"><span>Total Add-ons</span><span>${php(addonTotal())}</span></div>
+            </div>` : ''}
+        </div>`;
+    }
+
+    // ── STEP 5: DESIGN ──────────────────────────────────────────────────────
+    else if (step === 5) {
+      const dsOpts = ['No','Yes'].map(x => `<option ${d.designService===x?'selected':''}>${x}</option>`).join('');
+      const ffOpts = ['None','PDF','AI/EPS','PNG/JPG','SVG'].map(x => `<option ${d.fileFormat===x?'selected':''}>${x}</option>`).join('');
+      el.innerHTML = `
+        <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Design Service Needed?</label>
+            <select class="field-input" id="f_design" onchange="liveDesign()">${dsOpts}</select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">File Format Provided</label>
+            <select class="field-input" id="f_fileformat">${ffOpts}</select>
+          </div>
+          <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+            <label class="field-label">Artwork Specifications</label>
+            <textarea class="field-input" id="f_artspecs" placeholder="Colors, logo details, text content, brand guidelines...">${esc(d.artSpecs)}</textarea>
+          </div>
+        </div>
+        ${d.designService==='Yes' ? `<div class="info-box mt-1"><span>▸</span><span>Design service fee of <strong>${php(DESIGN_FEE)}</strong> will be added.</span></div>` : ''}`;
+    }
+
+    // ── STEP 6: QUOTATION SUMMARY ────────────────────────────────────────────
+    else if (step === 6) {
+      const sf=sqft(), bsf=billableSqft(), b=base(), mf=mountFee(), cs=complexitySurcharge(), df=designFeeAmt(), t=total(), dpv=dp(), balv=bal();
+      const selMount = MOUNT_OPTIONS.find(m => m.label === d.mounting);
+      const complexityRows = (d.selectedComplexity||[]).map(c => `
+        <tr><td style="padding-left:12px;color:#888;">↳ ${esc(c.label)} <span class="surcharge-badge">${esc(c.surchargeDisplay)}</span></td>
+        <td>${c.type==='percent'?php(b*(c.pct/100)):php(c.flat)}</td></tr>`).join('');
+
+      el.innerHTML = `
+        <div class="quote-client-box">
+          <div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:#0A0A0A;">${esc(d.clientName)||'—'}</div>
+            <div style="font-size:12px;color:#555;margin-top:2px;">${esc(d.contact)||''} ${d.contact&&d.delivery?'·':''} ${esc(d.delivery||d.address)||''}</div>
+            ${d.dateNeeded ? `<div style="font-size:12px;color:#E8151B;margin-top:4px;font-weight:600;">📅 Date Needed: ${new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>` : ''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#444;font-weight:700;">Quote Date</div>
+            <div style="font-size:13px;color:#888;margin-top:2px;">${new Date().toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>
+          </div>
+        </div>
+        <table class="q-table">
+          <tr><td colspan="2" class="sec-label">SIGNAGE DETAILS</td></tr>
+          <tr><td>Type</td><td>${esc(d.signageType)||'—'} · ${d.lighting} · ${d.material}</td></tr>
+          <tr><td>Dimensions</td><td>${d.rawWidth||d.width||'?'} × ${d.rawHeight||d.height||'?'} ${d.unit||'ft'} = <strong>${sf.toFixed(2)} sq ft</strong>${bsf>sf?` <span style="color:#CC6600;font-size:11px;">(billed as ${bsf.toFixed(2)} sq ft min)</span>`:''}</td></tr>
+          <tr><td>Rate / sq ft</td><td>${php(RATES[d.signageType]||0)}</td></tr>
+          ${MIN_CHARGE[d.signageType]?`<tr><td>Min. Charge</td><td>${php(MIN_CHARGE[d.signageType])}</td></tr>`:''}
+          ${MIN_AREA[d.signageType]?`<tr><td>Min. Area</td><td>${MIN_AREA[d.signageType]} sq ft</td></tr>`:''}
+          <tr><td>Mounting</td><td>${esc(d.mounting)||'—'}</td></tr>
+          ${(d.selectedComplexity||[]).length>0?`<tr><td>Complexity</td><td>${(d.selectedComplexity||[]).map(c=>esc(c.label)).join(', ')}</td></tr>`:''}
+          <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
+          <tr><td>Base (${bsf.toFixed(2)} sq ft × ${php(RATES[d.signageType]||0)})</td><td>${php(bsf*(RATES[d.signageType]||0))}</td></tr>
+          ${MIN_CHARGE[d.signageType]&&bsf*(RATES[d.signageType]||0)<MIN_CHARGE[d.signageType]?`<tr><td style="padding-left:12px;color:#888;font-size:12px;">↳ Min. charge applied</td><td>${php(MIN_CHARGE[d.signageType])}</td></tr>`:''}
+          ${complexityRows}
+          <tr><td>Mounting — ${esc(d.mounting)}</td><td>${selMount?.isQuotation?'<em style="color:#888;">TBD</em>':(mf>0?php(mf):'—')}</td></tr>
+          <tr><td>Design service</td><td>${df>0?php(df):'—'}</td></tr>
+          ${addons.designFeeAmt>0?`<tr><td>Design & Artwork — ${esc(addons.designService)}</td><td>${php(addons.designFeeAmt)}</td></tr>`:''}
+          ${addons.rushFeeAmt>0?`<tr><td>Rush fee — ${esc(addons.rushOption)}</td><td>${php(addons.rushFeeAmt)}</td></tr>`:''}
+          ${addons.elecFeeAmt>0?`<tr><td>Electrical add-ons</td><td>${php(addons.elecFeeAmt)}</td></tr>`:''}
+          ${addons.transportFeeAmt>0?`<tr><td>Transport — ${esc(addons.transport)}${addons.transportLocation?' ('+esc(addons.transportLocation)+')':''}</td><td>${php(addons.transportFeeAmt)}</td></tr>`:''}
+          ${addons.transport&&addons.transportFeeAmt===0?`<tr><td>Transport — ${esc(addons.transport)}${addons.transportLocation?' ('+esc(addons.transportLocation)+')':''}</td><td style="color:#888;">FREE</td></tr>`:''}
+          <tr><td colspan="2" style="height:8px;"></td></tr>
+          <tr class="total-row"><td>TOTAL AMOUNT</td><td>${selMount?.isQuotation?'<em style="font-size:14px;">Pending site visit</em>':php(t)}</td></tr>
+          <tr class="sub-row"><td>Downpayment (50%)</td><td>${selMount?.isQuotation?'—':php(dpv)}</td></tr>
+          <tr class="sub-row"><td>Balance</td><td>${selMount?.isQuotation?'—':php(balv)}</td></tr>
+        </table>
+        ${selMount?.isQuotation?`<div class="info-box mt-4"><span>⚠</span><span>Total is pending due to <strong>By Quotation</strong> mounting. A site visit will be scheduled.</span></div>`:''}`;
+    }
+  }
+
+  function renderFooter() {
+    const el   = document.getElementById('cardFooter');
+    const back = step > 0 ? `<button class="btn-ghost" onclick="prev()">← BACK</button>` : `<span></span>`;
+    const next = step < STEPS.length-1
+      ? `<div class="flex items-center gap-4">
+          <span style="font-size:11px;color:#444;letter-spacing:0.06em;text-transform:uppercase;">Step ${step+1} of ${STEPS.length}</span>
+          <button class="btn-primary" onclick="next()">CONTINUE →</button>
+        </div>`
+      : `<div class="flex items-center gap-3">
+          <button class="btn-ghost" onclick="printQuote()">🖨 PRINT</button>
+          <button class="btn-save" id="saveBtn" onclick="saveToSheet()">💾 SAVE QUOTATION</button>
+        </div>`;
+    el.innerHTML = back + next;
+  }
+
+  // ─── PHONE FORMAT ─────────────────────────────────────────────────────────
+  function formatPhone(input) {
+    let digits = input.value.replace(/\D/g, '');
+    if (digits.length > 11) digits = digits.slice(0, 11);
+    let formatted = digits;
+    if (digits.length > 4 && digits.length <= 7) {
+      formatted = digits.slice(0,4) + ' ' + digits.slice(4);
+    } else if (digits.length > 7) {
+      formatted = digits.slice(0,4) + ' ' + digits.slice(4,7) + ' ' + digits.slice(7);
+    }
+    input.value = formatted;
+    d.contact = formatted;
+  }
+
+  function toFeet(val, unit) {
+    const n = parseFloat(val) || 0;
+    if (unit === 'cm') return n / 30.48;
+    if (unit === 'm')  return n * 3.28084;
+    return n;
+  }
+
+  function liveCompute() {
+    d.rawWidth  = document.getElementById('f_width')?.value  || d.rawWidth  || '';
+    d.rawHeight = document.getElementById('f_height')?.value || d.rawHeight || '';
+    d.unit      = document.getElementById('f_unit')?.value   || d.unit      || 'ft';
+
+    d.width  = toFeet(d.rawWidth,  d.unit).toFixed(4);
+    d.height = toFeet(d.rawHeight, d.unit).toFixed(4);
+
+    const sf      = sqft();
+    const billSf  = Math.max(sf, sf > 0 ? 10 : 0);
+    const b       = base();
+    const belowMin = sf > 0 && sf < 10;
+
+    const sqEl  = document.getElementById('sqftVal');
+    const dimEl = document.getElementById('dimLabel');
+    const bsEl  = document.getElementById('baseVal');
+
+    if (sqEl)  {
+      sqEl.textContent = sf > 0 ? sf.toFixed(2) : '—';
+      sqEl.style.color = belowMin ? '#CC6600' : '#E8151B';
+    }
+    if (dimEl) {
+      const unit = d.unit || 'ft';
+      dimEl.innerHTML = `${d.rawWidth||'?'} × ${d.rawHeight||'?'} ${unit}${sf>0&&unit!=='ft'?` <span style="color:#AAA;"> = ${parseFloat(d.width).toFixed(2)} × ${parseFloat(d.height).toFixed(2)} ft</span>`:''}`;
+    }
+    if (bsEl && d.signageType) bsEl.textContent = sf > 0 ? '= ' + php(b) : '';
+  }
+
+  function selectMount(label) {
+    d.mounting = label; renderBody();
+    if (document.getElementById('f_instnotes')) document.getElementById('f_instnotes').value = d.installNotes;
+  }
+
+  function toggleComplexity(index, cardEl) {
+    const opt = COMPLEXITY_OPTIONS[index];
+    if (!opt) return;
+    const existing = (d.selectedComplexity||[]).findIndex(x => x.label === opt.label);
+    if (existing >= 0) { d.selectedComplexity.splice(existing,1); cardEl.classList.remove('checked'); }
+    else { if (!d.selectedComplexity) d.selectedComplexity=[]; d.selectedComplexity.push(opt); cardEl.classList.add('checked'); }
+    const typenotes=document.getElementById('f_typenotes')?.value;
+    const lit=document.getElementById('f_lighting')?.value;
+    const mat=document.getElementById('f_material')?.value;
+    if (typenotes!==undefined) d.typeNotes=typenotes;
+    if (lit) d.lighting=lit;
+    if (mat) d.material=mat;
+    renderBody();
+    if (document.getElementById('f_lighting')) document.getElementById('f_lighting').value=d.lighting;
+    if (document.getElementById('f_material')) document.getElementById('f_material').value=d.material;
+  }
+
+  // ─── ADDON HANDLERS ───────────────────────────────────────────────────────
+  function selectDesignService(label, rate) {
+    addons.designService = label;
+    addons.designFeeAmt  = rate;
+    renderBody();
+  }
+
+  function selectRush(label, pct, flat, fee) {
+    addons.rushOption  = label;
+    addons.rushFeeAmt  = fee;
+    renderBody();
+  }
+
+  function toggleElec(index, cardEl) {
+    const e4 = SECTION4.electrical[index];
+    if (!e4) return;
+    const existing = addons.selectedElec.findIndex(x => x.label === e4.label);
+    if (existing >= 0) {
+      addons.selectedElec.splice(existing, 1);
+      cardEl.classList.remove('checked');
+    } else {
+      addons.selectedElec.push({ label: e4.label, flat: e4.flat || 0, perUnit: e4.perUnit, unitRate: e4.unitRate || 0 });
+      cardEl.classList.add('checked');
+    }
+    calcElecTotal();
+    renderBody();
+  }
+
+  function calcElecTotal() {
+    let total = 0;
+    addons.selectedElec.forEach(e => {
+      if (e.perUnit) total += (addons.wiringMeters || 0) * (e.unitRate || 0);
+      else total += e.flat || 0;
+    });
+    addons.elecFeeAmt = total;
+  }
+
+  function selectTransport(label, flat) {
+    // Save current location input value before re-render
+    const locInput = document.getElementById('transport_location_input');
+    if (locInput) addons.transportLocation = locInput.value;
+
+    // Reset location if switching to a different cluster
+    if (addons.transport !== label) addons.transportLocation = '';
+
+    addons.transport       = label;
+    addons.transportFeeAmt = flat;
+    renderBody();
+  }
+
+  function liveDesign() {
+    d.designService = document.getElementById('f_design')?.value || d.designService;
+    renderBody();
+  }
+
+  function save() {
+    if(step===0){ d.clientName=v('f_name'); d.contact=v('f_contact'); d.email=v('f_email'); d.address=v('f_address'); d.delivery=v('f_delivery'); d.dateNeeded=v('f_dateneeded'); }
+    if(step===1){ d.signageType=v('type-search'); d.lighting=v('f_lighting'); d.material=v('f_material'); d.typeNotes=v('f_typenotes'); }
+    if(step===2){ 
+      d.rawWidth  = v('f_width'); 
+      d.rawHeight = v('f_height'); 
+      d.unit      = v('f_unit') || 'ft';
+      d.width     = toFeet(d.rawWidth,  d.unit).toFixed(4);
+      d.height    = toFeet(d.rawHeight, d.unit).toFixed(4);
+    }
+    if(step===3){ d.installNotes=v('f_instnotes'); }
+    if(step===4){
+      // Save location input if visible
+      const locInput = document.getElementById('transport_location_input');
+      if (locInput) addons.transportLocation = locInput.value;
+    }
+    if(step===5){ d.designService=v('f_design'); d.artSpecs=v('f_artspecs'); d.fileFormat=v('f_fileformat'); }
+  }
+
+  function next() {
+    save();
+
+    if (step === 0) {
+      const fields = [
+        { id:'f_name',      val:d.clientName,  label:'Full Name' },
+        { id:'f_contact',   val:d.contact,     label:'Contact Number' },
+        { id:'f_address',   val:d.address,     label:'Address' },
+        { id:'f_delivery',  val:d.delivery,    label:'Delivery Location' },
+        { id:'f_dateneeded',val:d.dateNeeded,  label:'Date Needed' },
+      ];
+      fields.forEach(f => { const el=document.getElementById(f.id); if(el) el.style.borderColor=''; });
+      const empty = fields.filter(f => !f.val.trim());
+      if (empty.length) {
+        empty.forEach(f => { const el=document.getElementById(f.id); if(el) el.style.borderColor='#E8151B'; });
+        showToast('⚠ Please fill in: ' + empty.map(f=>f.label).join(', '), 'error');
+        return;
+      }
+      const digits = d.contact.replace(/\D/g,'');
+      if (digits.length !== 11) {
+        const el = document.getElementById('f_contact');
+        if (el) el.style.borderColor = '#E8151B';
+        showToast('⚠ Contact number must be 11 digits (e.g. 09XX XXX XXXX).', 'error');
+        return;
+      }
+    }
+
+    if (step === 1) {
+      if (!d.signageType) {
+        const el = document.getElementById('type-search');
+        if (el) el.style.borderColor = '#E8151B';
+        showToast('⚠ Please select a Signage Type.', 'error');
+        return;
+      }
+    }
+
+    if (step === 2) {
+      const w   = parseFloat(d.rawWidth)  || 0;
+      const h   = parseFloat(d.rawHeight) || 0;
+      const wEl = document.getElementById('f_width');
+      const hEl = document.getElementById('f_height');
+      if (wEl) wEl.style.borderColor = '';
+      if (hEl) hEl.style.borderColor = '';
+
+      if (!w && !h) {
+        if (wEl) wEl.style.borderColor = '#E8151B';
+        if (hEl) hEl.style.borderColor = '#E8151B';
+        showToast('⚠ Please enter Width and Height.', 'error');
+        return;
+      }
+      if (!w) {
+        if (wEl) wEl.style.borderColor = '#E8151B';
+        showToast('⚠ Please enter Width.', 'error');
+        return;
+      }
+      if (!h) {
+        if (hEl) hEl.style.borderColor = '#E8151B';
+        showToast('⚠ Please enter Height.', 'error');
+        return;
+      }
+      const sf = sqft();
+      if (sf < 10) {
+        if (wEl) wEl.style.borderColor = '#E8151B';
+        if (hEl) hEl.style.borderColor = '#E8151B';
+        showToast(`⚠ Minimum area is 10 sq ft. Current: ${sf.toFixed(2)} sq ft.`, 'error');
+        return;
+      }
+    }
+
+    if (step === 3) {
+      if (!d.mounting) {
+        showToast('⚠ Please select a Mounting Type.', 'error');
+        return;
+      }
+    }
+
+    if (step === 4) {
+      if (!addons.transport) {
+        showToast('⚠ Please select a Transport / Delivery option.', 'error');
+        return;
+      }
+      // Require location for non-Ormoc clusters
+      const isOrmoc = addons.transport === 'Ormoc City — all barangays';
+      if (!isOrmoc && !addons.transportLocation.trim()) {
+        const locInput = document.getElementById('transport_location_input');
+        if (locInput) locInput.style.borderColor = '#E8151B';
+        showToast('⚠ Please specify the delivery location / barangay for this cluster.', 'error');
+        return;
+      }
+    }
+
+    if (step < STEPS.length - 1) {
+      step++;
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+  function prev() { save(); if(step>0){ step--; render(); window.scrollTo({top:0,behavior:'smooth'}); } }
+
+  function render() {
+    renderStepper(); renderHeader(); renderBody(); renderFooter();
+    const fc=document.getElementById('formCard');
+    fc.style.animation='none'; requestAnimationFrame(()=>{fc.style.animation='';});
+  }
+
+  function resetForm() {
+    if(!confirm('Start a new quotation? Current data will be cleared.')) return;
+    Object.keys(d).forEach(k=>d[k]='');
+    d.lighting='None'; d.material='Standard'; d.mounting=''; d.designService='No'; d.fileFormat='None'; d.selectedComplexity=[];
+    addons.designService=''; addons.designFeeAmt=0; addons.rushOption=''; addons.rushFeeAmt=0;
+    addons.selectedElec=[]; addons.elecFeeAmt=0; addons.transport=''; addons.transportFeeAmt=0;
+    addons.transportLocation=''; addons.wiringMeters=0;
+    step=0; render();
+  }
+
+  function saveToSheet() {
+    const btn=document.getElementById('saveBtn');
+    btn.classList.add('loading'); btn.textContent='⏳ SAVING...';
+    const selMount=MOUNT_OPTIONS.find(m=>m.label===d.mounting);
+    const payload={
+      ...d,
+      sqft:                billableSqft().toFixed(2),
+      actualSqft:          sqft().toFixed(2),
+      unit:                d.unit || 'ft',
+      rate:                RATES[d.signageType]||0,
+      minCharge:           MIN_CHARGE[d.signageType]||0,
+      minArea:             MIN_AREA[d.signageType]||0,
+      baseAmount:          base(),
+      mountFee:            mountFee(),
+      complexitySurcharge: complexitySurcharge(),
+      complexityLabels:    (d.selectedComplexity||[]).map(c=>c.label).join(', '),
+      designFee:           designFeeAmt(),
+      totalAmount:         total(),
+      downpayment:         dp(),
+      balance:             bal(),
+      mountingIsQuotation: selMount?.isQuotation||false,
+      quoteDate:           new Date().toISOString(),
+      dateNeeded:          d.dateNeeded || '',
+      salesStaff:          '<?= userName ?>',
+      addonDesign:         addons.designService || '',
+      addonDesignFee:      addons.designFeeAmt || 0,
+      addonRush:           addons.rushOption || '',
+      addonRushFee:        addons.rushFeeAmt || 0,
+      addonElec:           addons.selectedElec.map(e=>e.label).join(', '),
+      addonElecFee:        addons.elecFeeAmt || 0,
+      addonTransport:      addons.transport || '',
+      addonTransportLocation: addons.transportLocation || '',
+      addonTransportFee:   addons.transportFeeAmt || 0,
+      addonTotal:          addonTotal(),
+    };
+    google.script.run
+      .withSuccessHandler(function(quoteNum) {
+        showToast('✓ Saved — '+quoteNum,'success');
+        btn.classList.remove('loading'); btn.textContent='✓ SAVED';
+        btn.style.background='#0A2A1A'; btn.style.borderColor='#1A6A3A'; btn.style.color='#4AE89A';
+      })
+      .withFailureHandler(function(err) {
+        showToast('⚠ '+err.message,'error');
+        btn.classList.remove('loading'); btn.textContent='💾 SAVE QUOTATION';
+      })
+      .saveQuotation(payload);
+  }
+
+  function printQuote() { window.print(); }
+  function viewQuotations() {
+    google.script.run.withSuccessHandler(url=>window.open(url,'_blank')).getSheetUrl();
+  }
+
+  function showToast(msg,type='') {
+    const t=document.getElementById('toast');
+    t.textContent=msg; t.className='toast show '+type;
+    setTimeout(()=>{t.className='toast '+type;},3500);
+  }
+
+// ── PAYMENT TERMS ──
+  let PAYMENT_TERMS = [];
+
+  function loadPaymentTerms() {
+    try {
+      google.script.run
+        .withSuccessHandler(function(terms) { 
+          PAYMENT_TERMS = terms;
+        })
+        .withFailureHandler(function() {})
+        .getPaymentTerms();
+    } catch(e) {}
+  }
+
+
+  function loadPricing() {
+    google.script.run
+      .withSuccessHandler(function(pricing) {
+        PRODUCTS           = pricing.products             || [];
+        RATES              = pricing.rates                || {};
+        MIN_CHARGE         = pricing.minCharge            || {};
+        MIN_AREA           = pricing.minArea              || {};
+        MOUNT_OPTIONS      = pricing.mountingOptions      || [];
+        COMPLEXITY_OPTIONS = pricing.complexitySurcharges || [];
+        DESIGN_FEE         = pricing.designFee            || 800;
+        SECTION4           = pricing.section4             || { design:[], rush:[], electrical:[], transport:[] };
+        if (!addons.rushOption && SECTION4.rush.length) {
+          addons.rushOption = SECTION4.rush[0].label;
+          addons.rushFeeAmt = 0;
+        }
+        if (!d.mounting && MOUNT_OPTIONS.length) d.mounting=MOUNT_OPTIONS[0].label;
+        render();
+      })
+      .withFailureHandler(function() {
+        RATES={'Tarpaulin':25,'LED Box':120,'Acrylic':90};
+        MIN_CHARGE={}; MIN_AREA={};
+        MOUNT_OPTIONS=[
+          {label:'Wall / Post — standard',fee:500,isQuotation:false,notes:'Ground level install'},
+          {label:'Rooftop — low rise',fee:1500,isQuotation:false,notes:'Ladder access needed'},
+          {label:'Rooftop — high rise (6F+)',fee:0,isQuotation:true,notes:'Site visit required'},
+        ];
+        COMPLEXITY_OPTIONS=[]; DESIGN_FEE=800;
+        SECTION4 = {
+          design: [
+            { label: 'Basic layout / typographic design', rate: 500, notes: 'Simple text + logo arrangement' },
+            { label: 'Custom graphic design', rate: 800, rateMax: 1500, notes: 'Illustrations, complex layout, branding' },
+            { label: 'Design revision (after 2nd revision)', rate: 200, notes: 'First 2 revisions are FREE · ₱200/revision' },
+            { label: 'File conversion / cleanup', rate: 300, notes: 'Low-res or unusable file → print-ready' },
+          ],
+          rush: [
+            { label: 'No rush — standard lead time (5–7 days)', pct: 0, flat: 0, notes: '' },
+            { label: 'Rush — 3 to 4 days', pct: 15, flat: 0, notes: 'Standard lead time is 5–7 working days' },
+            { label: 'Rush — 1 to 2 days', pct: 25, flat: 0, notes: 'Subject to capacity. Confirm before ordering' },
+            { label: 'Same-day production', pct: 40, flat: 0, notes: 'Confirm by 8 AM. Very limited slots only' },
+            { label: 'After-hours / weekend work', pct: 0, flat: 500, notes: 'Per day · Overtime labor surcharge' },
+          ],
+          electrical: [
+            { label: 'LED module upgrade (Samsung)', flat: 500 },
+            { label: 'Wiring to power source (up to 5m)', flat: 500 },
+            { label: 'Wiring beyond 5 meters (+₱100/meter)', flat: 0, perUnit: true, unitLabel: 'meters beyond 5m', unitRate: 100 },
+            { label: 'Timer / automatic on-off switch', flat: 300, flatMax: 800 },
+          ],
+          transport: [
+            { label: 'Ormoc City — all barangays', flat: 0, notes: 'FREE · Client pickup always FREE' },
+            { label: 'Cluster B — 10 to 43 km', flat: 700, flatMax: 1500, notes: 'Merida, Albuera, Kananga, Isabel, Matag-ob' },
+            { label: 'Cluster C — 44 to 80 km', flat: 2000, flatMax: 2500, notes: 'Baybay, Palompon, Naval (Biliran), Carigara' },
+            { label: 'Cluster D — 81 to 130 km', flat: 3500, flatMax: 4500, notes: 'Tacloban (₱4,500), Palo, Maasin, Sogod' },
+            { label: 'Cluster E — Samar Island', flat: 6000, flatMax: 7500, notes: 'Via San Juanico Bridge · full-day delivery' },
+          ],
+        };
+        if (!addons.rushOption && SECTION4.rush.length) { addons.rushOption=SECTION4.rush[0].label; addons.rushFeeAmt=0; }
+        if (!d.mounting) d.mounting=MOUNT_OPTIONS[0].label;
+        render();
+      })
+      .getPricing();
+  }
+
+  loadPricing();
+  loadPaymentTerms(); // ← add ni
+  
+  function render(){
+    renderStepper(); renderHead(); renderBody(); renderFoot();
+    const fc=$('formCard'); fc.style.animation='none';
+    requestAnimationFrame(()=>{ fc.style.animation=''; });
+  }
+
+  render();
+  </script>
+  </body>
+  </html>

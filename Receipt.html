@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receipt Order Form</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --red: #E8151B; --red-dark: #B00E12; --ink: #0A0A0A;
+  --gray-50: #FAFAFA; --gray-100: #F5F5F5; --gray-200: #E5E5E5;
+  --gray-300: #D0D0D0; --gray-400: #AAAAAA; --gray-500: #777777;
+  --green: #0A7A45; --green-light: #F0FFF4; --green-border: #A7F3D0;
+  --amber: #B8860B; --amber-light: #FFF8E6; --amber-border: #F0D060;
+}
+body { font-family: 'DM Sans', sans-serif; background: #fff; color: var(--ink); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+.topnav { background: #fff; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 100; }
+.topnav-inner { max-width: 920px; margin: 0 auto; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 28px; height: 28px; background: var(--red); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+.logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.05em; color: var(--ink); }
+.logo-text span { color: var(--red); }
+.nav-actions { display: flex; gap: 8px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: all .15s; border: 1px solid transparent; }
+.btn-ghost { background: transparent; border-color: var(--gray-200); color: var(--gray-500); }
+.btn-ghost:hover { border-color: var(--gray-400); color: var(--ink); }
+.btn-outline-dark { background: transparent; border-color: var(--ink); color: var(--ink); }
+.btn-outline-dark:hover { background: var(--ink); color: #fff; }
+.btn-primary { background: var(--red); border-color: var(--red); color: #fff; }
+.btn-primary:hover { background: var(--red-dark); border-color: var(--red-dark); }
+.btn-submit { background: #fff; border: 1px solid var(--ink); color: var(--ink); padding: 10px 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; }
+.btn-submit:hover { background: var(--red); border-color: var(--red); color: #fff; }
+.btn-submit.done { background: #0A2A1A; border-color: #1A6A3A; color: #4AE89A; pointer-events: none; }
+.btn-submit.loading { opacity: .6; pointer-events: none; }
+.btn-back { background: transparent; border-color: var(--gray-200); color: var(--gray-500); }
+.btn-back:hover { border-color: var(--gray-400); color: var(--ink); }
+.page { max-width: 920px; margin: 0 auto; padding: 40px 24px 80px; }
+.page-heading { margin-bottom: 32px; }
+.page-heading h1 { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 0.04em; color: var(--ink); line-height: 1; }
+.page-heading h1 span { color: var(--red); }
+.page-heading p { font-size: 13px; color: var(--gray-400); margin-top: 4px; letter-spacing: 0.02em; }
+.stepper { display: flex; align-items: center; background: var(--gray-100); border: 1px solid var(--gray-200); border-radius: 3px; padding: 20px 24px; margin-bottom: 24px; gap: 0; overflow-x: auto; }
+.step-item { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; min-width: fit-content; }
+.step-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid var(--gray-300); color: var(--gray-400); background: #fff; transition: all .25s; flex-shrink: 0; }
+.step-circle.active { background: #fff; border-color: #fff; color: var(--ink); box-shadow: 0 0 0 3px rgba(232,21,27,.3); }
+.step-circle.done { background: var(--red); border-color: var(--red); color: #fff; }
+.step-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; transition: color .25s; color: var(--gray-300); }
+.step-label.active { color: var(--red); }
+.step-label.done { color: var(--gray-400); }
+.step-connector { flex: 1; height: 1px; background: var(--gray-300); min-width: 20px; margin-bottom: 22px; transition: background .25s; }
+.step-connector.done { background: var(--red); }
+.card { background: #fff; border: 1px solid var(--gray-200); border-radius: 3px; overflow: hidden; animation: fadeUp .3s ease both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+.card-accent { height: 4px; background: var(--red); width: 100%; }
+.card-head { padding: 20px 28px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; gap: 16px; }
+.card-step-badge { width: 44px; height: 44px; background: var(--red); border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.card-step-badge span { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff; letter-spacing: 0.05em; }
+.card-head-text h2 { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.05em; color: var(--ink); line-height: 1.1; }
+.card-head-text p { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+.card-body { padding: 28px 28px; }
+.card-foot { padding: 16px 28px; border-top: 1px solid var(--gray-100); background: var(--gray-50); display: flex; justify-content: space-between; align-items: center; }
+.step-counter { font-size: 11px; color: var(--gray-500); letter-spacing: 0.06em; text-transform: uppercase; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+label.field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray-500); }
+.field-input { width: 100%; background: #fff; border: 1px solid var(--gray-200); border-radius: 3px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--ink); outline: none; transition: border-color .15s, box-shadow .15s; }
+.field-input::placeholder { color: var(--gray-300); }
+.field-input:focus { border-color: var(--red); box-shadow: 0 0 0 2px rgba(232,21,27,.15); }
+.field-input.error { border-color: var(--red); }
+textarea.field-input { min-height: 80px; resize: vertical; }
+select.field-input option { background: var(--gray-100); }
+.choice-card { border: 1px solid var(--gray-200); border-radius: 3px; padding: 12px 16px; cursor: pointer; transition: all .15s; display: flex; align-items: flex-start; gap: 12px; }
+.choice-card:hover { border-color: var(--red); background: #FFF8F8; }
+.choice-card.selected { border-color: var(--red); background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,.12); }
+.choice-card input[type=radio] { accent-color: var(--red); margin-top: 2px; flex-shrink: 0; }
+.choice-card-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.doc-card { border: 1px solid var(--amber-border); border-radius: 3px; padding: 12px 16px; cursor: pointer; transition: background .15s; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.doc-card:hover { background: #FFFAE8; }
+.doc-card.checked { background: #FFF5D6; }
+.doc-card input[type=checkbox] { accent-color: var(--amber); margin-top: 3px; flex-shrink: 0; }
+.swatch-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch { width: 56px; border: 2px solid var(--gray-200); border-radius: 3px; padding: 8px 4px 6px; cursor: pointer; transition: all .15s; display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+.swatch:hover:not(.locked):not(.disabled) { border-color: var(--red); }
+.swatch.selected { border-color: var(--red); background: #FFF0F0; }
+.swatch.locked { cursor: default; border-color: var(--gray-300); background: var(--gray-50); }
+.swatch.disabled { cursor: not-allowed; opacity: 0.35; }
+.swatch-dot { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,.1); }
+.swatch-name { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; color: var(--gray-400); }
+.swatch-check { font-size: 10px; color: var(--red); font-weight: 700; min-height: 14px; }
+.swatch-lock { font-size: 9px; color: var(--gray-400); min-height: 14px; }
+.color-hint { font-size: 11px; color: var(--gray-500); margin-top: 8px; }
+.color-hint strong { color: var(--ink); }
+.section-divider { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray-300); padding: 20px 0 12px; border-bottom: 1px solid var(--gray-100); margin-bottom: 16px; }
+.total-box { border-radius: 3px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+.total-label { font-size: 13px; font-weight: 600; color: var(--gray-500); }
+.total-amount { font-family: 'Bebas Neue', sans-serif; font-size: 42px; letter-spacing: 0.04em; line-height: 1; }
+.fixed-badge { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 3px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.fixed-badge-meta .label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gray-400); }
+.fixed-badge-meta .sub { font-size: 11px; color: var(--gray-300); margin-top: 2px; }
+.fixed-badge-value { font-family: 'Bebas Neue', sans-serif; font-size: 42px; color: var(--ink); line-height: 1; }
+.toast { position: fixed; bottom: 28px; right: 28px; background: var(--ink); border: 1px solid #333; color: #fff; padding: 14px 20px; border-radius: 3px; font-size: 13px; display: flex; align-items: center; gap: 10px; transform: translateY(80px); opacity: 0; transition: all .3s cubic-bezier(.34,1.56,.64,1); z-index: 999; max-width: 320px; pointer-events: none; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: #0A2A1A; border-color: #1A6A3A; }
+.toast.error { background: #1A0000; border-color: var(--red); }
+.mt-4 { margin-top: 16px; } .mt-5 { margin-top: 20px; } .mt-6 { margin-top: 24px; }
+.gap-2 { gap: 8px; } .gap-3 { gap: 12px; }
+.flex { display: flex; } .flex-col { flex-direction: column; } .flex-1 { flex: 1; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3 7h18v2H3V7zm0 4h18v2H3v-2zm0 4h12v2H3v-2z"/></svg>
+      </div>
+      <span class="logo-text">Sign<span>/</span>Quote</span>
+    </div>
+    <div class="nav-actions">
+      <button class="btn btn-ghost" onclick="resetForm()">New Order</button>
+      <button class="btn btn-outline-dark" onclick="goToDashboard()">← Dashboard</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-heading">
+    <h1>Receipt <span>Order Form</span></h1>
+    <p>Complete each step to submit your receipt printing order.</p>
+  </div>
+  <div class="stepper" id="stepper"></div>
+  <div class="card" id="formCard">
+    <div class="card-accent"></div>
+    <div class="card-head" id="cardHead"></div>
+    <div class="card-body" id="cardBody"></div>
+    <div class="card-foot" id="cardFoot"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let step = 0;
+const d = {
+  company: '', lastName: '', firstName: '', email: '', mobile: '',
+  customerType: 'new',
+  copies: '', size: '',
+  paperType: '', colors: ['White'],
+  perforation: 'Yes', numbering: 'Yes', startingNo: '',
+  qty: 0, dateNeeded: '', notes: '',
+};
+
+const STEPS = [
+  { label: 'Customer Info',  sub: 'Company, name & contact details' },
+  { label: 'Customer Type',  sub: 'New or returning — required documents' },
+  { label: 'Specifications', sub: 'Copies, size & pages per booklet' },
+  { label: 'Page & Paper',   sub: 'Paper type, colors & print finishing' },
+  { label: 'Order Summary',  sub: 'Quantity, date needed & total price' },
+];
+
+const COLOR_LIMITS = {
+  'Duplicate (2)':    1,
+  'Triplicate (3)':   2,
+  'Quadruplicate (4)':3,
+};
+
+const COLOR_DEFS = [
+  { name:'White',  hex:'#FFFFFF', locked:true  },
+  { name:'Yellow', hex:'#F5D020', locked:false },
+  { name:'Pink',   hex:'#F48FB1', locked:false },
+  { name:'Green',  hex:'#81C784', locked:false },
+  { name:'Blue',   hex:'#64B5F6', locked:false },
+];
+
+const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const v   = id => document.getElementById(id)?.value || '';
+const $   = id => document.getElementById(id);
+
+function php(n)      { return '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function phpPlain(n) { return 'PHP '+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2}); }
+
+function showToast(msg, type='') {
+  const t=$('toast'); t.textContent=msg; t.className='toast show '+type;
+  setTimeout(()=>{ t.className='toast '+type; },3500);
+}
+
+function fmtMobile(input) {
+  let val = input.value.replace(/\D/g,'').slice(0,11);
+  if (val.length>7) input.value=val.slice(0,4)+'-'+val.slice(4,7)+'-'+val.slice(7);
+  else if (val.length>4) input.value=val.slice(0,4)+'-'+val.slice(4);
+  else input.value=val;
+}
+
+// ── STEPPER ──
+function renderStepper() {
+  const el=$('stepper'); el.innerHTML='';
+  STEPS.forEach((s,i)=>{
+    const isDone=i<step, isActive=i===step;
+    el.innerHTML+=`
+      <div class="step-item" onclick="goTo(${i})">
+        <div class="step-circle ${isDone?'done':isActive?'active':''}">${isDone?'✓':i+1}</div>
+        <div class="step-label ${isDone?'done':isActive?'active':''}">${s.label}</div>
+      </div>
+      ${i<STEPS.length-1?`<div class="step-connector ${isDone?'done':''}"></div>`:''}`;
+  });
+}
+
+function goTo(i) { if(i<step){save();step=i;render();} }
+
+function renderHead() {
+  const s=STEPS[step];
+  $('cardHead').innerHTML=`
+    <div class="card-step-badge"><span>${step+1}</span></div>
+    <div class="card-head-text"><h2>${s.label.toUpperCase()}</h2><p>${s.sub}</p></div>`;
+}
+
+function renderSwatches() {
+  const limit = COLOR_LIMITS[d.copies] || 1;
+  const chosen = d.colors.filter(c=>c!=='White');
+  const remaining = limit - chosen.length;
+
+  return COLOR_DEFS.map(c => {
+    const isSelected = d.colors.includes(c.name);
+    const isLocked   = c.locked;
+    const isDisabled = !isLocked && !isSelected && remaining <= 0;
+
+    let cls = 'swatch';
+    if (isSelected) cls += ' selected';
+    if (isLocked)   cls += ' locked';
+    if (isDisabled) cls += ' disabled';
+
+    const clickAttr = (!isLocked && !isDisabled) || isSelected
+      ? `onclick="toggleColor('${c.name}',this)"`
+      : '';
+
+    const badge = isLocked
+      ? `<div class="swatch-lock">🔒</div>`
+      : `<div class="swatch-check" style="opacity:${isSelected?1:0}">✓</div>`;
+
+    return `<div class="${cls}" title="${c.name}" ${isLocked?'':clickAttr}>
+      <div class="swatch-dot" style="background:${c.hex};${c.name==='White'?'border:1px solid #DDD;':''}"></div>
+      <div class="swatch-name">${c.name}</div>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+function renderBody() {
+  const el=$('cardBody');
+
+  // STEP 0 — Customer Info
+  if (step===0) {
+    el.innerHTML=`
+      <div class="grid-3">
+        <div class="field"><label class="field-label">Company Name *</label>
+          <input class="field-input" id="f_company" value="${esc(d.company)}" placeholder="e.g. ABC Trading"></div>
+        <div class="field"><label class="field-label">Last Name *</label>
+          <input class="field-input" id="f_lastname" value="${esc(d.lastName)}" placeholder="Last Name"></div>
+        <div class="field"><label class="field-label">First Name *</label>
+          <input class="field-input" id="f_firstname" value="${esc(d.firstName)}" placeholder="First Name"></div>
+      </div>
+      <div class="grid-2 mt-5">
+        <div class="field"><label class="field-label">Email *</label>
+          <input class="field-input" id="f_email" type="email" value="${esc(d.email)}" placeholder="you@email.com"></div>
+        <div class="field"><label class="field-label">Mobile Number *</label>
+          <input class="field-input" id="f_mobile" value="${esc(d.mobile)}" placeholder="09xx-xxx-xxxx"
+            maxlength="13" oninput="fmtMobile(this)" onkeypress="return event.charCode>=48&&event.charCode<=57"></div>
+      </div>`;
+  }
+
+  // STEP 1 — Customer Type
+  else if (step===1) {
+    const isNew=d.customerType==='new';
+    el.innerHTML=`
+      <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gray-400);margin-bottom:12px;">
+        Are you a new or returning customer?
+      </div>
+      <div class="flex flex-col gap-3" style="margin-bottom:20px;">
+        <label class="choice-card ${isNew?'selected':''}" data-type="new" onclick="setCtype('new')">
+          <input type="radio" name="ctype" ${isNew?'checked':''}><div><div class="choice-card-label">New Customer</div></div>
+        </label>
+        <label class="choice-card ${!isNew?'selected':''}" data-type="old" onclick="setCtype('old')">
+          <input type="radio" name="ctype" ${!isNew?'checked':''}><div><div class="choice-card-label">Old / Returning Customer</div></div>
+        </label>
+      </div>
+      <div style="background:var(--amber-light);border:1px solid var(--amber-border);border-radius:3px;padding:16px;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--amber);margin-bottom:12px;">
+          ${isNew?'New Customer':'Old / Returning Customer'} — Please Prepare the Following:
+        </div>
+        ${isNew?`
+          <label class="doc-card" onclick="this.classList.toggle('checked')">
+            <input type="checkbox" style="accent-color:var(--amber);margin-top:3px;flex-shrink:0;">
+            <div style="font-size:13px;color:var(--ink);"><strong>Xerox Copy of ATP</strong> — Updated</div>
+          </label>
+          <label class="doc-card" onclick="this.classList.toggle('checked')">
+            <input type="checkbox" style="accent-color:var(--amber);margin-top:3px;flex-shrink:0;">
+            <div style="font-size:13px;color:var(--ink);"><strong>Sworn Statement</strong></div>
+          </label>
+        `:`
+          <label class="doc-card" onclick="this.classList.toggle('checked')">
+            <input type="checkbox" style="accent-color:var(--amber);margin-top:3px;flex-shrink:0;">
+            <div style="font-size:13px;color:var(--ink);">
+              <strong>SPA with Notarize</strong> if Sole Proprietor or <strong>Board Resolution</strong> if Corporation
+            </div>
+          </label>
+          <label class="doc-card" onclick="this.classList.toggle('checked')">
+            <input type="checkbox" style="accent-color:var(--amber);margin-top:3px;flex-shrink:0;">
+            <div style="font-size:13px;color:var(--ink);">
+              <strong>Valid ID</strong> — 1 copy with original, <strong>3 signatures</strong>
+              <div style="font-size:11px;color:var(--gray-400);margin-top:2px;">Photocopy must be clear. Bring original for verification.</div>
+            </div>
+          </label>
+          <label class="doc-card" onclick="this.classList.toggle('checked')">
+            <input type="checkbox" style="accent-color:var(--amber);margin-top:3px;flex-shrink:0;">
+            <div style="font-size:13px;color:var(--ink);"><strong>COR Xerox Copy</strong></div>
+          </label>
+        `}
+      </div>`;
+  }
+
+  // STEP 2 — Specifications
+  else if (step===2) {
+    const sizes=['1/8','1/6','1/4','1/3','1/2','Full (1)'];
+    const sizeOpts=`<option value="">Select size…</option>`+
+      sizes.map(s=>`<option value="${s}" ${d.size===s?'selected':''}>${s}</option>`).join('');
+    const copies=['Duplicate (2)','Triplicate (3)','Quadruplicate (4)'];
+    el.innerHTML=`
+      <div class="grid-2">
+        <div class="field">
+          <label class="field-label">Number of Copies *</label>
+          <div class="flex flex-col gap-2" id="copies-group">
+            ${copies.map(c=>`
+              <label class="choice-card ${d.copies===c?'selected':''}" onclick="selectCopies('${c}',this)">
+                <input type="radio" name="copies" ${d.copies===c?'checked':''}>
+                <div class="choice-card-label">${c}</div>
+              </label>`).join('')}
+          </div>
+        </div>
+        <div class="flex flex-col gap-4">
+          <div class="field">
+            <label class="field-label">Size *</label>
+            <select class="field-input" id="f_size" onchange="d.size=this.value">${sizeOpts}</select>
+          </div>
+          <div class="fixed-badge">
+            <div class="fixed-badge-meta">
+              <div class="label">Pages Per Booklet</div>
+              <div class="sub">Default: 50 — fixed</div>
+            </div>
+            <div class="fixed-badge-value">50</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // STEP 3 — Page & Paper
+  else if (step===3) {
+    const limit = COLOR_LIMITS[d.copies] || 1;
+    const chosen = d.colors.filter(c=>c!=='White');
+    const papers=['Newsprint','Carbonless'];
+    el.innerHTML=`
+      <div class="grid-2">
+        <div class="field">
+          <label class="field-label">Paper Type *</label>
+          <div class="flex flex-col gap-2" id="paper-group">
+            ${papers.map(p=>`
+              <label class="choice-card ${d.paperType===p?'selected':''}" onclick="selectVal('paperType','${p}',this,'paper-group')">
+                <input type="radio" name="paper" ${d.paperType===p?'checked':''}>
+                <div class="choice-card-label">${p}</div>
+              </label>`).join('')}
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">
+            Paper Colors
+            <span style="color:var(--gray-300);font-weight:400;text-transform:none;letter-spacing:0;">
+              (White = always 1st)
+            </span>
+          </label>
+          <div class="swatch-row" id="swatch-row">${renderSwatches()}</div>
+          <div class="color-hint" id="color-hint">
+            ${d.copies
+              ? `<strong>${chosen.length}</strong> of <strong>${limit}</strong> color${limit>1?'s':''} chosen (+ White)`
+              : `<span style="color:var(--gray-300);">Select copies first to unlock colors</span>`}
+          </div>
+        </div>
+      </div>
+      <div class="section-divider mt-6">Print &amp; Finishing</div>
+      <div class="grid-3">
+        <div class="field">
+          <label class="field-label">Perforation</label>
+          <div class="flex gap-2" id="perf-group">
+            ${['Yes','No'].map(o=>`
+              <label class="choice-card flex-1 ${d.perforation===o?'selected':''}" onclick="selectVal('perforation','${o}',this,'perf-group')">
+                <input type="radio" name="perf" ${d.perforation===o?'checked':''}><div class="choice-card-label">${o}</div>
+              </label>`).join('')}
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Numbering</label>
+          <div class="flex gap-2" id="num-group">
+            ${['Yes','No'].map(o=>`
+              <label class="choice-card flex-1 ${d.numbering===o?'selected':''}" onclick="selectVal('numbering','${o}',this,'num-group')">
+                <input type="radio" name="num" ${d.numbering===o?'checked':''}><div class="choice-card-label">${o}</div>
+              </label>`).join('')}
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Starting No. *</label>
+          <input class="field-input" id="f_startno" value="${esc(d.startingNo)}" placeholder="e.g. 0001">
+        </div>
+      </div>`;
+  }
+
+  // STEP 4 — Order Summary
+  else if (step===4) {
+    const total=computeTotal();
+    const copiesMap = {'Duplicate (2)':2,'Triplicate (3)':3,'Quadruplicate (4)':4};
+    const availableQty = PRICING && Array.isArray(PRICING)
+      ? [...new Set(
+          PRICING
+            .filter(r => r.printType === d.paperType &&
+                         r.copies === copiesMap[d.copies])
+            .map(r => r.booklets)
+        )].sort((a,b) => a-b)
+      : [50,100,150,200,250,300,500];
+    const qtyOpts=`<option value="">Select quantity…</option>`+
+      availableQty.map(q=>
+        `<option value="${q}" ${d.qty===q?'selected':''}>${q} booklets</option>`).join('');
+    const hasTotal=total>0;
+    el.innerHTML=`
+      <div class="grid-2">
+        <div class="field"><label class="field-label">Quantity (Booklets) *</label>
+          <select class="field-input" id="f_qty" onchange="d.qty=parseInt(this.value)||0;renderBody()">${qtyOpts}</select>
+        </div>
+        <div class="field"><label class="field-label">Date Needed *</label>
+          <input class="field-input" id="f_dateneeded" type="date" value="${esc(d.dateNeeded)}"
+            min="${new Date().toISOString().split('T')[0]}" oninput="d.dateNeeded=this.value">
+        </div>
+      </div>
+      <div class="field mt-5"><label class="field-label">Notes / Special Instructions</label>
+        <textarea class="field-input" id="f_notes" placeholder="Additional details, delivery, or remarks…">${esc(d.notes)}</textarea>
+      </div>
+      <div class="total-box" style="background:${hasTotal?'var(--green-light)':'var(--gray-100)'};border:1px solid ${hasTotal?'var(--green-border)':'var(--gray-200)'};border-left:3px solid ${hasTotal?'var(--green)':'var(--gray-200)'};">
+        <div class="total-label">Total Price:</div>
+        <div class="total-amount" style="color:${hasTotal?'var(--green)':'var(--gray-300)'};">${php(total)}</div>
+      </div>
+      ${hasTotal && d.qty ? `
+        <div style="text-align:right;margin-top:8px;font-size:12px;color:var(--gray-400);">
+          <span style="background:var(--gray-100);border:1px solid var(--gray-200);border-radius:3px;padding:4px 10px;">
+            ${php(total/d.qty)} <span style="color:var(--gray-300);">/ booklet</span>
+          </span>
+        </div>` : ''}`;
+  }
+}
+
+function renderFoot() {
+  const el=$('cardFoot');
+  const back=step>0?`<button class="btn btn-back" onclick="prev()">← Back</button>`:`<span></span>`;
+  const next=step<STEPS.length-1
+    ?`<div class="flex" style="align-items:center;gap:16px;">
+        <span class="step-counter">Step ${step+1} of ${STEPS.length}</span>
+        <button class="btn btn-primary" onclick="next()">Continue →</button>
+      </div>`
+    :`<button class="btn btn-submit" id="submitBtn" onclick="submitOrder()">💾 Submit Order</button>`;
+  el.innerHTML=back+next;
+}
+
+function selectVal(key,val,cardEl,groupId) {
+  d[key]=val;
+  document.querySelectorAll('#'+groupId+' .choice-card').forEach(c=>c.classList.remove('selected'));
+  cardEl.classList.add('selected');
+}
+
+function selectCopies(val, cardEl) {
+  const prev = d.copies;
+  d.copies = val;
+  if (prev !== val) { d.colors = ['White']; }
+  document.querySelectorAll('#copies-group .choice-card').forEach(c=>c.classList.remove('selected'));
+  cardEl.classList.add('selected');
+}
+
+function setCtype(type) {
+  d.customerType=type; save(); renderBody();
+  document.querySelectorAll('.choice-card[data-type]').forEach(c=>{
+    c.classList.toggle('selected',c.dataset.type===type);
+  });
+}
+
+function toggleColor(color, el) {
+  if (color==='White') return;
+  const limit = COLOR_LIMITS[d.copies] || 1;
+  const chosen = d.colors.filter(c=>c!=='White');
+  if (d.colors.includes(color)) {
+    d.colors = d.colors.filter(c=>c!==color);
+  } else {
+    if (chosen.length >= limit) {
+      showToast(`Max ${limit} color${limit>1?'s':''} for ${d.copies}.`, 'error');
+      return;
+    }
+    d.colors.push(color);
+  }
+  const sr=$('swatch-row');
+  if (sr) sr.innerHTML=renderSwatches();
+  const hint=$('color-hint');
+  if (hint) {
+    const newChosen=d.colors.filter(c=>c!=='White');
+    hint.innerHTML=`<strong>${newChosen.length}</strong> of <strong>${limit}</strong> color${limit>1?'s':''} chosen (+ White)`;
+  }
+}
+
+function save() {
+  if (step===0) { d.company=v('f_company'); d.lastName=v('f_lastname'); d.firstName=v('f_firstname'); d.email=v('f_email'); d.mobile=v('f_mobile'); }
+  if (step===2) { d.size=v('f_size')||d.size; }
+  if (step===3) { d.startingNo=v('f_startno'); }
+  if (step===4) { d.qty=parseInt(v('f_qty'))||d.qty; d.dateNeeded=v('f_dateneeded')||d.dateNeeded; d.notes=v('f_notes')||d.notes; }
+}
+
+function next() {
+  save();
+  if (step===0) {
+    const req=[
+      {id:'f_company',val:d.company,label:'Company Name'},
+      {id:'f_lastname',val:d.lastName,label:'Last Name'},
+      {id:'f_firstname',val:d.firstName,label:'First Name'},
+      {id:'f_email',val:d.email,label:'Email'},
+      {id:'f_mobile',val:d.mobile,label:'Mobile'},
+    ];
+    req.forEach(f=>{const e=$(f.id);if(e)e.classList.remove('error');});
+    const empty=req.filter(f=>!f.val.trim());
+    if (empty.length) {
+      empty.forEach(f=>{const e=$(f.id);if(e)e.classList.add('error');});
+      showToast('Please fill in: '+empty.map(f=>f.label).join(', '),'error'); return;
+    }
+  }
+  if (step===2) {
+    if (!d.copies){showToast('Please select Number of Copies.','error');return;}
+    d.size=v('f_size')||d.size;
+    if (!d.size){showToast('Please select a Size.','error');return;}
+  }
+  if (step===3) {
+    if (!d.paperType){showToast('Please select Paper Type.','error');return;}
+    d.startingNo=v('f_startno');
+    if (!d.startingNo.trim()){const e=$('f_startno');if(e)e.classList.add('error');showToast('Please enter Starting No.','error');return;}
+    const limit=COLOR_LIMITS[d.copies]||1;
+    const chosen=d.colors.filter(c=>c!=='White');
+    if (chosen.length<1){showToast(`Please select at least 1 paper color (besides White).`,'error');return;}
+  }
+  if (step<STEPS.length-1){step++;render();window.scrollTo({top:0,behavior:'smooth'});}
+}
+
+function prev(){save();if(step>0){step--;render();window.scrollTo({top:0,behavior:'smooth'});}}
+
+let TOKEN = '<?= injectedToken ?>';
+
+function goToDashboard() {
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=dashboard&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top';
+    document.body.appendChild(a);
+    a.click();
+  }).getAppUrl();
+}
+
+function submitOrder() {
+  save();
+  const qty = parseInt(v('f_qty')) || d.qty;
+  const dn  = v('f_dateneeded') || d.dateNeeded;
+  d.qty = qty; d.dateNeeded = dn; d.notes = v('f_notes') || d.notes;
+
+  if (!qty)  { showToast('Please select Quantity.', 'error');    return; }
+  if (!dn)   { showToast('Please select Date Needed.', 'error'); return; }
+
+  const btn = $('submitBtn');
+  btn.classList.add('loading');
+  btn.textContent = 'Submitting…';
+
+  const payload = {
+    company:      d.company,
+    lastName:     d.lastName,
+    firstName:    d.firstName,
+    email:        d.email,
+    mobile:       d.mobile,
+    customerType: d.customerType,
+    copies:       d.copies,
+    size:         d.size,
+    paperType:    d.paperType,
+    paperColors:  d.colors.join(', '),
+    perforation:  d.perforation,
+    numbering:    d.numbering,
+    startingNo:   d.startingNo,
+    quantity:     d.qty,
+    dateNeeded:   d.dateNeeded,
+    totalPrice:   computeTotal(),
+    notes:        d.notes,
+    salesStaff:   TOKEN,
+  };
+
+  google.script.run
+    .withSuccessHandler(function(orderNum) {
+      showToast('Order submitted! ' + orderNum, 'success');
+      btn.classList.remove('loading');
+      btn.classList.add('done');
+      btn.textContent = '✓ ' + orderNum;
+    })
+    .withFailureHandler(function(err) {
+      showToast('Error: ' + err.message, 'error');
+      btn.classList.remove('loading');
+    })
+    .saveReceiptOrder(payload);
+}
+
+function resetForm(){
+  if (!confirm('Start a new order? Current data will be cleared.')) return;
+  Object.assign(d,{company:'',lastName:'',firstName:'',email:'',mobile:'',customerType:'new',copies:'',size:'',paperType:'',colors:['White'],perforation:'Yes',numbering:'Yes',startingNo:'',qty:0,dateNeeded:'',notes:''});
+  step=0; render();
+}
+
+let PRICING = null;
+
+function loadPricing() {
+  try {
+    google.script.run
+      .withSuccessHandler(function(p) { PRICING = p; render(); })
+      .withFailureHandler(function()  { render(); })
+      .getReceiptPricing();
+  } catch(e) {
+    render();
+  }
+}
+
+function computeTotal() {
+  if (!d.copies || !d.size || !d.paperType || !d.qty) return 0;
+  if (!PRICING || !Array.isArray(PRICING)) return 0;
+
+  const sizeDivMap = {
+    'Full (1)': 1, '1/2': 2, '1/3': 3,
+    '1/4': 4,      '1/6': 6, '1/8': 8
+  };
+  const copiesMap = {
+    'Duplicate (2)': 2,
+    'Triplicate (3)': 3,
+    'Quadruplicate (4)': 4
+  };
+
+  const match = PRICING.find(r =>
+    r.printType === d.paperType &&
+    r.copies    === copiesMap[d.copies] &&
+    r.sizeDiv   === sizeDivMap[d.size] &&
+    r.booklets  === d.qty
+  );
+
+  if (!match) return 0;
+  return match.sellingPrice;
+}
+
+loadPricing();
+
+function render(){
+  renderStepper(); renderHead(); renderBody(); renderFoot();
+  const fc=$('formCard'); fc.style.animation='none';
+  requestAnimationFrame(()=>{ fc.style.animation=''; });
+}
+
+render();
+</script>
+</body>
+</html>
