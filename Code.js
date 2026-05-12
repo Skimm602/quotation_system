@@ -421,6 +421,7 @@ function getDashboardData(token) {
           salesStaff:   String(row[25] || ''),
           paymentTermLabel: String(row[26] || ''),
           paymentTermValue: String(row[26] || '').includes('No DP') ? 0 : String(row[26] || '').includes('25%') ? 0.25 : String(row[26] || '').includes('Full') ? 1 : 0.5,
+          items: (function() { try { const j = String(row[27]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e) { return []; } })(),
           quoteType:    'tarpaulin',
           signageType:  'Tarpaulin',
           address: '', delivery: '', lighting: '', material: '',
@@ -556,6 +557,7 @@ function getQuoteForPDF(token, quoteNum) {
         paymentTermValue: String(r[26]||'').includes('No DP') ? 0
                         : String(r[26]||'').includes('25%')   ? 0.25
                         : String(r[26]||'').includes('Full')  ? 1 : 0.5,
+        items: (function() { try { const j = String(r[27]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e) { return []; } })(),
         address: '', delivery: '', lighting: '', material: '',
         mounting: '', mountFee: 0, complexitySurcharge: 0,
         addonDesign: '', addonDesignFee: 0,
@@ -882,8 +884,8 @@ function saveTarpQuotation(data) {
       'Eyelet', 'Print Layout', 'Rush Order', 'Design Charge',
       'Rate/sqft', 'Rush Fee', 'Design Fee',
       'Base Amount', 'Rush Fee Amt', 'Design Fee Amt',
-      'TOTAL AMOUNT', 'Balance', 'Date Needed', 'Status',   // X = col 24
-      'Approved By', 'Sales Staff',                          // Y, Z = cols 25, 26
+      'TOTAL AMOUNT', 'Balance', 'Date Needed', 'Status',
+      'Approved By', 'Sales Staff', 'Payment Term', 'Items JSON',
     ];
     sheet.appendRow(headers);
     sheet.getRange(1, 1, 1, headers.length)
@@ -898,44 +900,49 @@ function saveTarpQuotation(data) {
   const session2  = data.token ? getSessionData_(data.token) : null;
   const staffName = session2 ? (session2.username || session2.name) : (data.salesStaff || '');
 
-  const w         = parseFloat(data.width)       || 0;
-  const h         = parseFloat(data.height)      || 0;
-  const qty       = parseInt(data.quantity)      || 1;
+  const w         = parseFloat(data.width)  || 0;
+  const h         = parseFloat(data.height) || 0;
+  const qty       = parseInt(data.quantity) || 1;
   const area      = w * h;
   const totalSqft = area * qty;
   const baseAmt   = totalSqft * (parseFloat(data.ratePerSqft) || 0);
   const rushAmt   = data.rushOrder    ? (parseFloat(data.rushFee)   || 0) : 0;
   const desAmt    = data.designCharge ? (parseFloat(data.designFee) || 0) : 0;
-  const totalAmt  = baseAmt + rushAmt + desAmt;
+  // Use grand total from payload when multiple items exist, else calculate from single item
+  const calcTotal = baseAmt + rushAmt + desAmt;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : calcTotal;
   const bal       = totalAmt * 0.5;
+  const itemsJson = (data.items && data.items.length > 0) ? JSON.stringify(data.items) : '[]';
 
-  sheet.appendRow([   
+  sheet.appendRow([
     quoteNum,                           // A  col 1  - Quote #
     new Date(),                         // B  col 2  - Date
     data.clientName  || '',             // C  col 3  - Client Name
     data.contact     || '',             // D  col 4  - Contact
     data.email       || '',             // E  col 5  - Email
-    w,                                  // F  col 6  - Width
-    h,                                  // G  col 7  - Height
+    w,                                  // F  col 6  - Width (last item)
+    h,                                  // G  col 7  - Height (last item)
     parseFloat(area.toFixed(2)),        // H  col 8  - Area/pc
     qty,                                // I  col 9  - Quantity
     parseFloat(totalSqft.toFixed(2)),   // J  col 10 - Total Sqft
-    data.eyelet      || '',             // K  col 11 - Eyelet
+    data.eyelet      || '',             // K  col 11 - Eyelet (last item)
     data.printLayout || '',             // L  col 12 - Print Layout
     data.rushOrder    ? 'Yes' : 'No',  // M  col 13 - Rush Order
     data.designCharge ? 'Yes' : 'No',  // N  col 14 - Design Charge
     parseFloat(data.ratePerSqft) || 0, // O  col 15 - Rate/sqft
     parseFloat(data.rushFee)     || 0, // P  col 16 - Rush Fee
     parseFloat(data.designFee)   || 0, // Q  col 17 - Design Fee
-    parseFloat(baseAmt.toFixed(2)),     // R  col 18 - Base Amount
-    parseFloat(rushAmt.toFixed(2)),     // S  col 19 - Rush Fee Amt
-    parseFloat(desAmt.toFixed(2)),      // T  col 20 - Design Fee Amt
-    parseFloat(totalAmt.toFixed(2)),    // U  col 21 - TOTAL AMOUNT
-    parseFloat(bal.toFixed(2)),         // V  col 22 - Balance
-    data.dateNeeded  || '',             // W  col 23 - Date Needed
-    'Pending',                          // X  col 24 - Status ✅ consistent with updateQuoteStatus
-    '',                                 // Y  col 25 - Approved By
-    staffName,                          // Z  col 26 - Sales Staff
+    parseFloat(baseAmt.toFixed(2)),    // R  col 18 - Base Amount (last item)
+    parseFloat(rushAmt.toFixed(2)),    // S  col 19 - Rush Fee Amt (last item)
+    parseFloat(desAmt.toFixed(2)),     // T  col 20 - Design Fee Amt (last item)
+    parseFloat(totalAmt.toFixed(2)),   // U  col 21 - TOTAL AMOUNT (grand total)
+    parseFloat(bal.toFixed(2)),        // V  col 22 - Balance
+    data.dateNeeded  || '',            // W  col 23 - Date Needed
+    'Pending',                         // X  col 24 - Status
+    '',                                // Y  col 25 - Approved By
+    staffName,                         // Z  col 26 - Sales Staff
+    '',                                // AA col 27 - Payment Term (set by savePaymentTerm)
+    itemsJson,                         // AB col 28 - Items JSON
   ]);
 
   sheet.getRange(sheet.getLastRow(), 18, 1, 4).setNumberFormat('₱#,##0.00');

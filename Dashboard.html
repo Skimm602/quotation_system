@@ -581,6 +581,16 @@ ${String(q.quoteNum).startsWith('RQ-') ? `
   ${row('Numbering', q.numbering||'—')}
   ${row('Quantity', q.quantity ? q.quantity+' booklets' : '—')}
   ${q.quantity && q.totalAmount ? row('Price / Booklet', php(q.totalAmount / q.quantity)) : ''}
+` : String(q.quoteNum).startsWith('TQ-') && q.items && q.items.length > 0 ? `
+  ${row('Signage Type', '<span style="font-weight:500;">Tarpaulin</span>')}
+  ${q.items.map((it, idx) => `
+    <tr><td colspan="2" style="padding:8px 0 2px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#E8151B;border-top:1px solid #E5E5E5;">ITEM ${idx+1}</td></tr>
+    ${row('Dimensions', (it.width||'?')+' × '+(it.height||'?')+' ft × '+(it.quantity||1)+' pc = '+(it.sqft||0).toFixed(2)+' sqft')}
+    ${it.eyelet && it.eyelet !== 'No Eyelet' ? row('Eyelet', it.eyelet) : ''}
+    ${it.rush === 'Yes' ? row('Rush Order', '✓ Yes') : ''}
+    ${it.designCharge === 'Yes' ? row('Design Charge', '✓ Yes') : ''}
+    ${row('Item Total', '<strong>'+php(it.itemTotal)+'</strong>')}
+  `).join('')}
 ` : `
   ${row('Signage Type', '<span style="font-weight:500;">'+(q.signageType||'—')+'</span>')}
   ${row('Dimensions', (q.width||'?')+' × '+(q.height||'?')+' ft = '+(q.sqft||'?')+' sqft')}

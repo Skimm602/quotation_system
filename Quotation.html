@@ -306,46 +306,62 @@ function fillWithData(q) {
   let lineNum = 1;
   let rows = '';
 
-  // Main signage description
-  const isReceipt = String(q.quoteNum || '').startsWith('RQ-');
+  const isReceipt   = String(q.quoteNum || '').startsWith('RQ-');
+  const isTarpMulti = String(q.quoteNum || '').startsWith('TQ-') && q.items && q.items.length > 0;
 
-// Main description
-let descParts = [];
-if (isReceipt) {
-  const copies = (q.signageType || '').replace('Receipt — ', '');
-  if (copies)        descParts.push('<strong>' + copies + '</strong>');
-  if (q.size && !(q.size instanceof Date) && !String(q.size).includes('GMT')) {
-  descParts.push('Size: ' + q.size);
-}
-  if (q.paperType)   descParts.push('Paper Type: ' + q.paperType);
-  if (q.paperColors) descParts.push('Colors: ' + q.paperColors);
-  if (q.perforation) descParts.push('Perforation: ' + q.perforation);
-  if (q.numbering)   descParts.push('Numbering: ' + q.numbering);
-} else {
-  // Main signage description
-  if (q.signageType) descParts.push('<strong>' + q.signageType + '</strong>');
-  if (q.lighting && q.lighting !== 'None') descParts.push('Lighting: ' + q.lighting);
-  if (q.material && q.material !== 'Standard') descParts.push('Material: ' + q.material);
-  if (sqft > 0) {
-    const w = q.rawWidth || q.width || '?';
-    const h = q.rawHeight || q.height || '?';
-    const unit = q.unit || 'ft';
-    descParts.push('Size: ' + w + ' × ' + h + ' ' + unit + ' (' + sqft.toFixed(2) + ' sq ft)');
-    if (q.eyelet && q.eyelet !== 'No Eyelet') descParts.push('Eyelet: ' + q.eyelet);
+  if (isTarpMulti) {
+    // One row per item in the cart
+    q.items.forEach((it, idx) => {
+      const itParts = ['<strong>Tarpaulin</strong>'];
+      itParts.push('Size: ' + (it.width||'?') + ' × ' + (it.height||'?') + ' ft × ' + (it.quantity||1) + ' pc (' + parseFloat(it.sqft||0).toFixed(2) + ' sq ft)');
+      if (it.eyelet && it.eyelet !== 'No Eyelet') itParts.push('Eyelet: ' + it.eyelet);
+      if (it.rush === 'Yes') itParts.push('Rush Order');
+      if (it.designCharge === 'Yes') itParts.push('Design Charge');
+      rows += `<tr>
+        <td class="center">${lineNum++}</td>
+        <td style="line-height:1.75;"><span style="font-size:10px;color:#E8151B;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Item ${idx+1}</span><br>${itParts.join('<br>')}</td>
+        <td class="center">1</td>
+        <td class="right">${php(it.itemTotal)}</td>
+        <td class="right">${isQuotation ? '<em style="color:#888;">TBD</em>' : php(it.itemTotal)}</td>
+      </tr>`;
+    });
+  } else {
+    // Single-item (signage or single tarp or receipt)
+    let descParts = [];
+    if (isReceipt) {
+      const copies = (q.signageType || '').replace('Receipt — ', '');
+      if (copies)        descParts.push('<strong>' + copies + '</strong>');
+      if (q.size && !(q.size instanceof Date) && !String(q.size).includes('GMT')) {
+        descParts.push('Size: ' + q.size);
+      }
+      if (q.paperType)   descParts.push('Paper Type: ' + q.paperType);
+      if (q.paperColors) descParts.push('Colors: ' + q.paperColors);
+      if (q.perforation) descParts.push('Perforation: ' + q.perforation);
+      if (q.numbering)   descParts.push('Numbering: ' + q.numbering);
+    } else {
+      if (q.signageType) descParts.push('<strong>' + q.signageType + '</strong>');
+      if (q.lighting && q.lighting !== 'None') descParts.push('Lighting: ' + q.lighting);
+      if (q.material && q.material !== 'Standard') descParts.push('Material: ' + q.material);
+      if (sqft > 0) {
+        const w = q.rawWidth || q.width || '?';
+        const h = q.rawHeight || q.height || '?';
+        const unit = q.unit || 'ft';
+        descParts.push('Size: ' + w + ' × ' + h + ' ' + unit + ' (' + sqft.toFixed(2) + ' sq ft)');
+        if (q.eyelet && q.eyelet !== 'No Eyelet') descParts.push('Eyelet: ' + q.eyelet);
+      }
+      if (q.complexityLabels) descParts.push('Complexity: ' + q.complexityLabels);
+      if (q.designService === 'Yes') descParts.push('Design service included');
+      if (q.typeNotes)    descParts.push('Notes: ' + q.typeNotes);
+      if (q.installNotes) descParts.push('Install notes: ' + q.installNotes);
+    }
+    rows += `<tr>
+      <td class="center">${lineNum++}</td>
+      <td style="line-height:1.75;">${descParts.join('<br>')}</td>
+      <td class="center">${isReceipt ? (q.quantity || 1) : 1}</td>
+      <td class="right">${isReceipt ? php(totalAmount / (q.quantity || 1)) : php(baseAmount)}</td>
+      <td class="right">${isQuotation ? '<em style="color:#888;">TBD</em>' : isReceipt ? php(totalAmount) : php(baseAmount)}</td>
+    </tr>`;
   }
-  if (q.complexityLabels) descParts.push('Complexity: ' + q.complexityLabels);
-  if (q.designService === 'Yes') descParts.push('Design service included');
-  if (q.typeNotes)    descParts.push('Notes: ' + q.typeNotes);
-  if (q.installNotes) descParts.push('Install notes: ' + q.installNotes);
-}
-
-rows += `<tr>
-  <td class="center">${lineNum++}</td>
-  <td style="line-height:1.75;">${descParts.join('<br>')}</td>
-  <td class="center">${isReceipt ? (q.quantity || 1) : 1}</td>
-  <td class="right">${isReceipt ? php(totalAmount / (q.quantity || 1)) : php(baseAmount)}</td>
-  <td class="right">${isQuotation ? '<em style="color:#888;">TBD</em>' : isReceipt ? php(totalAmount) : php(baseAmount)}</td>
-</tr>`;
 
   if (mountFee > 0) {
     rows += `<tr>
