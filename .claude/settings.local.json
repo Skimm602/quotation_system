@@ -11,7 +11,9 @@
       "Bash(Select-String -Path \"c:\\\\Users\\\\cymon\\\\Documents\\\\github\\\\quotation_system\\\\Index.html\" -Pattern '<\\\\?=' -AllMatches)",
       "Bash(Select-Object LineNumber, Line)",
       "Bash(grep -n \"\\\\\\\\\\\\\\\\'\" \"c:/Users/cymon/Documents/github/quotation_system/Index.html\")",
-      "Bash(grep -n '/[^/]*[<>\"\\\\\\\\'\"'\"'][^/]*/' \"c:/Users/cymon/Documents/github/quotation_system/Index.html\")"
+      "Bash(grep -n '/[^/]*[<>\"\\\\\\\\'\"'\"'][^/]*/' \"c:/Users/cymon/Documents/github/quotation_system/Index.html\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

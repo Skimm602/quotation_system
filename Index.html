@@ -261,7 +261,7 @@
       el.style.display = name.includes(q) ? '' : 'none';
     });
     dd.querySelectorAll('.signage-group').forEach(group => {
-      const visible = [...group.querySelectorAll('.signage-option')].some(o => o.style.display !== 'none');
+      const visible = Array.from(group.querySelectorAll('.signage-option')).some(function(o) { return o.style.display !== 'none'; });
       group.style.display = visible ? '' : 'none';
     });
   }
@@ -1069,8 +1069,7 @@
     const btn=document.getElementById('saveBtn');
     btn.classList.add('loading'); btn.textContent='⏳ SAVING...';
     const selMount=MOUNT_OPTIONS.find(m=>m.label===d.mounting);
-    const payload={
-      ...d,
+    const payload = Object.assign({}, d, {
       sqft:                billableSqft().toFixed(2),
       actualSqft:          sqft().toFixed(2),
       unit:                d.unit || 'ft',
@@ -1080,7 +1079,7 @@
       baseAmount:          base(),
       mountFee:            mountFee(),
       complexitySurcharge: complexitySurcharge(),
-      complexityLabels:    (d.selectedComplexity||[]).map(c=>c.label).join(', '),
+      complexityLabels:    (d.selectedComplexity||[]).map(function(c){return c.label;}).join(', '),
       designFee:           designFeeAmt(),
       totalAmount:         total(),
       downpayment:         dp(),
@@ -1093,7 +1092,7 @@
       addonDesignFee:      addons.designFeeAmt || 0,
       addonRush:           addons.rushOption || '',
       addonRushFee:        addons.rushFeeAmt || 0,
-      addonElec:           addons.selectedElec.map(e=>e.label).join(', '),
+      addonElec:           addons.selectedElec.map(function(e){return e.label;}).join(', '),
       addonElecFee:        addons.elecFeeAmt || 0,
       addonTransport:      addons.transport || '',
       addonTransportLocation: addons.transportLocation || '',
@@ -1101,7 +1100,7 @@
       addonTotal:          addonTotal(),
       taxType:             d.taxType || 'non-vat',
       taxAmount:           taxAmt(),
-    };
+    });
     google.script.run
       .withSuccessHandler(function(quoteNum) {
         showToast('✓ Saved — '+quoteNum,'success');
