@@ -133,7 +133,7 @@
   <input type="hidden" id="app-url"      value="<?= appUrl ?>">
 
   <script>
-  // ─── TOKEN ────────────────────────────────────────────────────────────────
+  // --- TOKEN ----------------------------------------------------------------
   const SERVER_TOKEN = (document.getElementById('server-token')||{}).value || '';
   const APP_URL      = (document.getElementById('app-url')||{}).value || '';
 
@@ -143,7 +143,7 @@
     }
   }
 
-  // ─── STATE ────────────────────────────────────────────────────────────────
+  // --- STATE ----------------------------------------------------------------
   let step = 0;
   const d = {
     clientName:'', contact:'', email:'', address:'', delivery:'',
@@ -178,7 +178,7 @@
     wiringMeters:     0,
   };
 
-  // ─── CALCULATIONS ─────────────────────────────────────────────────────────
+  // --- CALCULATIONS ---------------------------------------------------------
   function sqft()  { return (parseFloat(d.width)||0) * (parseFloat(d.height)||0); }
   function billableSqft() { return sqft(); }
   function base()  {
@@ -226,7 +226,7 @@
   function esc(s)   { return (s||'').split('<').join('&lt;').split('>').join('&gt;'); }
   function v(id)    { return (document.getElementById(id)||{}).value || ''; }
 
-  // ─── SIGNAGE TYPE GROUPING ─────────────────────────────────────────────────
+  // --- SIGNAGE TYPE GROUPING -------------------------------------------------
   const GROUP_ORDER = [
     'Single Face Signage (Metal Frame)',
     'Double Face Signage (Metal Frame)',
@@ -245,7 +245,7 @@
     return grouped;
   }
 
-  // ─── SIGNAGE DROPDOWN FUNCTIONS ───────────────────────────────────────────
+  // --- SIGNAGE DROPDOWN FUNCTIONS -------------------------------------------
   function showSignageDropdown() {
     const dd = document.getElementById('signage-dropdown');
     if (dd) dd.style.display = 'block';
@@ -301,7 +301,7 @@
     });
   }
 
-  // ─── STEPS ────────────────────────────────────────────────────────────────
+  // --- STEPS ----------------------------------------------------------------
   const STEPS = [
     { label:'Client Info',     sub:'Name, contact & delivery location' },
     { label:'Signage Type',    sub:'Type, lighting & material' },
@@ -344,7 +344,7 @@
   function renderBody() {
     const el = document.getElementById('cardBody');
 
-    // ── STEP 0 ──────────────────────────────────────────────────────────────
+    // -- STEP 0 --------------------------------------------------------------
     if (step === 0) {
       el.innerHTML = `
         <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
@@ -375,7 +375,7 @@
         </div>`;
     }
 
-    // ── STEP 1: GROUPED SEARCHABLE SIGNAGE TYPE ──────────────────────────────
+    // -- STEP 1: GROUPED SEARCHABLE SIGNAGE TYPE ------------------------------
     else if (step === 1) {
       const litOpts = ['None','Frontlit','Backlit','LED'].map(l => `<option ${d.lighting===l?'selected':''}>${l}</option>`).join('');
       const matOpts = ['Standard','Premium','UV-resistant'].map(m => `<option ${d.material===m?'selected':''}>${m}</option>`).join('');
@@ -473,7 +473,7 @@
       }, 100);
     }
 
-    // ── STEP 2 ──────────────────────────────────────────────────────────────
+    // -- STEP 2 --------------------------------------------------------------
     else if (step === 2) {
       const sf = sqft();
       const unit = d.unit || 'ft';
@@ -533,7 +533,7 @@
       `;
     }
 
-    // ── STEP 3 ──────────────────────────────────────────────────────────────
+    // -- STEP 3 --------------------------------------------------------------
     else if (step === 3) {
       const mountCards = MOUNT_OPTIONS.length
         ? MOUNT_OPTIONS.map(m => {
@@ -568,7 +568,7 @@
         </div>`;
     }
 
-    // ── STEP 4: ADDITIONAL FEES (Section 4) ─────────────────────────────────
+    // -- STEP 4: ADDITIONAL FEES (Section 4) ---------------------------------
     else if (step === 4) {
       if (!SECTION4.rush.length && !SECTION4.transport.length) {
         el.innerHTML = `<div style="text-align:center;padding:40px;color:#888;font-size:13px;">
@@ -717,7 +717,7 @@
         </div>`;
     }
 
-    // ── STEP 5: DESIGN ──────────────────────────────────────────────────────
+    // -- STEP 5: DESIGN ------------------------------------------------------
     else if (step === 5) {
       const dsOpts = ['No','Yes'].map(x => `<option ${d.designService===x?'selected':''}>${x}</option>`).join('');
       const ffOpts = ['None','PDF','AI/EPS','PNG/JPG','SVG'].map(x => `<option ${d.fileFormat===x?'selected':''}>${x}</option>`).join('');
@@ -739,7 +739,7 @@
         ${d.designService==='Yes' ? `<div class="info-box mt-1"><span>▸</span><span>Design service fee of <strong>${php(DESIGN_FEE)}</strong> will be added.</span></div>` : ''}`;
     }
 
-    // ── STEP 6: QUOTATION SUMMARY ────────────────────────────────────────────
+    // -- STEP 6: QUOTATION SUMMARY --------------------------------------------
     else if (step === 6) {
       const sf=sqft(), bsf=billableSqft(), b=base(), mf=mountFee(), cs=complexitySurcharge(), df=designFeeAmt(), t=total(), dpv=dp(), balv=bal(), tAmt=taxAmt(), tLabel=d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)';
       const selMount = MOUNT_OPTIONS.find(m => m.label === d.mounting);
@@ -805,7 +805,7 @@
     el.innerHTML = back + next;
   }
 
-  // ─── PHONE FORMAT ─────────────────────────────────────────────────────────
+  // --- PHONE FORMAT ---------------------------------------------------------
   function formatPhone(input) {
     let digits = input.value.replace(/\D/g, '');
     if (digits.length > 11) digits = digits.slice(0, 11);
@@ -876,7 +876,7 @@
     if (document.getElementById('f_material')) document.getElementById('f_material').value=d.material;
   }
 
-  // ─── ADDON HANDLERS ───────────────────────────────────────────────────────
+  // --- ADDON HANDLERS -------------------------------------------------------
   function selectDesignService(label, rate) {
     addons.designService = label;
     addons.designFeeAmt  = rate;
@@ -1125,7 +1125,7 @@
     setTimeout(()=>{t.className='toast '+type;},3500);
   }
 
-// ── PAYMENT TERMS ──
+// -- PAYMENT TERMS --
   let PAYMENT_TERMS = [];
 
   function loadPaymentTerms() {
