@@ -13,7 +13,8 @@
       "Bash(grep -n \"\\\\\\\\\\\\\\\\'\" \"c:/Users/cymon/Documents/github/quotation_system/Index.html\")",
       "Bash(grep -n '/[^/]*[<>\"\\\\\\\\'\"'\"'][^/]*/' \"c:/Users/cymon/Documents/github/quotation_system/Index.html\")",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

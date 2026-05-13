@@ -131,6 +131,7 @@
   <!-- GAS injects token and appUrl at serve time -->
   <input type="hidden" id="server-token" value="<?= injectedToken ?>">
   <input type="hidden" id="app-url"      value="<?= appUrl ?>">
+  <input type="hidden" id="server-user"  value="<?= userName ?>">
 
   <script>
   // --- TOKEN ----------------------------------------------------------------
@@ -1087,7 +1088,7 @@
       mountingIsQuotation: (selMount&&selMount.isQuotation)||false,
       quoteDate:           new Date().toISOString(),
       dateNeeded:          d.dateNeeded || '',
-      salesStaff:          <?= JSON.stringify(userName) ?>,
+      salesStaff:          (document.getElementById('server-user')||{}).value || '',
       addonDesign:         addons.designService || '',
       addonDesignFee:      addons.designFeeAmt || 0,
       addonRush:           addons.rushOption || '',
