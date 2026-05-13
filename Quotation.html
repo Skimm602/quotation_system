@@ -64,7 +64,9 @@ table.items .blank td { height: 9mm; border-color: #DDD; }
 /* Signature */
 .sig-area { display: flex; justify-content: space-between; gap: 10mm; margin-top: 8mm; }
 .sig-left { flex: 1; }
-.sig-left .reviewed-by { font-size: 10px; color: #555; font-style: italic; margin-bottom: 9mm; }
+.sig-left .reviewed-by { font-size: 10px; color: #555; font-style: italic; margin-bottom: 3px; }
+.sig-img-wrap { margin: 0 0 0 -4px; line-height: 0; }
+.sig-img-wrap svg { display: block; }
 .sig-name-block { border-top: 1.5px solid #000; padding-top: 3px; display: inline-block; }
 .sig-name { font-weight: 700; font-size: 11.5px; display: block; }
 .sig-role { font-size: 10px; color: #555; }
@@ -194,6 +196,29 @@ table.items .blank td { height: 9mm; border-color: #DDD; }
   <div class="sig-area">
     <div class="sig-left">
       <div class="reviewed-by">Reviewed and Approved by:</div>
+      <div class="sig-img-wrap">
+        <!-- Joel O. Ngo signature -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 230 82" width="138" height="49" aria-hidden="true">
+          <path d="
+            M 218,10
+            C 195,3 140,6 100,18
+            C 62,30 28,50 18,62
+            C 8,74 14,82 28,80
+            C 50,77 68,58 72,42
+            C 76,26 62,14 48,18
+            C 32,23 24,42 30,58
+            C 36,72 54,80 74,78
+            C 104,74 124,56 130,40
+            C 136,24 142,12 160,10
+            C 178,8 194,18 196,32
+            C 198,46 188,58 178,60
+            C 168,62 162,52 168,44
+            C 172,38 180,36 186,40
+          "
+          fill="none" stroke="#111" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
       <div class="sig-name-block">
         <span class="sig-name">Joel O. Ngo</span>
         <span class="sig-role">Proprietor</span>
