@@ -1518,27 +1518,30 @@ throw new Error('Quote not found');
 //  GET BOOKBIND PRICING  (live from external spreadsheet)
 // ══════════════════════════════════════════════════════════════════
 function getBookbindPricing() {
+  const defaults = {
+    'Hardbound':                   430,
+    'Softbound with lettering':    150,
+    'Softbound without lettering': 100,
+    'Ring bind':                   100,
+    'Rush fee':                    100,
+  };
   try {
     const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
     const sheet = ss.getSheetByName('BookBind');
-    if (!sheet) throw new Error('BookBind sheet not found');
+    if (!sheet) return defaults;
     const rows = sheet.getDataRange().getValues();
-    const prices = {};
+    const result = JSON.parse(JSON.stringify(defaults));
     for (let i = 1; i < rows.length; i++) {
-      const type  = String(rows[i][0] || '').trim();
-      const price = parseFloat(rows[i][1]) || 0;
-      if (type) prices[type] = price;
+      const type = String(rows[i][0] || '').trim();
+      const raw  = rows[i][1];
+      const price = typeof raw === 'number'
+        ? raw
+        : parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
+      if (type && price > 0) result[type] = price;
     }
-    return prices;
+    return result;
   } catch(e) {
-    // Fallback to hardcoded prices if sheet is unreachable
-    return {
-      'Hardbound':                     430,
-      'Softbound with lettering':      150,
-      'Softbound without lettering':   100,
-      'Ring bind':                     100,
-      'Rush fee':                      100,
-    };
+    return defaults;
   }
 }
 

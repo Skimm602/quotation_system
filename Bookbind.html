@@ -132,11 +132,12 @@ let pricesLoaded = false;
 function loadPricing() {
   google.script.run
     .withSuccessHandler(function(p) {
-      if (p && Object.keys(p).length) {
-        PRICES = p;
-        pricesLoaded = true;
-        renderBody();
+      if (p) {
+        // Only update individual prices if value > 0 so zeros never overwrite fallback
+        Object.keys(p).forEach(function(k) { if (p[k] > 0) PRICES[k] = p[k]; });
       }
+      pricesLoaded = true;
+      renderBody();
     })
     .withFailureHandler(function() { pricesLoaded = true; })
     .getBookbindPricing();
