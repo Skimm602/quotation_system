@@ -119,6 +119,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
             <span class="nq-icon">🧾</span>
             <span>Receipt Quote</span>
           </div>
+          <div class="nq-option" onclick="goToBookbind()">
+            <span class="nq-icon">📚</span>
+            <span>Bookbinding Quote</span>
+          </div>
         </div>
       </div>
       <!-- END NEW QUOTE DROPDOWN -->
@@ -151,6 +155,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
         <button onclick="switchTab('receipt')" id="tab-receipt"
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
           RECEIPT
+        </button>
+        <button onclick="switchTab('bookbind')" id="tab-bookbind"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          BOOKBIND
         </button>
       </div>
 
@@ -384,6 +392,17 @@ function goToReceipt() {
   }).getAppUrl();
 }
 
+function goToBookbind() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=bookbind&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
 function setupDashboard() {
   const u = currentUser, role = (u.role||'').toLowerCase();
   document.getElementById('sidebarName').textContent = u.name;
@@ -430,13 +449,13 @@ let currentTab = 'all';
 
 function switchTab(tab) {
   currentTab = tab;
-  ['all','signage','tarpaulin'].forEach(t => {
+  ['all','signage','tarpaulin','receipt','bookbind'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
     btn.style.borderBottom = t === tab ? '3px solid #E8151B' : '3px solid transparent';
     btn.style.color        = t === tab ? '#0A0A0A' : '#999';
   });
-  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT' };
+  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING' };
   const el = document.getElementById('recentLabel');
   if (el) el.textContent = labels[tab] || 'QUOTATIONS';
   renderStats(); renderRecentTable();
@@ -445,7 +464,8 @@ function switchTab(tab) {
 function getFilteredByTab() {
   if (currentTab === 'signage')   return allQuotes.filter(q => String(q.quoteNum).startsWith('SQ-'));
   if (currentTab === 'tarpaulin') return allQuotes.filter(q => String(q.quoteNum).startsWith('TQ-'));
-  if (currentTab === 'receipt') return allQuotes.filter(q => String(q.quoteNum).startsWith('RQ-'));
+  if (currentTab === 'receipt')   return allQuotes.filter(q => String(q.quoteNum).startsWith('RQ-'));
+  if (currentTab === 'bookbind')  return allQuotes.filter(q => String(q.quoteNum).startsWith('BQ-'));
   return allQuotes;
 }
 
@@ -470,13 +490,16 @@ function renderRecentTable() {
   }
   let html = `<table class="data-table"><thead><tr><th>Quote #</th><th>Client</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>`;
   recent.forEach(q => {
-    const isTarp    = String(q.quoteNum).startsWith('TQ-');
-    const isReceipt = String(q.quoteNum).startsWith('RQ-');
+    const isTarp     = String(q.quoteNum).startsWith('TQ-');
+    const isReceipt  = String(q.quoteNum).startsWith('RQ-');
+    const isBookbind = String(q.quoteNum).startsWith('BQ-');
     const typeLabel = isTarp
-  ? `<span style="color:#888;">Tarpaulin</span>`
-  : isReceipt
-  ? `<span style="color:#888;">Receipt</span>`
-  : `<span style="color:#888;">${q.signageType||'—'}</span>`; 
+      ? `<span style="color:#888;">Tarpaulin</span>`
+      : isReceipt
+      ? `<span style="color:#888;">Receipt</span>`
+      : isBookbind
+      ? `<span style="color:#888;">${q.signageType||'Bookbinding'}</span>`
+      : `<span style="color:#888;">${q.signageType||'—'}</span>`;
     html += `<tr>
       <td style="font-weight:600;color:#0A0A0A;">${q.quoteNum}</td>
       <td>${q.clientName||'—'}</td>
@@ -506,7 +529,8 @@ function renderAllQuotes() {
     const date=q.date?new Date(q.date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
     let actions=`<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button>`;
     if (canApprove&&q.status==='Pending') actions+=` <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓</button> <button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕</button>`;
-    html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${String(q.quoteNum).startsWith('TQ-')?'Tarpaulin':String(q.quoteNum).startsWith('RQ-')?'Receipt':q.signageType||'—'}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
+    const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : (q.signageType||'—');
+    html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${qTypeLabel}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
   });
   html+='</tbody></table>';
   document.getElementById('allQuotesTable').innerHTML=html;
@@ -574,7 +598,9 @@ function viewQuote(quoteNum) {
       ${q.dateNeeded?`<div style="font-size:12px;color:#E8151B;font-weight:600;margin-top:4px;">📅 Date Needed: ${new Date(q.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>`:''}
     </div>
     <table style="width:100%;font-size:13px;border-collapse:collapse;">
-${String(q.quoteNum).startsWith('RQ-') ? `
+${String(q.quoteNum).startsWith('BQ-') ? `
+  ${row('Service', '<span style="font-weight:600;">'+(q.signageType||'Bookbinding')+'</span>')}
+` : String(q.quoteNum).startsWith('RQ-') ? `
   ${row('Copies', (q.signageType||'').replace('Receipt — ','')||'—')}
   ${row('Size', q.size||'—')}
   ${row('Paper Type', q.paperType||'—')}
