@@ -14,7 +14,20 @@
       "Bash(grep -n '/[^/]*[<>\"\\\\\\\\'\"'\"'][^/]*/' \"c:/Users/cymon/Documents/github/quotation_system/Index.html\")",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(dir \"c:\\\\Users\\\\cymon\\\\Pictures\" /b)",
+      "Bash(findstr /i \"sign\\\\|joel\\\\|ngo\\\\|sig\")",
+      "Bash(dir \"c:\\\\Users\\\\cymon\\\\Desktop\" /b)",
+      "Bash(dir \"c:\\\\Users\\\\cymon\\\\Downloads\" /b)",
+      "Bash(dir \"c:\\\\Users\\\\cymon\\\\Downloads\" /b /o-d)",
+      "Bash(dir \"c:\\\\Users\\\\cymon\\\\Desktop\" /b 2>nul | head -20)",
+      "Bash(dir \"c:\\\\Users\\\\cymon\\\\Downloads\\\\*.jpg\" /b /o-d /t:w)",
+      "Bash(powershell \"Get-ChildItem 'c:\\\\Users\\\\cymon\\\\AppData\\\\Local\\\\Temp' -Filter '*.png' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Desc | Select-Object -First 5 FullName, LastWriteTime\")",
+      "Bash(powershell \"Get-ChildItem 'c:\\\\Users\\\\cymon\\\\AppData\\\\Roaming\\\\Claude' -Recurse -Filter '*.png' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Desc | Select-Object -First 5 FullName, LastWriteTime\")",
+      "Bash(powershell \"Get-ChildItem 'c:\\\\Users\\\\cymon\\\\AppData\\\\Local\\\\Temp' -Filter '*.png' | Sort-Object LastWriteTime -Desc | Select-Object -First 3 FullName, LastWriteTime\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\cymon\\Documents\\github\\quotation_system"
     ]
   }
 }

@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bookbinding Quotation</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: '#E8151B', 'brand-dark': '#B00E12',
+        ink: '#0A0A0A', chalk: '#FFFFFF',
+      },
+      fontFamily: { display: ['Bebas Neue', 'sans-serif'], body: ['DM Sans', 'sans-serif'] },
+    }
+  }
+}
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #FFFFFF; color: #0A0A0A; min-height: 100vh; }
+.topnav { background: #FFFFFF; border-bottom: 1px solid #E5E5E5; position: sticky; top: 0; z-index: 100; }
+.logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 0.05em; color: #0A0A0A; }
+.step-circle { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid #E0E0E0; color: #999; transition: all 0.25s; background: #F5F5F5; cursor: pointer; flex-shrink: 0; }
+.step-circle.done { background: #E8151B; border-color: #E8151B; color: white; }
+.step-circle.active { background: white; border-color: white; color: #0A0A0A; box-shadow: 0 0 0 4px rgba(232,21,27,0.3); }
+.step-line { height: 1px; flex: 1; background: #E0E0E0; transition: background 0.25s; }
+.step-line.done { background: #E8151B; }
+.card { background: #FFFFFF; border: 1px solid #E5E5E5; border-radius: 4px; overflow: hidden; animation: fadeUp 0.3s ease both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.card-header-bar { background: #E8151B; height: 4px; width: 100%; }
+.field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #666; display: block; margin-bottom: 6px; }
+.field-input { width: 100%; background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 3px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0A; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.field-input:focus { border-color: #E8151B; box-shadow: 0 0 0 2px rgba(232,21,27,0.2); }
+.field-input::placeholder { color: #BBB; }
+select.field-input option { background: #F5F5F5; }
+textarea.field-input { min-height: 80px; resize: vertical; }
+.opt-card { border: 1px solid #E0E0E0; border-radius: 3px; padding: 12px 14px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 12px; }
+.opt-card:hover { border-color: #E8151B; background: #FFF8F8; }
+.opt-card.selected { border-color: #E8151B; background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
+.opt-card input[type=radio] { accent-color: #E8151B; flex-shrink: 0; }
+.color-swatch { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #E0E0E0; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+.color-swatch.selected { border-color: #E8151B; box-shadow: 0 0 0 3px rgba(232,21,27,0.3); transform: scale(1.15); }
+.q-table { width: 100%; border-collapse: collapse; }
+.q-table tr { border-bottom: 1px solid #F0F0F0; }
+.q-table tr:last-child { border: none; }
+.q-table td { padding: 10px 0; font-size: 14px; color: #666; }
+.q-table td:last-child { text-align: right; color: #0A0A0A; font-weight: 500; }
+.q-table .sec-label { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #BBB; font-weight: 700; padding-top: 18px; }
+.q-table .total-row td { font-size: 20px; font-weight: 700; color: #E8151B; padding-top: 16px; border-top: 2px solid #E8151B; }
+.q-table .sub-row td { font-size: 13px; color: #777; padding-top: 6px; }
+.btn-ghost { padding: 10px 22px; border: 1px solid #E0E0E0; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: #888; background: transparent; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+.btn-ghost:hover { border-color: #999; color: #333; }
+.btn-primary { padding: 10px 26px; background: #E8151B; border: none; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: white; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.04em; text-transform: uppercase; }
+.btn-primary:hover { background: #B00E12; }
+.btn-save { padding: 11px 28px; background: white; border: 1px solid #333; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; color: #0A0A0A; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+.btn-save:hover { background: #E8151B; border-color: #E8151B; color: white; }
+.btn-save.loading { opacity: 0.6; pointer-events: none; }
+.toast { position: fixed; bottom: 28px; right: 28px; background: #0A0A0A; border: 1px solid #333; color: white; padding: 14px 20px; border-radius: 3px; font-size: 13px; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 10px; transform: translateY(80px); opacity: 0; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 999; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: #0A2A1A; border-color: #1A6A3A; }
+.toast.error { background: #1A0000; border-color: #E8151B; }
+.section-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.05em; color: #0A0A0A; line-height: 1; }
+.section-title span { color: #E8151B; }
+.info-box { background: #FFF5F5; border: 1px solid #FFCCCC; border-radius: 3px; padding: 12px 14px; font-size: 13px; color: #CC1015; display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; }
+.preview-book { width: 120px; height: 160px; border-radius: 4px 12px 12px 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; transition: all 0.3s; box-shadow: -4px 4px 12px rgba(0,0,0,0.2), 4px 2px 8px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
+.preview-book::before { content: ''; position: absolute; left: 0; top: 0; width: 12px; height: 100%; background: rgba(0,0,0,0.15); }
+.auto-tag { display: inline-flex; align-items: center; gap: 4px; background: #1A0000; color: #E8151B; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; border: 1px solid #FFCCCC; margin-left: 8px; }
+.charge-toggle { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.charge-btn { padding: 7px 16px; border: 1px solid #E0E0E0; border-radius: 3px; font-size: 12px; font-weight: 600; cursor: pointer; background: #FAFAFA; color: #888; transition: all 0.15s; }
+.charge-btn.active { background: #E8151B; border-color: #E8151B; color: white; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topnav">
+  <div class="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-7 h-7 bg-brand flex items-center justify-center rounded-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3 7h18v2H3V7zm0 4h18v2H3v-2zm0 4h12v2H3v-2z"/></svg>
+      </div>
+      <span class="logo-text">Bookbinding</span><span style="font-size:14px;color:#999;margin-left:4px;letter-spacing:0.05em;"> QUOTATION</span>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn-ghost text-xs" onclick="resetForm()">NEW QUOTE</button>
+      <button class="btn-ghost text-xs" onclick="goToDashboard()" style="border-color:#0A0A0A;color:#0A0A0A;">← DASHBOARD</button>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="max-w-4xl mx-auto px-6 py-10 pb-20">
+  <div class="mb-8">
+    <div class="section-title">NEW BOOKBINDING <span>QUOTATION</span></div>
+    <p class="text-sm mt-1 tracking-wide" style="color:#999;">Complete each step to generate a bookbinding quotation.</p>
+  </div>
+  <div id="stepper-wrap" class="mb-6 bg-gray-50 border border-gray-200 rounded-sm p-5 flex items-center gap-2 overflow-x-auto"></div>
+  <div class="card" id="formCard">
+    <div class="card-header-bar"></div>
+    <div class="px-7 py-5 border-b border-gray-100 flex items-center gap-4" id="cardHeader"></div>
+    <div class="px-7 py-7" id="cardBody"></div>
+    <div class="px-7 py-5 border-t border-gray-100 flex justify-between items-center bg-gray-50" id="cardFooter"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<input type="hidden" id="server-token" value="<?= injectedToken ?>">
+<input type="hidden" id="app-url"      value="<?= appUrl ?>">
+<input type="hidden" id="server-user"  value="<?= userName ?>">
+
+<script>
+const SERVER_TOKEN = (document.getElementById('server-token')||{}).value || '';
+const APP_URL      = (document.getElementById('app-url')||{}).value || '';
+
+function goToDashboard() {
+  if (SERVER_TOKEN && APP_URL) {
+    window.top.location.href = APP_URL + '?page=dashboard&token=' + encodeURIComponent(SERVER_TOKEN);
+  }
+}
+
+// ─── STATE ───────────────────────────────────────────────────────
+let step = 0;
+
+const d = {
+  // Step 0 — Client Info
+  clientName: '', contact: '', email: '', dateNeeded: '',
+  // Step 1 — Book Specs
+  bindType: '',        // Hard Bound / Soft Bound / Ring Bind
+  quantity: 1,
+  pages: '',
+  paperSize: 'A4',
+  // Step 2 — Cover Design
+  coverColor: '#1A237E',
+  sideColor: '#0D47A1',
+  coverText: '',
+  sideText: '',
+  fontStyle: 'Classic Serif',
+  // Step 3 — Print Options
+  printColor: 'Black & White',
+  printPages: '',
+  colorPages: '',
+  // Step 4 — Additional Charges
+  additionalCharges: [],
+  notes: '',
+  taxType: 'non-vat',
+};
+
+// ─── PRICING ─────────────────────────────────────────────────────
+const BIND_PRICES = {
+  'Hard Bound':  { base: 350, perPage: 1.5,  label: 'Hard Bound'  },
+  'Soft Bound':  { base: 180, perPage: 1.0,  label: 'Soft Bound'  },
+  'Ring Bind':   { base: 120, perPage: 0.8,  label: 'Ring Bind'   },
+};
+
+const PRINT_RATES = {
+  'Black & White': { rate: 2,   label: '₱2/page' },
+  'Full Color':    { rate: 15,  label: '₱15/page' },
+  'Mixed':         { rate: 0,   label: 'B&W + Color' },
+};
+
+const ADDITIONAL = [
+  { label: 'Gold Foil Lettering',     fee: 150, notes: 'Cover + spine text' },
+  { label: 'Lamination (Glossy)',     fee: 80,  notes: 'Cover lamination' },
+  { label: 'Lamination (Matte)',      fee: 80,  notes: 'Cover lamination' },
+  { label: 'Index Tab Dividers',      fee: 50,  notes: 'Per set of 5 tabs' },
+  { label: 'Custom Cover Design',     fee: 300, notes: 'Graphic layout fee' },
+  { label: 'Urgent / Rush (3 days)',  fee: 200, notes: 'Rush production fee' },
+];
+
+const COVER_COLORS = [
+  { hex: '#1A237E', name: 'Navy Blue'    },
+  { hex: '#B71C1C', name: 'Dark Red'     },
+  { hex: '#1B5E20', name: 'Forest Green' },
+  { hex: '#212121', name: 'Jet Black'    },
+  { hex: '#4A148C', name: 'Deep Purple'  },
+  { hex: '#BF360C', name: 'Maroon'       },
+  { hex: '#37474F', name: 'Charcoal'     },
+  { hex: '#F57F17', name: 'Gold'         },
+  { hex: '#FFFFFF', name: 'White'        },
+];
+
+const FONTS = ['Classic Serif', 'Modern Sans', 'Elegant Script', 'Bold Block', 'Academic'];
+
+// ─── CALCULATIONS ─────────────────────────────────────────────────
+function bindBase()   {
+  const b = BIND_PRICES[d.bindType];
+  if (!b) return 0;
+  const pages = parseInt(d.pages) || 0;
+  return (b.base + pages * b.perPage) * (parseInt(d.quantity) || 1);
+}
+
+function printCost() {
+  const pages = parseInt(d.printPages) || 0;
+  const colorPg = parseInt(d.colorPages) || 0;
+  const qty = parseInt(d.quantity) || 1;
+  if (d.printColor === 'Black & White') return pages * 2 * qty;
+  if (d.printColor === 'Full Color')    return pages * 15 * qty;
+  if (d.printColor === 'Mixed') {
+    const bwPages = pages - colorPg;
+    return (bwPages * 2 + colorPg * 15) * qty;
+  }
+  return 0;
+}
+
+function additionalTotal() {
+  return d.additionalCharges.reduce((s, a) => s + (a.fee || 0), 0) * (parseInt(d.quantity) || 1);
+}
+
+const VAT = 0.12;
+function subtotal()   { return bindBase() + printCost() + additionalTotal(); }
+function taxAmt()     { const s=subtotal(); return d.taxType==='vat-exclusive'?s*VAT:d.taxType==='vat-inclusive'?s-s/(1+VAT):0; }
+function grandTotal() { return d.taxType==='vat-exclusive'?subtotal()*(1+VAT):subtotal(); }
+function dp()         { return grandTotal() * 0.5; }
+function bal()        { return grandTotal() - dp(); }
+function php(n)       { return '₱' + (n||0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function esc(s)       { return (s||'').split('<').join('&lt;').split('>').join('&gt;'); }
+function v(id)        { return (document.getElementById(id)||{}).value || ''; }
+
+function taxToggleHtml() {
+  const opts = [{key:'non-vat',label:'Non-VAT'},{key:'vat-inclusive',label:'VAT Incl. 12%'},{key:'vat-exclusive',label:'VAT Excl. 12%'}];
+  const tx = d.taxType||'non-vat';
+  const btns = opts.map(function(o){
+    const a=tx===o.key;
+    return '<button onclick="setTaxType(\''+o.key+'\')" style="padding:6px 14px;border:1px solid '+(a?'#E8151B':'#E0E0E0')+';border-radius:3px;font-size:12px;font-weight:'+(a?'700':'500')+';cursor:pointer;background:'+(a?'#E8151B':'#FAFAFA')+';color:'+(a?'#fff':'#888')+';transition:all .15s;">'+o.label+'</button>';
+  }).join('');
+  return '<tr><td colspan="2" style="padding:12px 0 6px;"><div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:8px;">TAX</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+btns+'</div></td></tr>';
+}
+function setTaxType(key) { d.taxType=key; renderBody(); }
+
+// ─── STEPS ────────────────────────────────────────────────────────
+const STEPS = [
+  { label: 'Client Info',    sub: 'Name, contact & date needed' },
+  { label: 'Book Specs',     sub: 'Binding type, quantity & pages' },
+  { label: 'Cover Design',   sub: 'Colors, text & font style' },
+  { label: 'Print Options',  sub: 'B&W, full color or mixed' },
+  { label: 'Add-ons',        sub: 'Extra charges & special requests' },
+  { label: 'Quotation',      sub: 'Full breakdown & summary' },
+];
+
+function renderStepper() {
+  const el = document.getElementById('stepper-wrap');
+  el.innerHTML = '';
+  STEPS.forEach((s, i) => {
+    const state = i < step ? 'done' : i === step ? 'active' : '';
+    el.innerHTML += `
+      <div class="flex flex-col items-center gap-1 cursor-pointer min-w-fit" onclick="goTo(${i})">
+        <div class="step-circle ${state}">${i < step ? '✓' : i+1}</div>
+        <span style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${i===step?'#E8151B':i<step?'#999':'#BBB'};white-space:nowrap;">${s.label}</span>
+      </div>
+      ${i < STEPS.length-1 ? `<div class="step-line flex-1 ${i < step ? 'done' : ''}" style="margin-bottom:18px;"></div>` : ''}
+    `;
+  });
+}
+
+function renderHeader() {
+  const s = STEPS[step];
+  document.getElementById('cardHeader').innerHTML = `
+    <div style="width:42px;height:42px;background:#E8151B;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:white;">${step+1}</span>
+    </div>
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:#0A0A0A;line-height:1.1;">${s.label.toUpperCase()}</div>
+      <div style="font-size:12px;color:#555;margin-top:2px;">${s.sub}</div>
+    </div>`;
+}
+
+function renderBody() {
+  const el = document.getElementById('cardBody');
+
+  // ── STEP 0: CLIENT INFO ──────────────────────────────────────────
+  if (step === 0) {
+    el.innerHTML = `
+      <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
+        <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+          <label class="field-label">Full Name / Company</label>
+          <input class="field-input" id="f_name" value="${esc(d.clientName)}" placeholder="Juan dela Cruz">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Contact Number</label>
+          <input class="field-input" id="f_contact" value="${esc(d.contact)}" placeholder="09XX XXX XXXX" maxlength="13" oninput="formatPhone(this)" onkeypress="return event.charCode>=48&&event.charCode<=57">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Email Address <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+          <input class="field-input" id="f_email" value="${esc(d.email||'')}" placeholder="email@example.com" type="email">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Date Needed</label>
+          <input class="field-input" id="f_dateneeded" type="date" value="${esc(d.dateNeeded||'')}" min="${new Date().toISOString().split('T')[0]}">
+        </div>
+      </div>`;
+  }
+
+  // ── STEP 1: BOOK SPECS ───────────────────────────────────────────
+  else if (step === 1) {
+    const bindCards = Object.entries(BIND_PRICES).map(([key, val]) => {
+      const sel = d.bindType === key;
+      const icon = key === 'Hard Bound' ? '📚' : key === 'Soft Bound' ? '📓' : '📋';
+      return `<label class="opt-card ${sel?'selected':''}" onclick="d.bindType='${key}';renderBody();">
+        <input type="radio" name="bind" ${sel?'checked':''}>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:#0A0A0A;">${icon} ${key}</div>
+          <div style="font-size:11px;color:#888;margin-top:3px;">Base: ${php(val.base)} + ₱${val.perPage}/page</div>
+        </div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#E8151B;">${php(val.base)}+</div>
+      </label>`;
+    }).join('');
+
+    const sizeOpts = ['A4','A5','Short (8.5×11)','Long (8.5×13)','Custom'].map(s => `<option ${d.paperSize===s?'selected':''}>${s}</option>`).join('');
+
+    el.innerHTML = `
+      <div class="flex flex-col gap-5">
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Binding Type <span class="auto-tag">⚡ RATE AUTO-FILLS</span></label>
+          <div class="flex flex-col gap-2">${bindCards}</div>
+        </div>
+        <div class="grid gap-5" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Quantity (books)</label>
+            <input class="field-input" id="f_qty" type="number" min="1" value="${d.quantity||1}" placeholder="1" oninput="d.quantity=parseInt(this.value)||1">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">No. of Pages</label>
+            <input class="field-input" id="f_pages" type="number" min="1" value="${d.pages||''}" placeholder="e.g. 100" oninput="d.pages=this.value">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Paper Size</label>
+            <select class="field-input" id="f_size" onchange="d.paperSize=this.value">${sizeOpts}</select>
+          </div>
+        </div>
+        ${d.bindType ? `
+        <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:14px 16px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Binding Cost</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;letter-spacing:0.05em;">${php(bindBase())}</div>
+          <div style="font-size:11px;color:#999;margin-top:2px;">${d.quantity} book(s) × ${d.pages||0} pages @ ₱${BIND_PRICES[d.bindType]?.perPage}/page + ₱${BIND_PRICES[d.bindType]?.base} base</div>
+        </div>` : ''}
+      </div>`;
+  }
+
+  // ── STEP 2: COVER DESIGN ─────────────────────────────────────────
+  else if (step === 2) {
+    const coverSwatches = COVER_COLORS.map(c => `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div class="color-swatch ${d.coverColor===c.hex?'selected':''}"
+          style="background:${c.hex};${c.hex==='#FFFFFF'?'border:2px solid #E0E0E0;':''}"
+          onclick="d.coverColor='${c.hex}';renderBody();"
+          title="${c.name}"></div>
+        <span style="font-size:9px;color:#999;white-space:nowrap;">${c.name}</span>
+      </div>`).join('');
+
+    const sideSwatches = COVER_COLORS.map(c => `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div class="color-swatch ${d.sideColor===c.hex?'selected':''}"
+          style="background:${c.hex};${c.hex==='#FFFFFF'?'border:2px solid #E0E0E0;':''}"
+          onclick="d.sideColor='${c.hex}';renderBody();"
+          title="${c.name}"></div>
+        <span style="font-size:9px;color:#999;white-space:nowrap;">${c.name}</span>
+      </div>`).join('');
+
+    const fontOpts = FONTS.map(f => `<option ${d.fontStyle===f?'selected':''}>${f}</option>`).join('');
+    const coverTxt = d.coverText || 'THESIS TITLE';
+    const sideTxt  = d.sideText  || 'AUTHOR';
+    const textColor = ['#FFFFFF','#F57F17'].includes(d.coverColor) ? '#0A0A0A' : '#FFFFFF';
+
+    el.innerHTML = `
+      <div class="flex flex-col gap-6">
+
+        <!-- LIVE PREVIEW -->
+        <div style="display:flex;justify-content:center;gap:20px;padding:20px;background:#F5F5F5;border-radius:4px;border:1px solid #E0E0E0;">
+          <!-- Book preview -->
+          <div style="display:flex;gap:0;filter:drop-shadow(0 8px 24px rgba(0,0,0,0.2));">
+            <!-- Spine -->
+            <div style="width:28px;background:${d.sideColor};border-radius:4px 0 0 4px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+              <span style="font-size:8px;font-weight:700;color:${['#FFFFFF','#F57F17'].includes(d.sideColor)?'#0A0A0A':'#FFFFFF'};writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:0.1em;padding:4px;text-align:center;overflow:hidden;max-height:140px;">${esc(sideTxt)}</span>
+            </div>
+            <!-- Cover -->
+            <div style="width:110px;height:150px;background:${d.coverColor};border-radius:0 6px 6px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;text-align:center;">
+              <div style="width:90%;height:1px;background:${textColor};opacity:0.4;margin-bottom:10px;"></div>
+              <span style="font-size:10px;font-weight:700;color:${textColor};letter-spacing:0.08em;line-height:1.3;overflow:hidden;max-height:80px;">${esc(coverTxt)}</span>
+              <div style="width:90%;height:1px;background:${textColor};opacity:0.4;margin-top:10px;"></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:4px;">Live Preview</div>
+            <div style="font-size:12px;color:#555;">Cover: <strong>${COVER_COLORS.find(c=>c.hex===d.coverColor)?.name||'Custom'}</strong></div>
+            <div style="font-size:12px;color:#555;">Spine: <strong>${COVER_COLORS.find(c=>c.hex===d.sideColor)?.name||'Custom'}</strong></div>
+            <div style="font-size:12px;color:#555;">Font: <strong>${d.fontStyle}</strong></div>
+          </div>
+        </div>
+
+        <!-- COVER COLOR -->
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Cover Color</label>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">${coverSwatches}</div>
+        </div>
+
+        <!-- SIDE / SPINE COLOR -->
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Spine / Side Color</label>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">${sideSwatches}</div>
+        </div>
+
+        <!-- TEXT FIELDS -->
+        <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Cover Text</label>
+            <input class="field-input" id="f_covertext" value="${esc(d.coverText)}" placeholder="e.g. Thesis Title / Book Name" oninput="d.coverText=this.value;renderBody();">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Spine / Side Text</label>
+            <input class="field-input" id="f_sidetext" value="${esc(d.sideText)}" placeholder="e.g. Author Name / Year" oninput="d.sideText=this.value;renderBody();">
+          </div>
+          <div class="flex flex-col gap-1" style="grid-column:1/-1;">
+            <label class="field-label">Font Style</label>
+            <select class="field-input" id="f_font" onchange="d.fontStyle=this.value;renderBody();">${fontOpts}</select>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── STEP 3: PRINT OPTIONS ─────────────────────────────────────────
+  else if (step === 3) {
+    const printCards = Object.entries(PRINT_RATES).map(([key, val]) => {
+      const sel = d.printColor === key;
+      const icon = key === 'Black & White' ? '⬛' : key === 'Full Color' ? '🌈' : '🎨';
+      return `<label class="opt-card ${sel?'selected':''}" onclick="d.printColor='${key}';renderBody();">
+        <input type="radio" name="print" ${sel?'checked':''}>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">${icon} ${key}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px;">${val.label}</div>
+        </div>
+      </label>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="flex flex-col gap-5">
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Print Type</label>
+          <div class="flex flex-col gap-2">${printCards}</div>
+        </div>
+
+        <div class="grid gap-5" style="grid-template-columns:${d.printColor==='Mixed'?'1fr 1fr':'1fr'};">
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Total Pages to Print</label>
+            <input class="field-input" id="f_printpages" type="number" min="0" value="${d.printPages||''}" placeholder="e.g. 100" oninput="d.printPages=this.value;renderBody();">
+          </div>
+          ${d.printColor==='Mixed' ? `
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Full Color Pages</label>
+            <input class="field-input" id="f_colorpages" type="number" min="0" value="${d.colorPages||''}" placeholder="e.g. 20" oninput="d.colorPages=this.value;renderBody();">
+          </div>` : ''}
+        </div>
+
+        ${d.printPages ? `
+        <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:14px 16px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Print Cost</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;">${php(printCost())}</div>
+          ${d.printColor==='Mixed'?`<div style="font-size:11px;color:#999;margin-top:2px;">${(parseInt(d.printPages)||0)-(parseInt(d.colorPages)||0)} B&W pages + ${d.colorPages||0} color pages × ${d.quantity} book(s)</div>`:`<div style="font-size:11px;color:#999;margin-top:2px;">${d.printPages} pages × ${PRINT_RATES[d.printColor]?.label} × ${d.quantity} book(s)</div>`}
+        </div>` : ''}
+
+        <div style="background:#F0F4FF;border:1px solid #C5D3FF;border-radius:3px;padding:12px 14px;font-size:12px;color:#2244AA;display:flex;gap:8px;">
+          <span>ℹ</span>
+          <span>Print pricing: <strong>₱2/page B&W</strong> · <strong>₱15/page Full Color</strong>. Per book, per page.</span>
+        </div>
+      </div>`;
+  }
+
+  // ── STEP 4: ADD-ONS ───────────────────────────────────────────────
+  else if (step === 4) {
+    const addCards = ADDITIONAL.map((a, i) => {
+      const isSelected = d.additionalCharges.some(x => x.label === a.label);
+      return `<label class="opt-card ${isSelected?'selected':''}" onclick="toggleAddon(${i}, this)" style="cursor:pointer;">
+        <input type="checkbox" ${isSelected?'checked':''} onclick="event.stopPropagation();toggleAddon(${i},this.closest('.opt-card'))" style="accent-color:#E8151B;flex-shrink:0;">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;">${esc(a.label)}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px;">${esc(a.notes)}</div>
+        </div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#E8151B;">${php(a.fee)}</div>
+      </label>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="flex flex-col gap-5">
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Additional Charges <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(select all that apply)</span></label>
+          <div class="flex flex-col gap-2">${addCards}</div>
+          ${d.additionalCharges.length > 0 ? `
+          <div class="info-box mt-2" style="background:#FFF5F5;">
+            <span>▸</span>
+            <span>Selected: <strong>${php(additionalTotal())}</strong> (×${d.quantity} book/s)</span>
+          </div>` : ''}
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Special Notes / Instructions</label>
+          <textarea class="field-input" id="f_notes" placeholder="Special requests, deadlines, delivery instructions...">${esc(d.notes||'')}</textarea>
+        </div>
+      </div>`;
+  }
+
+  // ── STEP 5: QUOTATION SUMMARY ─────────────────────────────────────
+  else if (step === 5) {
+    const coverName = COVER_COLORS.find(c => c.hex === d.coverColor)?.name || d.coverColor;
+    const sideName  = COVER_COLORS.find(c => c.hex === d.sideColor)?.name  || d.sideColor;
+    const textColor = ['#FFFFFF','#F57F17'].includes(d.coverColor) ? '#0A0A0A' : '#FFFFFF';
+    const coverTxt  = d.coverText || '—';
+    const sideTxt   = d.sideText  || '—';
+
+    const addonRows = d.additionalCharges.map(a =>
+      `<tr><td style="padding-left:12px;color:#888;">↳ ${esc(a.label)}</td><td>${php(a.fee * (parseInt(d.quantity)||1))}</td></tr>`
+    ).join('');
+
+    el.innerHTML = `
+      <!-- Client Box -->
+      <div style="background:#FFFFFF;border:1px solid #E0E0E0;border-left:3px solid #E8151B;padding:16px 20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;">${esc(d.clientName)||'—'}</div>
+          <div style="font-size:12px;color:#555;margin-top:2px;">${esc(d.contact)||''}</div>
+          ${d.dateNeeded ? `<div style="font-size:12px;color:#E8151B;margin-top:4px;font-weight:600;">📅 Date Needed: ${new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#444;font-weight:700;">Quote Date</div>
+          <div style="font-size:13px;color:#888;margin-top:2px;">${new Date().toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>
+        </div>
+      </div>
+
+      <!-- Mini Book Preview -->
+      <div style="display:flex;justify-content:center;margin-bottom:24px;padding:16px;background:#F9F9F9;border-radius:4px;border:1px solid #E5E5E5;">
+        <div style="display:flex;gap:0;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.15));">
+          <div style="width:20px;background:${d.sideColor};border-radius:3px 0 0 3px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:7px;font-weight:700;color:${['#FFFFFF','#F57F17'].includes(d.sideColor)?'#0A0A0A':'#FFFFFF'};writing-mode:vertical-rl;transform:rotate(180deg);padding:2px;">${esc(sideTxt)}</span>
+          </div>
+          <div style="width:90px;height:120px;background:${d.coverColor};border-radius:0 4px 4px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;text-align:center;">
+            <div style="width:85%;height:1px;background:${textColor};opacity:0.4;margin-bottom:8px;"></div>
+            <span style="font-size:8px;font-weight:700;color:${textColor};letter-spacing:0.06em;line-height:1.3;">${esc(coverTxt)}</span>
+            <div style="width:85%;height:1px;background:${textColor};opacity:0.4;margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <table class="q-table">
+        <tr><td colspan="2" class="sec-label">BOOK SPECIFICATIONS</td></tr>
+        <tr><td>Binding Type</td><td>${esc(d.bindType)||'—'}</td></tr>
+        <tr><td>Quantity</td><td>${d.quantity} book(s)</td></tr>
+        <tr><td>Pages</td><td>${d.pages||'—'} pages · ${esc(d.paperSize)}</td></tr>
+        <tr><td>Cover Color</td><td>${coverName}</td></tr>
+        <tr><td>Spine Color</td><td>${sideName}</td></tr>
+        <tr><td>Cover Text</td><td>${esc(d.coverText)||'—'}</td></tr>
+        <tr><td>Spine Text</td><td>${esc(d.sideText)||'—'}</td></tr>
+        <tr><td>Font Style</td><td>${esc(d.fontStyle)}</td></tr>
+        <tr><td>Print Type</td><td>${esc(d.printColor)}</td></tr>
+        <tr><td>Print Pages</td><td>${d.printPages||0} pages${d.printColor==='Mixed'?' ('+((parseInt(d.printPages)||0)-(parseInt(d.colorPages)||0))+' B&W + '+(d.colorPages||0)+' Color)':''}</td></tr>
+
+        <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
+        <tr><td>Binding — ${esc(d.bindType)} (×${d.quantity})</td><td>${php(bindBase())}</td></tr>
+        <tr><td>Printing — ${esc(d.printColor)} (×${d.quantity})</td><td>${php(printCost())}</td></tr>
+        ${d.additionalCharges.length > 0 ? `<tr><td>Additional Charges</td><td>${php(additionalTotal())}</td></tr>${addonRows}` : ''}
+
+        <tr><td colspan="2" style="height:8px;"></td></tr>
+        ${taxToggleHtml()}
+        ${taxAmt() > 0 ? `<tr class="sub-row"><td>${d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)'}</td><td>${php(taxAmt())}</td></tr>` : ''}
+        <tr class="total-row"><td>TOTAL AMOUNT</td><td>${php(grandTotal())}</td></tr>
+        <tr class="sub-row"><td>Downpayment (50%)</td><td>${php(dp())}</td></tr>
+        <tr class="sub-row"><td>Balance</td><td>${php(bal())}</td></tr>
+      </table>
+      ${d.notes ? `<div style="margin-top:16px;background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;padding:12px 16px;font-size:13px;color:#555;"><strong>Notes:</strong> ${esc(d.notes)}</div>` : ''}`;
+  }
+}
+
+function renderFooter() {
+  const el   = document.getElementById('cardFooter');
+  const back = step > 0 ? `<button class="btn-ghost" onclick="prev()">← BACK</button>` : `<span></span>`;
+  const next = step < STEPS.length - 1
+    ? `<div class="flex items-center gap-4">
+        <span style="font-size:11px;color:#444;letter-spacing:0.06em;text-transform:uppercase;">Step ${step+1} of ${STEPS.length}</span>
+        <button class="btn-primary" onclick="next()">CONTINUE →</button>
+      </div>`
+    : `<div class="flex items-center gap-3">
+        <button class="btn-ghost" onclick="window.print()">🖨 PRINT</button>
+        <button class="btn-save" id="saveBtn" onclick="saveToSheet()">💾 SAVE QUOTATION</button>
+      </div>`;
+  el.innerHTML = back + next;
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────
+function formatPhone(input) {
+  let digits = input.value.replace(/\D/g, '');
+  if (digits.length > 11) digits = digits.slice(0, 11);
+  let f = digits;
+  if (digits.length > 4 && digits.length <= 7) f = digits.slice(0,4)+' '+digits.slice(4);
+  else if (digits.length > 7) f = digits.slice(0,4)+' '+digits.slice(4,7)+' '+digits.slice(7);
+  input.value = f; d.contact = f;
+}
+
+function toggleAddon(index, cardEl) {
+  const a = ADDITIONAL[index];
+  const existing = d.additionalCharges.findIndex(x => x.label === a.label);
+  if (existing >= 0) { d.additionalCharges.splice(existing, 1); cardEl.classList.remove('selected'); }
+  else { d.additionalCharges.push({ label: a.label, fee: a.fee }); cardEl.classList.add('selected'); }
+  renderBody();
+}
+
+function save() {
+  if (step === 0) { d.clientName=v('f_name'); d.contact=v('f_contact'); d.email=v('f_email'); d.dateNeeded=v('f_dateneeded'); }
+  if (step === 1) { d.quantity=parseInt(v('f_qty'))||1; d.pages=v('f_pages'); d.paperSize=v('f_size')||d.paperSize; }
+  if (step === 2) { d.coverText=v('f_covertext'); d.sideText=v('f_sidetext'); d.fontStyle=v('f_font')||d.fontStyle; }
+  if (step === 3) { d.printPages=v('f_printpages'); d.colorPages=v('f_colorpages'); }
+  if (step === 4) { d.notes=v('f_notes'); }
+}
+
+function next() {
+  save();
+  if (step === 0) {
+    const fields = [
+      { id:'f_name',      val:d.clientName, label:'Full Name' },
+      { id:'f_contact',   val:d.contact,    label:'Contact Number' },
+      { id:'f_dateneeded',val:d.dateNeeded, label:'Date Needed' },
+    ];
+    fields.forEach(f => { const el=document.getElementById(f.id); if(el) el.style.borderColor=''; });
+    const empty = fields.filter(f => !f.val.trim());
+    if (empty.length) {
+      empty.forEach(f => { const el=document.getElementById(f.id); if(el) el.style.borderColor='#E8151B'; });
+      showToast('⚠ Please fill in: ' + empty.map(f=>f.label).join(', '), 'error');
+      return;
+    }
+    const digits = d.contact.replace(/\D/g,'');
+    if (digits.length !== 11) {
+      document.getElementById('f_contact').style.borderColor='#E8151B';
+      showToast('⚠ Contact number must be 11 digits.', 'error');
+      return;
+    }
+  }
+  if (step === 1) {
+    if (!d.bindType) { showToast('⚠ Please select a Binding Type.', 'error'); return; }
+    if (!d.pages)    { showToast('⚠ Please enter number of pages.', 'error'); return; }
+  }
+  if (step < STEPS.length - 1) { step++; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+}
+
+function prev() { save(); if (step > 0) { step--; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); } }
+function goTo(i) { if (i < step) { save(); step = i; render(); } }
+
+function render() {
+  renderStepper(); renderHeader(); renderBody(); renderFooter();
+  const fc = document.getElementById('formCard');
+  fc.style.animation = 'none'; requestAnimationFrame(() => { fc.style.animation = ''; });
+}
+
+function resetForm() {
+  if (!confirm('Start a new quotation? Current data will be cleared.')) return;
+  d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
+  d.bindType=''; d.quantity=1; d.pages=''; d.paperSize='A4';
+  d.coverColor='#1A237E'; d.sideColor='#0D47A1';
+  d.coverText=''; d.sideText=''; d.fontStyle='Classic Serif';
+  d.printColor='Black & White'; d.printPages=''; d.colorPages='';
+  d.additionalCharges=[]; d.notes=''; d.taxType='non-vat';
+  step=0; render();
+}
+
+function saveToSheet() {
+  const btn = document.getElementById('saveBtn');
+  btn.classList.add('loading'); btn.textContent = '⏳ SAVING...';
+  const coverName = COVER_COLORS.find(c => c.hex === d.coverColor)?.name || d.coverColor;
+  const sideName  = COVER_COLORS.find(c => c.hex === d.sideColor)?.name  || d.sideColor;
+  const payload = {
+    clientName:       d.clientName,
+    contact:          d.contact,
+    email:            d.email,
+    dateNeeded:       d.dateNeeded,
+    bindType:         d.bindType,
+    quantity:         d.quantity,
+    pages:            d.pages,
+    paperSize:        d.paperSize,
+    coverColor:       coverName,
+    coverColorHex:    d.coverColor,
+    sideColor:        sideName,
+    sideColorHex:     d.sideColor,
+    coverText:        d.coverText,
+    sideText:         d.sideText,
+    fontStyle:        d.fontStyle,
+    printColor:       d.printColor,
+    printPages:       d.printPages,
+    colorPages:       d.colorPages,
+    additionalLabels: d.additionalCharges.map(a => a.label).join(', '),
+    additionalFees:   additionalTotal(),
+    bindCost:         bindBase(),
+    printCost:        printCost(),
+    totalAmount:      grandTotal(),
+    downpayment:      dp(),
+    balance:          bal(),
+    notes:            d.notes,
+    salesStaff:       (document.getElementById('server-user')||{}).value || '',
+    quoteDate:        new Date().toISOString(),
+    taxType:          d.taxType || 'non-vat',
+    taxAmount:        taxAmt(),
+  };
+  google.script.run
+    .withSuccessHandler(function(qn) {
+      showToast('✓ Saved — ' + qn, 'success');
+      btn.classList.remove('loading'); btn.textContent = '✓ SAVED';
+      btn.style.background = '#0A2A1A'; btn.style.borderColor = '#1A6A3A'; btn.style.color = '#4AE89A';
+    })
+    .withFailureHandler(function(err) {
+      showToast('⚠ ' + err.message, 'error');
+      btn.classList.remove('loading'); btn.textContent = '💾 SAVE QUOTATION';
+    })
+    .saveBookbindOrder(payload);
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => { t.className = 'toast ' + type; }, 3500);
+}
+
+render();
+</script>
+</body>
+</html>

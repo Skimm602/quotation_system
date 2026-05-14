@@ -218,7 +218,7 @@
       var bg=a?'#E8151B':'#FAFAFA';
       var clr=a?'#fff':'#888';
       var fw=a?'700':'500';
-      return '<button onclick="setTaxType(' + JSON.stringify(o.key) + ')" style="padding:6px 14px;border:1px solid '+border+';border-radius:3px;font-size:12px;font-weight:'+fw+';cursor:pointer;background:'+bg+';color:'+clr+';transition:all .15s;">'+o.label+'</button>';
+      return '<button onclick="setTaxType(\''+o.key+'\')" style="padding:6px 14px;border:1px solid '+border+';border-radius:3px;font-size:12px;font-weight:'+fw+';cursor:pointer;background:'+bg+';color:'+clr+';transition:all .15s;">'+o.label+'</button>';
     }).join('');
     return '<tr><td colspan="2" style="padding:12px 0 6px;"><div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:8px;">TAX</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+btns+'</div></td></tr>';
   }
