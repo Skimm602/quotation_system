@@ -439,7 +439,7 @@ function showSection(id) {
 
 function loadDashboardData() {
   google.script.run
-    .withSuccessHandler(function(data) { allQuotes=data.quotes||[]; renderStats(); renderRecentTable(); renderAllQuotes(); renderApprovals(); })
+    .withSuccessHandler(function(data) { allQuotes=(data&&data.quotes)||[]; renderStats(); renderRecentTable(); renderAllQuotes(); renderApprovals(); })
     .withFailureHandler(err => showToast('Error: '+err.message,'error'))
     .getDashboardData(TOKEN);
 }

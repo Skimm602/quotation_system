@@ -481,7 +481,9 @@ function getDashboardData(token) {
     const bookbindSheet = ss.getSheetByName(BOOKBIND_SHEET);
     if (bookbindSheet) {
       const bdata = bookbindSheet.getDataRange().getValues();
-      bookbindQuotes = bdata.slice(1).filter(r => r[0]).map(row => {
+      // If first row is data (no header), start from 0; otherwise skip header row 0
+      const bStart = bdata.length > 0 && String(bdata[0][0]).startsWith('BQ-') ? 0 : 1;
+      bookbindQuotes = bdata.slice(bStart).filter(r => r[0] && String(r[0]).startsWith('BQ-')).map(row => {
         let dateStr = '';
         try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
         const ptLabel = String(row[27] || '');
@@ -1552,20 +1554,26 @@ function saveBookbindOrder(data) {
   const ss  = getMainSS_();
   let sheet = ss.getSheetByName(BOOKBIND_SHEET);
 
-  if (!sheet) {
-    sheet = ss.insertSheet(BOOKBIND_SHEET);
-    const headers = [
-      'Quote #', 'Date', 'Client Name', 'Contact', 'Email',
-      'Target Pickup Date', 'Binding Type', 'With Lettering', 'Quantity', 'Pages',
-      'Paper Size', 'Orientation', 'Binding Side', 'Cover Color',
-      'Printed Materials Ready', 'Printing Needed', 'File Final for Printing', 'Rush Order',
-      'Binding Price/Unit', 'Rush Fee',
-      'Total Amount', 'Downpayment', 'Balance',
-      'Special Instructions', 'Sales Staff',
-      'Status', 'Approved By', 'Payment Term', 'Tax Type', 'Tax Amount',
-    ];
-    sheet.appendRow(headers);
-    sheet.getRange(1, 1, 1, headers.length)
+  if (!sheet) sheet = ss.insertSheet(BOOKBIND_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email',
+    'Target Pickup Date', 'Binding Type', 'With Lettering', 'Quantity', 'Pages',
+    'Paper Size', 'Orientation', 'Binding Side', 'Cover Color',
+    'Printed Materials Ready', 'Printing Needed', 'File Final for Printing', 'Rush Order',
+    'Binding Price/Unit', 'Rush Fee',
+    'Total Amount', 'Downpayment', 'Balance',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Payment Term', 'Tax Type', 'Tax Amount',
+  ];
+
+  // Add header row if sheet is empty or first row is data (no header)
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1,1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('BQ-')) {
+    if (firstCell.startsWith('BQ-')) {
+      sheet.insertRowBefore(1);  // push existing data down
+    }
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
       .setBackground('#E8151B').setFontColor('#fff')
       .setFontWeight('bold').setFontSize(11);
     sheet.setFrozenRows(1);
