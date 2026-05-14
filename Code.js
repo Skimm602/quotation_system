@@ -484,6 +484,7 @@ function getDashboardData(token) {
       bookbindQuotes = bdata.slice(1).filter(r => r[0]).map(row => {
         let dateStr = '';
         try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[27] || '');
         return {
           quoteNum:         String(row[0]  || ''),
           date:             dateStr,
@@ -492,16 +493,16 @@ function getDashboardData(token) {
           email:            String(row[4]  || ''),
           dateNeeded:       String(row[5]  || ''),
           signageType:      'Bookbinding — ' + String(row[6] || ''),
-          totalAmount:      row[24] || 0,
-          downpayment:      row[25] || 0,
-          balance:          row[26] || 0,
-          status:           String(row[29] || 'Pending'),
-          approvedBy:       String(row[30] || ''),
-          salesStaff:       String(row[28] || ''),
-          paymentTermLabel: String(row[31] || ''),
-          paymentTermValue: String(row[31]||'').includes('No Down') ? 0 : String(row[31]||'').includes('25%') ? 0.25 : String(row[31]||'').includes('Full') ? 1 : 0.5,
-          taxType:          String(row[32] || 'non-vat'),
-          taxAmount:        parseFloat(row[33]) || 0,
+          totalAmount:      row[20] || 0,
+          downpayment:      row[21] || 0,
+          balance:          row[22] || 0,
+          salesStaff:       String(row[24] || ''),
+          status:           String(row[25] || 'Pending'),
+          approvedBy:       String(row[26] || ''),
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          taxType:          String(row[28] || 'non-vat'),
+          taxAmount:        parseFloat(row[29]) || 0,
           quoteType:        'bookbind',
           address: '', delivery: '', lighting: '', material: '',
           mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
@@ -633,43 +634,45 @@ function getQuoteForPDF(token, quoteNum) {
       const r = rows[i];
       let dateStr = '';
       try { dateStr = r[1] ? new Date(r[1]).toISOString() : ''; } catch(e) {}
+      const ptLabel = String(r[27] || '');
       return {
-        quoteNum:         qn,
-        date:             dateStr,
-        clientName:       String(r[2]  || ''),
-        contact:          String(r[3]  || ''),
-        email:            String(r[4]  || ''),
-        dateNeeded:       String(r[5]  || ''),
-        address:          '',
-        delivery:         '',
-        signageType:      'Bookbinding — ' + String(r[6] || ''),
-        bindType:         String(r[6]  || ''),
-        bindQty:          r[7]  || 1,
-        bindPages:        r[8]  || 0,
-        paperSize:        String(r[9]  || ''),
-        printColor:       String(r[17] || ''),
-        printPages:       r[18] || 0,
-        additionalLabels: String(r[20] || ''),
-        additionalFees:   parseFloat(r[21]) || 0,
-        bindCost:         parseFloat(r[22]) || 0,
-        printCost:        parseFloat(r[23]) || 0,
-        baseAmount:       0,
-        mountFee:         0,
-        complexitySurcharge: 0,
-        designFee:        0,
-        addonDesign:      '', addonDesignFee:   0,
-        addonRush:        '', addonRushFee:     0,
-        addonElec:        '', addonElecFee:     0,
-        addonTransport:   '', addonTransportFee: 0,
-        totalAmount:      parseFloat(r[24]) || 0,
-        status:           String(r[29] || 'Pending'),
-        approvedBy:       String(r[30] || ''),
-        salesStaff:       String(r[28] || ''),
-        paymentTermLabel: String(r[31] || ''),
-        paymentTermValue: String(r[31]||'').includes('No Down') ? 0 : String(r[31]||'').includes('25%') ? 0.25 : String(r[31]||'').includes('Full') ? 1 : 0.5,
-        taxType:          String(r[32] || 'non-vat'),
-        taxAmount:        parseFloat(r[33]) || 0,
-        quoteType:        'bookbind',
+        quoteNum:              qn,
+        date:                  dateStr,
+        clientName:            String(r[2]  || ''),
+        contact:               String(r[3]  || ''),
+        email:                 String(r[4]  || ''),
+        dateNeeded:            String(r[5]  || ''),
+        address:               '',
+        delivery:              '',
+        signageType:           'Bookbinding — ' + String(r[6] || ''),
+        bindType:              String(r[6]  || ''),
+        withLettering:         String(r[7]  || ''),
+        bindQty:               r[8]  || 1,
+        bindPages:             r[9]  || 0,
+        paperSize:             String(r[10] || ''),
+        orientation:           String(r[11] || ''),
+        bindingSide:           String(r[12] || ''),
+        coverColor:            String(r[13] || ''),
+        printedMaterialsReady: String(r[14] || ''),
+        printingNeeded:        String(r[15] || ''),
+        fileFinal:             String(r[16] || ''),
+        rushOrder:             String(r[17] || ''),
+        bindingPrice:          parseFloat(r[18]) || 0,
+        rushFee:               parseFloat(r[19]) || 0,
+        totalAmount:           parseFloat(r[20]) || 0,
+        salesStaff:            String(r[24] || ''),
+        status:                String(r[25] || 'Pending'),
+        approvedBy:            String(r[26] || ''),
+        paymentTermLabel:      ptLabel,
+        paymentTermValue:      ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+        taxType:               String(r[28] || 'non-vat'),
+        taxAmount:             parseFloat(r[29]) || 0,
+        quoteType:             'bookbind',
+        baseAmount: 0, mountFee: 0, complexitySurcharge: 0, designFee: 0,
+        addonDesign: '', addonDesignFee: 0,
+        addonRush: '', addonRushFee: 0,
+        addonElec: '', addonElecFee: 0,
+        addonTransport: '', addonTransportFee: 0,
       };
     }
     return null;
@@ -767,10 +770,10 @@ function updateQuoteStatus(token, quoteNum, status) {
     const data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === quoteNum) {
-        sheet.getRange(i+1, 30).setValue(status);
-        sheet.getRange(i+1, 31).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));
+        sheet.getRange(i+1, 26).setValue(status);
+        sheet.getRange(i+1, 27).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));
         const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
-        sheet.getRange(i+1, 1, 1, 31).setBackground(color);
+        sheet.getRange(i+1, 1, 1, 27).setBackground(color);
         return { success: true };
       }
     }
@@ -1499,7 +1502,7 @@ let ptCol;
 if (quoteNum.startsWith('SQ-')) ptCol = 42;      // col AP
 else if (quoteNum.startsWith('TQ-')) ptCol = 27; // col AA
 else if (quoteNum.startsWith('RQ-')) ptCol = 23; // col W
-else if (quoteNum.startsWith('BQ-')) ptCol = 32; // col AF
+else if (quoteNum.startsWith('BQ-')) ptCol = 28; // col AB
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
@@ -1509,6 +1512,34 @@ for (let i = 1; i < data.length; i++) {
   }
 }
 throw new Error('Quote not found');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  GET BOOKBIND PRICING  (live from external spreadsheet)
+// ══════════════════════════════════════════════════════════════════
+function getBookbindPricing() {
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('BookBind');
+    if (!sheet) throw new Error('BookBind sheet not found');
+    const rows = sheet.getDataRange().getValues();
+    const prices = {};
+    for (let i = 1; i < rows.length; i++) {
+      const type  = String(rows[i][0] || '').trim();
+      const price = parseFloat(rows[i][1]) || 0;
+      if (type) prices[type] = price;
+    }
+    return prices;
+  } catch(e) {
+    // Fallback to hardcoded prices if sheet is unreachable
+    return {
+      'Hardbound':                     430,
+      'Softbound with lettering':      150,
+      'Softbound without lettering':   100,
+      'Ring bind':                     100,
+      'Rush fee':                      100,
+    };
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1522,14 +1553,13 @@ function saveBookbindOrder(data) {
     sheet = ss.insertSheet(BOOKBIND_SHEET);
     const headers = [
       'Quote #', 'Date', 'Client Name', 'Contact', 'Email',
-      'Date Needed', 'Bind Type', 'Quantity', 'Pages', 'Paper Size',
-      'Cover Color', 'Cover Color Hex', 'Side Color', 'Side Color Hex',
-      'Cover Text', 'Side Text', 'Font Style',
-      'Print Color', 'Print Pages', 'Color Pages',
-      'Additional Labels', 'Additional Fees',
-      'Bind Cost', 'Print Cost', 'Total Amount', 'Downpayment', 'Balance',
-      'Notes', 'Sales Staff', 'Status', 'Approved By',
-      'Payment Term', 'Tax Type', 'Tax Amount',
+      'Target Pickup Date', 'Binding Type', 'With Lettering', 'Quantity', 'Pages',
+      'Paper Size', 'Orientation', 'Binding Side', 'Cover Color',
+      'Printed Materials Ready', 'Printing Needed', 'File Final for Printing', 'Rush Order',
+      'Binding Price/Unit', 'Rush Fee',
+      'Total Amount', 'Downpayment', 'Balance',
+      'Special Instructions', 'Sales Staff',
+      'Status', 'Approved By', 'Payment Term', 'Tax Type', 'Tax Amount',
     ];
     sheet.appendRow(headers);
     sheet.getRange(1, 1, 1, headers.length)
@@ -1542,42 +1572,38 @@ function saveBookbindOrder(data) {
   const quoteNum = 'BQ-' + String(lastRow).padStart(4, '0');
 
   sheet.appendRow([
-    quoteNum,                               // A  col 1  - Quote #
-    new Date(),                             // B  col 2  - Date
-    data.clientName    || '',               // C  col 3  - Client Name
-    data.contact       || '',               // D  col 4  - Contact
-    data.email         || '',               // E  col 5  - Email
-    data.dateNeeded    || '',               // F  col 6  - Date Needed
-    data.bindType      || '',               // G  col 7  - Bind Type
-    parseInt(data.quantity)  || 1,          // H  col 8  - Quantity
-    parseInt(data.pages)     || 0,          // I  col 9  - Pages
-    data.paperSize     || '',               // J  col 10 - Paper Size
-    data.coverColor    || '',               // K  col 11 - Cover Color (name)
-    data.coverColorHex || '',              // L  col 12 - Cover Color Hex
-    data.sideColor     || '',               // M  col 13 - Side Color (name)
-    data.sideColorHex  || '',              // N  col 14 - Side Color Hex
-    data.coverText     || '',               // O  col 15 - Cover Text
-    data.sideText      || '',               // P  col 16 - Side Text
-    data.fontStyle     || '',               // Q  col 17 - Font Style
-    data.printColor    || '',               // R  col 18 - Print Color
-    parseInt(data.printPages) || 0,         // S  col 19 - Print Pages
-    parseInt(data.colorPages) || 0,         // T  col 20 - Color Pages
-    data.additionalLabels || '',            // U  col 21 - Additional Labels
-    parseFloat(data.additionalFees) || 0,  // V  col 22 - Additional Fees
-    parseFloat(data.bindCost)  || 0,       // W  col 23 - Bind Cost
-    parseFloat(data.printCost) || 0,       // X  col 24 - Print Cost
-    parseFloat(data.totalAmount)  || 0,    // Y  col 25 - Total Amount
-    parseFloat(data.downpayment)  || 0,    // Z  col 26 - Downpayment
-    parseFloat(data.balance)      || 0,    // AA col 27 - Balance
-    data.notes         || '',               // AB col 28 - Notes
-    data.salesStaff    || '',               // AC col 29 - Sales Staff
-    'Pending',                              // AD col 30 - Status
-    '',                                     // AE col 31 - Approved By
-    '',                                     // AF col 32 - Payment Term
-    data.taxType       || 'non-vat',        // AG col 33 - Tax Type
-    parseFloat(data.taxAmount) || 0,        // AH col 34 - Tax Amount
+    quoteNum,                                  // A  col 1  - Quote #
+    new Date(),                                // B  col 2  - Date
+    data.clientName           || '',           // C  col 3  - Client Name
+    data.contact              || '',           // D  col 4  - Contact
+    data.email                || '',           // E  col 5  - Email
+    data.dateNeeded           || '',           // F  col 6  - Target Pickup Date
+    data.bindType             || '',           // G  col 7  - Binding Type
+    data.withLettering        || '',           // H  col 8  - With Lettering
+    parseInt(data.quantity)   || 1,            // I  col 9  - Quantity
+    parseInt(data.pages)      || 0,            // J  col 10 - Pages
+    data.paperSize            || '',           // K  col 11 - Paper Size
+    data.orientation          || '',           // L  col 12 - Orientation
+    data.bindingSide          || '',           // M  col 13 - Binding Side
+    data.coverColor           || '',           // N  col 14 - Cover Color
+    data.printedMaterialsReady|| '',           // O  col 15 - Printed Materials Ready
+    data.printingNeeded       || '',           // P  col 16 - Printing Needed
+    data.fileFinal            || '',           // Q  col 17 - File Final for Printing
+    data.rushOrder            || '',           // R  col 18 - Rush Order
+    parseFloat(data.bindingPrice) || 0,        // S  col 19 - Binding Price/Unit
+    parseFloat(data.rushFee)      || 0,        // T  col 20 - Rush Fee
+    parseFloat(data.totalAmount)  || 0,        // U  col 21 - Total Amount
+    parseFloat(data.downpayment)  || 0,        // V  col 22 - Downpayment
+    parseFloat(data.balance)      || 0,        // W  col 23 - Balance
+    data.notes                || '',           // X  col 24 - Special Instructions
+    data.salesStaff           || '',           // Y  col 25 - Sales Staff
+    'Pending',                                 // Z  col 26 - Status
+    '',                                        // AA col 27 - Approved By
+    '',                                        // AB col 28 - Payment Term
+    data.taxType              || 'non-vat',    // AC col 29 - Tax Type
+    parseFloat(data.taxAmount)    || 0,        // AD col 30 - Tax Amount
   ]);
 
-  sheet.getRange(sheet.getLastRow(), 25, 1, 3).setNumberFormat('₱#,##0.00');
+  sheet.getRange(sheet.getLastRow(), 21, 1, 3).setNumberFormat('₱#,##0.00');
   return quoteNum;
 }

@@ -356,39 +356,39 @@ const termValue = q.paymentTermLabel && q.paymentTermLabel.includes('Full') ? 1
       </tr>`;
     });
   } else if (isBookbind) {
-    // Bookbind — row 1: binding cost
-    const bQty   = q.bindQty  || 1;
-    const bPages = q.bindPages || 0;
-    let descParts = ['<strong>Bookbinding — ' + (q.bindType || 'Bookbinding') + '</strong>'];
+    const bQty  = q.bindQty || 1;
+    const bType = q.bindType || 'Bookbinding';
+    const withLettering = q.withLettering === 'Yes' ? ' (With Lettering)' : q.withLettering === 'No' ? ' (Without Lettering)' : '';
+    let descParts = ['<strong>Bookbinding — ' + bType + withLettering + '</strong>'];
     descParts.push('Quantity: ' + bQty + ' book(s)');
-    if (bPages)       descParts.push('Pages: ' + bPages);
-    if (q.paperSize)  descParts.push('Paper Size: ' + q.paperSize);
-    if (q.printColor) descParts.push('Print Type: ' + q.printColor);
+    if (q.bindPages) descParts.push('Pages: ' + q.bindPages);
+    if (q.paperSize) descParts.push('Paper Size: ' + q.paperSize);
+    if (q.orientation) descParts.push('Orientation: ' + q.orientation);
+    if (q.bindingSide) descParts.push('Binding Side: ' + q.bindingSide);
+    if (q.coverColor) descParts.push('Cover Color: ' + q.coverColor);
+    if (q.printingNeeded === 'Yes') {
+      let printInfo = 'Printing Needed';
+      if (q.printedMaterialsReady) printInfo += ' — Materials Ready: ' + q.printedMaterialsReady;
+      if (q.fileFinal) printInfo += ', File Final: ' + q.fileFinal;
+      descParts.push(printInfo);
+    }
+    const bindingUnitPrice = parseFloat(q.bindingPrice) || 0;
+    const bindingTotal = bindingUnitPrice * bQty;
     rows += `<tr>
       <td class="center">${lineNum++}</td>
       <td style="line-height:1.75;">${descParts.join('<br>')}</td>
       <td class="center">${bQty}</td>
-      <td class="right">${php(parseFloat(q.bindCost) || 0)}</td>
-      <td class="right">${php(parseFloat(q.bindCost) || 0)}</td>
+      <td class="right">${php(bindingUnitPrice)}</td>
+      <td class="right">${php(bindingTotal)}</td>
     </tr>`;
-    // Print cost row
-    if ((parseFloat(q.printCost) || 0) > 0) {
+    const rushFee = parseFloat(q.rushFee) || 0;
+    if (rushFee > 0) {
       rows += `<tr>
         <td class="center">${lineNum++}</td>
-        <td>Print Cost — ${q.printColor || 'Printing'}${q.printPages ? ' (' + q.printPages + ' pages)' : ''}</td>
-        <td class="center">${bQty}</td>
-        <td class="right">${php(parseFloat(q.printCost) || 0)}</td>
-        <td class="right">${php(parseFloat(q.printCost) || 0)}</td>
-      </tr>`;
-    }
-    // Additional charges row
-    if ((parseFloat(q.additionalFees) || 0) > 0) {
-      rows += `<tr>
-        <td class="center">${lineNum++}</td>
-        <td>Additional Charges${q.additionalLabels ? ' — ' + q.additionalLabels : ''}</td>
+        <td>Rush Order Fee</td>
         <td class="center">1</td>
-        <td class="right">${php(parseFloat(q.additionalFees) || 0)}</td>
-        <td class="right">${php(parseFloat(q.additionalFees) || 0)}</td>
+        <td class="right">${php(rushFee)}</td>
+        <td class="right">${php(rushFee)}</td>
       </tr>`;
     }
   } else {
