@@ -865,7 +865,7 @@ render();
 
 function loadPricing() {
   if (typeof google === 'undefined' || !google.script) {
-    pricing = { ratePerSqft: 20, rushFee: 100, designFee: 250 };
+    pricing = { ratePerSqft: 20, rushFee: 150, designFee: 250 };
     const pill = document.getElementById('ratePillInline');
     if (pill) pill.textContent = '₱' + pricing.ratePerSqft.toFixed(2) + ' / sq.ft';
     render();
@@ -880,7 +880,7 @@ function loadPricing() {
       render();
     })
     .withFailureHandler(function() {
-      pricing = { ratePerSqft: 20, rushFee: 100, designFee: 250 };
+      pricing = { ratePerSqft: 20, rushFee: 150, designFee: 250 };
       render();
     })
     .getTarpPricing();

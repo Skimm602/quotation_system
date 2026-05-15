@@ -1086,25 +1086,30 @@ function saveTarpQuotation(data) {
 //  TARPAULIN PRICING
 // ══════════════════════════════════════════════════════════════════
 function getTarpPricing() {
+  const defaults = { ratePerSqft: 20, rushFee: 150, designFee: 250 };
   try {
-    const ss      = getMainSS_();
-    const dbSheet = ss.getSheetByName(SHEET_DATABASE);
-    if (!dbSheet) return { ratePerSqft: 20, rushFee: 100, designFee: 250 };
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Banner');
+    if (!sheet) return defaults;
 
-    const data = dbSheet.getDataRange().getValues();
-    let ratePerSqft = 20, rushFee = 100, designFee = 250;
+    const rows = sheet.getDataRange().getValues();
+    const result = Object.assign({}, defaults);
 
-    for (let i = 0; i < data.length; i++) {
-      const key = String(data[i][0]).trim();
-      const val = parseFloat(data[i][1]) || 0;
-      if (key === 'TarpRate')   ratePerSqft = val;
-      if (key === 'TarpRush')   rushFee     = val;
-      if (key === 'TarpDesign') designFee   = val;
+    for (let i = 1; i < rows.length; i++) {
+      const key = String(rows[i][0] || '').trim().toLowerCase();
+      const raw = rows[i][1];
+      const val = typeof raw === 'number'
+        ? raw
+        : parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
+      if (!key || val <= 0) continue;
+      if (key.includes('rush'))   result.rushFee     = val;
+      if (key.includes('design')) result.designFee   = val;
+      if (key.includes('rate') || key.includes('sqft') || key.includes('sq ft') || key.includes('per sq')) result.ratePerSqft = val;
     }
 
-    return { ratePerSqft, rushFee, designFee };
+    return result;
   } catch(e) {
-    return { ratePerSqft: 20, rushFee: 100, designFee: 250 };
+    return defaults;
   }
 }
 
@@ -1565,6 +1570,7 @@ function saveBookbindOrder(data) {
     'Total Amount', 'Downpayment', 'Balance',
     'Special Instructions', 'Sales Staff',
     'Status', 'Approved By', 'Payment Term', 'Tax Type', 'Tax Amount',
+    'Text Color', 'Font Style',
   ];
 
   // Add header row if sheet is empty or first row is data (no header)
@@ -1613,6 +1619,8 @@ function saveBookbindOrder(data) {
     '',                                        // AB col 28 - Payment Term
     data.taxType              || 'non-vat',    // AC col 29 - Tax Type
     parseFloat(data.taxAmount)    || 0,        // AD col 30 - Tax Amount
+    data.textColor            || '',           // AE col 31 - Text Color
+    data.fontStyle            || '',           // AF col 32 - Font Style
   ]);
 
   sheet.getRange(sheet.getLastRow(), 21, 1, 3).setNumberFormat('₱#,##0.00');

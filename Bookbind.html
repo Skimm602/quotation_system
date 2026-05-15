@@ -158,6 +158,8 @@ const d = {
   orientation: 'Portrait',
   bindingSide: 'Left',
   coverColor: '',
+  textColor: '',
+  fontStyle: '',
   // Step 2 — Printing & Options
   printedMaterialsReady: '',
   printingNeeded: '',
@@ -354,6 +356,14 @@ function renderBody() {
             <label class="field-label">Cover Color <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
             <input class="field-input" id="f_covcolor" value="${esc(d.coverColor||'')}" placeholder="e.g. Navy Blue, Black">
           </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Text Color <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <input class="field-input" id="f_textcolor" value="${esc(d.textColor||'')}" placeholder="e.g. Gold, White, Black">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Font Style <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <input class="field-input" id="f_fontstyle" value="${esc(d.fontStyle||'')}" placeholder="e.g. Times New Roman, Arial">
+          </div>
         </div>
         ${costPreview}
       </div>`;
@@ -414,6 +424,8 @@ function renderBody() {
         <tr><td>Orientation</td><td>${esc(d.orientation)}</td></tr>
         <tr><td>Binding Side</td><td>${esc(d.bindingSide)}</td></tr>
         ${d.coverColor?`<tr><td>Cover Color</td><td>${esc(d.coverColor)}</td></tr>`:''}
+        ${d.textColor?`<tr><td>Text Color</td><td>${esc(d.textColor)}</td></tr>`:''}
+        ${d.fontStyle?`<tr><td>Font Style</td><td>${esc(d.fontStyle)}</td></tr>`:''}
 
         <tr><td colspan="2" class="sec-label">PRINTING & OPTIONS</td></tr>
         <tr><td>Printed Materials Ready</td><td>${d.printedMaterialsReady||'—'}</td></tr>
@@ -470,6 +482,8 @@ function saveStep() {
     d.orientation= v('f_orient')||d.orientation;
     d.bindingSide= v('f_side')||d.bindingSide;
     d.coverColor = v('f_covcolor');
+    d.textColor  = v('f_textcolor');
+    d.fontStyle  = v('f_fontstyle');
   }
   if (step === 2) { d.notes=v('f_notes'); }
 }
@@ -519,7 +533,7 @@ function resetForm() {
   if (!confirm('Start a new quotation? Current data will be cleared.')) return;
   d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
   d.bindType=''; d.withLettering=''; d.quantity=1; d.pages='';
-  d.paperSize='A4'; d.orientation='Portrait'; d.bindingSide='Left'; d.coverColor='';
+  d.paperSize='A4'; d.orientation='Portrait'; d.bindingSide='Left'; d.coverColor=''; d.textColor=''; d.fontStyle='';
   d.printedMaterialsReady=''; d.printingNeeded=''; d.fileFinal=''; d.rushOrder='';
   d.notes=''; d.taxType='non-vat';
   step=0; render();
@@ -541,6 +555,8 @@ function saveToSheet() {
     orientation:           d.orientation,
     bindingSide:           d.bindingSide,
     coverColor:            d.coverColor,
+    textColor:             d.textColor,
+    fontStyle:             d.fontStyle,
     printedMaterialsReady: d.printedMaterialsReady,
     printingNeeded:        d.printingNeeded,
     fileFinal:             d.fileFinal,
