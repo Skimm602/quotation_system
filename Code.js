@@ -1086,25 +1086,26 @@ function saveTarpQuotation(data) {
 //  TARPAULIN PRICING
 // ══════════════════════════════════════════════════════════════════
 function getTarpPricing() {
-  const defaults = { ratePerSqft: 20, rushFee: 150, designFee: 250 };
+  const defaults = { ratePerSqft: 50, rushFee: 150, designFee: 250 };
   try {
     const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
     const sheet = ss.getSheetByName('Banner');
     if (!sheet) return defaults;
 
+    // Sheet layout: col A = category ("Banner"), col B = label, col C = price
     const rows = sheet.getDataRange().getValues();
     const result = Object.assign({}, defaults);
 
-    for (let i = 1; i < rows.length; i++) {
-      const key = String(rows[i][0] || '').trim().toLowerCase();
-      const raw = rows[i][1];
+    for (let i = 0; i < rows.length; i++) {
+      const key = String(rows[i][1] || '').trim().toLowerCase();
+      const raw = rows[i][2];
       const val = typeof raw === 'number'
         ? raw
         : parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
       if (!key || val <= 0) continue;
       if (key.includes('rush'))   result.rushFee     = val;
       if (key.includes('design')) result.designFee   = val;
-      if (key.includes('rate') || key.includes('sqft') || key.includes('sq ft') || key.includes('per sq')) result.ratePerSqft = val;
+      if (key.includes('rate') || key.includes('sqft') || key.includes('sq ft') || key.includes('per sq') || key.includes('price per')) result.ratePerSqft = val;
     }
 
     return result;
