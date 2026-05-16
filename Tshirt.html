@@ -179,6 +179,7 @@ const d = {
   garmentType: '',       // 'T-Shirt' / 'Polo' / 'Long Sleeves' (only for Full Sublimation)
   shirtColor: '',
   sizes: {},           // { 'Small': 5, 'Medium': 10 }
+  othersLabel: '',     // custom size name for "Others" card
   sizeBreakdown: '',   // compiled from sizes on saveStep
   quantity: 1,
   rushOrder: '',
@@ -210,7 +211,7 @@ function unitPrice() {
   if (d.printType === 'Full Sublimation') return fullSubUnitPrice();
   return printPriceForLogo() + shirtPriceForChoice();
 }
-function baseAmt()     { return unitPrice() * (parseInt(d.quantity)||1); }
+function baseAmt()     { return unitPrice() * (totalQty() || 1); }
 function rushFeeAmt()  { return d.rushOrder === 'Yes' ? (PRICING.rushFee || 150) : 0; }
 function designFeeAmt(){ return d.designService === 'Yes' ? (PRICING.designFee || 250) : 0; }
 
@@ -242,10 +243,6 @@ function setPrintType(pt) {
   d.hasOwnShirt = '';
   d.shirtChoice = '';
   d.garmentType = '';
-  if (pt === 'Full Sublimation') {
-    const minQ = PRICING.fullSubMinQty || 15;
-    if ((parseInt(d.quantity)||1) < minQ) d.quantity = minQ;
-  }
   renderBody();
 }
 
@@ -256,13 +253,25 @@ const SIZE_ABBR = { 'Extra Small': 'XS', 'Small': 'S', 'Medium': 'M', 'Large': '
 function compileSizeBreakdown() {
   return SIZE_LIST
     .filter(function(k) { return (d.sizes[k] || 0) > 0; })
-    .map(function(k) { return SIZE_ABBR[k] + ':' + d.sizes[k]; })
+    .map(function(k) {
+      var lbl = k === 'Others' ? (d.othersLabel.trim() || 'Other') : SIZE_ABBR[k];
+      return lbl + ':' + d.sizes[k];
+    })
     .join(', ');
 }
 
+function totalQty() {
+  var vals = Object.values(d.sizes);
+  return vals.length ? vals.reduce(function(a, b) { return a + b; }, 0) : 0;
+}
+
 function toggleSize(name) {
-  if ((d.sizes[name] || 0) > 0) { delete d.sizes[name]; }
-  else { d.sizes[name] = 1; }
+  if ((d.sizes[name] || 0) > 0) {
+    delete d.sizes[name];
+    if (name === 'Others') d.othersLabel = '';
+  } else {
+    d.sizes[name] = 1;
+  }
   renderBody();
 }
 
@@ -271,18 +280,28 @@ function setSizeQty(name, val) {
   if (n <= 0) delete d.sizes[name]; else d.sizes[name] = n;
 }
 
+function setSizeOthersLabel(val) {
+  d.othersLabel = val;
+}
+
 function sizePicker() {
   return SIZE_LIST.map(function(s) {
     const abbr = SIZE_ABBR[s];
     const qty  = d.sizes[s] || 0;
     const sel  = qty > 0;
-    const qtyInput = sel
-      ? '<input type="number" min="1" value="' + qty + '" onclick="event.stopPropagation();" oninput="setSizeQty(\'' + s + '\',this.value);" style="width:100%;margin-top:8px;border:1px solid #FFCCCC;border-radius:2px;text-align:center;font-size:15px;font-weight:700;color:#E8151B;padding:4px 2px;background:white;font-family:\'DM Sans\',sans-serif;" placeholder="qty">'
-      : '';
+    var inputs = '';
+    if (sel) {
+      if (s === 'Others') {
+        inputs = '<input type="text" value="' + esc(d.othersLabel || '') + '" onclick="event.stopPropagation();" oninput="setSizeOthersLabel(this.value);" placeholder="size name" style="width:100%;margin-top:8px;border:1px solid #FFCCCC;border-radius:2px;text-align:center;font-size:12px;font-weight:600;color:#E8151B;padding:4px 2px;background:white;font-family:\'DM Sans\',sans-serif;">'
+               + '<input type="number" min="1" value="' + qty + '" onclick="event.stopPropagation();" oninput="setSizeQty(\'' + s + '\',this.value);" placeholder="qty" style="width:100%;margin-top:4px;border:1px solid #FFCCCC;border-radius:2px;text-align:center;font-size:15px;font-weight:700;color:#E8151B;padding:4px 2px;background:white;font-family:\'DM Sans\',sans-serif;">';
+      } else {
+        inputs = '<input type="number" min="1" value="' + qty + '" onclick="event.stopPropagation();" oninput="setSizeQty(\'' + s + '\',this.value);" placeholder="qty" style="width:100%;margin-top:8px;border:1px solid #FFCCCC;border-radius:2px;text-align:center;font-size:15px;font-weight:700;color:#E8151B;padding:4px 2px;background:white;font-family:\'DM Sans\',sans-serif;">';
+      }
+    }
     return '<div onclick="toggleSize(\'' + s + '\')" style="border:1px solid ' + (sel ? '#E8151B' : '#E0E0E0') + ';border-radius:3px;padding:10px 8px;cursor:pointer;text-align:center;background:' + (sel ? '#FFF0F0' : '#FAFAFA') + ';transition:all .15s;user-select:none;">'
       + '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:22px;letter-spacing:0.05em;color:' + (sel ? '#E8151B' : '#0A0A0A') + ';line-height:1;">' + abbr + '</div>'
       + '<div style="font-size:10px;color:#888;margin-top:2px;">' + s + '</div>'
-      + qtyInput
+      + inputs
       + '</div>';
   }).join('');
 }
@@ -445,7 +464,7 @@ function renderBody() {
 
     // Cost preview
     const up = unitPrice();
-    const qty = parseInt(d.quantity)||1;
+    const qty = totalQty() || 1;
     const canPreview = d.printType && (
       isFullSub ? d.garmentType
                 : (d.logoSize && (d.hasOwnShirt==='Yes' || (d.hasOwnShirt==='No' && d.shirtChoice)))
@@ -467,15 +486,9 @@ function renderBody() {
         ${shirtSourceHtml}
         ${fullSubHtml}
         ${d.printType ? `
-          <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
-            <div class="flex flex-col gap-1">
-              <label class="field-label">Shirt Color <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
-              <input class="field-input" id="f_color" value="${esc(d.shirtColor||'')}" placeholder="e.g. Black, White, Red" oninput="d.shirtColor=this.value;">
-            </div>
-            <div class="flex flex-col gap-1">
-              <label class="field-label">Quantity ${isFullSub?`<span style="color:#E8151B;font-weight:400;text-transform:none;letter-spacing:0;">(min ${PRICING.fullSubMinQty||15})</span>`:''}</label>
-              <input class="field-input" id="f_qty" type="number" min="${isFullSub?(PRICING.fullSubMinQty||15):1}" value="${d.quantity||1}" placeholder="1" oninput="d.quantity=parseInt(this.value)||1;renderBody();">
-            </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Shirt Color <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <input class="field-input" id="f_color" value="${esc(d.shirtColor||'')}" placeholder="e.g. Black, White, Red" oninput="d.shirtColor=this.value;">
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Size Breakdown <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional — tap to select)</span></label>
@@ -507,7 +520,7 @@ function renderBody() {
 
   // ── STEP 2: QUOTATION SUMMARY ─────────────────────────────────────
   else if (step === 2) {
-    const qty = parseInt(d.quantity)||1;
+    const qty = totalQty() || 1;
     const up  = unitPrice();
     const rush = rushFeeAmt();
     const desf = designFeeAmt();
@@ -585,10 +598,10 @@ function formatPhone(input) {
 function saveStep() {
   if (step === 0) { d.clientName=v('f_name'); d.contact=v('f_contact'); d.email=v('f_email'); d.dateNeeded=v('f_dateneeded'); }
   if (step === 1) {
-    if (document.getElementById('f_color'))  d.shirtColor    = v('f_color');
+    if (document.getElementById('f_color'))  d.shirtColor = v('f_color');
     d.sizeBreakdown = compileSizeBreakdown();
-    if (document.getElementById('f_qty'))    d.quantity      = parseInt(v('f_qty'))||1;
-    if (document.getElementById('f_notes'))  d.notes         = v('f_notes');
+    d.quantity      = totalQty() || 1;
+    if (document.getElementById('f_notes'))  d.notes      = v('f_notes');
   }
 }
 
