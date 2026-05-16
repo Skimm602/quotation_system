@@ -1539,6 +1539,12 @@ function getTshirtPricing() {
       if (typeof raw === 'number') return raw;
       return parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
     }
+    // Normalize label to Title Case so "Logo only" and "Logo Only" become one canonical key
+    function canon(s) {
+      return String(s || '').trim().replace(/\s+/g, ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, c => c.toUpperCase());
+    }
 
     // Step 1: find category header columns by scanning every row for the labels
     let subCol = -1, dtfCol = -1, fullSubCol = -1, headerRowIdx = -1;
@@ -1551,51 +1557,54 @@ function getTshirtPricing() {
       }
     }
 
-    // Step 2: read items below the header row (label = col, price = col+1)
-    if (headerRowIdx >= 0) {
-      for (let r = headerRowIdx + 1; r < rows.length; r++) {
-        const row = rows[r];
-
-        // Stop reading section data once we hit blank rows or section dividers
-        if (subCol >= 0) {
-          const label = String(row[subCol] || '').trim();
-          const price = parsePrice(row[subCol + 1]);
-          if (label && price > 0 && !/^if /i.test(label)) result.sublimation[label] = price;
-        }
-        if (dtfCol >= 0) {
-          const label = String(row[dtfCol] || '').trim();
-          const price = parsePrice(row[dtfCol + 1]);
-          if (label && price > 0 && !/^if /i.test(label)) result.dtf[label] = price;
-        }
-        if (fullSubCol >= 0) {
-          const label = String(row[fullSubCol] || '').trim();
-          const price = parsePrice(row[fullSubCol + 1]);
-          if (label && price > 0 && !/^if /i.test(label)) result.fullSub[label] = price;
-        }
-      }
-    }
-
-    // Step 3: find the "If with shirt, add" section — its prices apply to Sublimation/DTF
+    // Step 2: find "If with shirt, add" row FIRST so we can stop category reads before it
     let shirtSectionStart = -1;
     for (let r = 0; r < rows.length; r++) {
       for (let c = 0; c < rows[r].length; c++) {
         const v = String(rows[r][c] || '').trim().toLowerCase();
         if (v.indexOf('if with shirt') === 0 || v === 'if with shirt, add') {
-          shirtSectionStart = r + 1;
+          shirtSectionStart = r;  // the heading row itself; data starts at +1
           break;
         }
       }
       if (shirtSectionStart >= 0) break;
     }
+    // Category sections are read from header+1 up to (but not including) the shirt section
+    const categoryEnd = shirtSectionStart >= 0 ? shirtSectionStart : rows.length;
+
+    // Step 3: read items below the header row, BUT only up to categoryEnd
+    if (headerRowIdx >= 0) {
+      for (let r = headerRowIdx + 1; r < categoryEnd; r++) {
+        const row = rows[r];
+
+        if (subCol >= 0) {
+          const label = canon(row[subCol]);
+          const price = parsePrice(row[subCol + 1]);
+          if (label && price > 0) result.sublimation[label] = price;
+        }
+        if (dtfCol >= 0) {
+          const label = canon(row[dtfCol]);
+          const price = parsePrice(row[dtfCol + 1]);
+          if (label && price > 0) result.dtf[label] = price;
+        }
+        if (fullSubCol >= 0) {
+          const label = canon(row[fullSubCol]);
+          const price = parsePrice(row[fullSubCol + 1]);
+          if (label && price > 0) result.fullSub[label] = price;
+        }
+      }
+    }
+
+    // Step 4: read the shirt-add section (rows after "If with shirt, add")
     if (shirtSectionStart >= 0) {
-      for (let r = shirtSectionStart; r < rows.length; r++) {
-        const label = String(rows[r][0] || '').trim();
+      for (let r = shirtSectionStart + 1; r < rows.length; r++) {
+        const label = canon(rows[r][0]);
         const price = parsePrice(rows[r][1]);
         if (label && price > 0) result.shirts[label] = price;
       }
     }
 
-    // Step 4: scan everywhere for optional Rush / Design / Min Qty rows
+    // Step 5: scan everywhere for optional Rush / Design / Min Qty rows
     for (let r = 0; r < rows.length; r++) {
       for (let c = 0; c < rows[r].length - 1; c++) {
         const v = String(rows[r][c] || '').trim().toLowerCase();

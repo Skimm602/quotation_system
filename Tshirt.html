@@ -152,11 +152,12 @@ function loadPricing() {
 
 function logoSizeOptions() {
   // Use whichever section has data; merge keys from both Sublimation & DTF
+  // Keys come pre-canonicalized from the server (Title Case)
   const keys = new Set();
   Object.keys(PRICING.sublimation || {}).forEach(k => keys.add(k));
   Object.keys(PRICING.dtf         || {}).forEach(k => keys.add(k));
-  // Preferred order — Logo only, A4 Size, A3 Size
-  const order = ['Logo only', 'A4 Size', 'A3 Size'];
+  // Preferred display order
+  const order = ['Logo Only', 'A4 Size', 'A3 Size'];
   const ordered = order.filter(k => keys.has(k));
   Array.from(keys).forEach(k => { if (ordered.indexOf(k) === -1) ordered.push(k); });
   return ordered;
