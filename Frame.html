@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frame Quotation</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: '#E8151B', 'brand-dark': '#B00E12',
+        ink: '#0A0A0A', chalk: '#FFFFFF',
+      },
+      fontFamily: { display: ['Bebas Neue', 'sans-serif'], body: ['DM Sans', 'sans-serif'] },
+    }
+  }
+}
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #FFFFFF; color: #0A0A0A; min-height: 100vh; }
+.topnav { background: #FFFFFF; border-bottom: 1px solid #E5E5E5; position: sticky; top: 0; z-index: 100; }
+.logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 0.05em; color: #0A0A0A; }
+.step-circle { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid #E0E0E0; color: #999; transition: all 0.25s; background: #F5F5F5; cursor: pointer; flex-shrink: 0; }
+.step-circle.done { background: #E8151B; border-color: #E8151B; color: white; }
+.step-circle.active { background: white; border-color: white; color: #0A0A0A; box-shadow: 0 0 0 4px rgba(232,21,27,0.3); }
+.step-line { height: 1px; flex: 1; background: #E0E0E0; transition: background 0.25s; }
+.step-line.done { background: #E8151B; }
+.card { background: #FFFFFF; border: 1px solid #E5E5E5; border-radius: 4px; overflow: hidden; animation: fadeUp 0.3s ease both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.card-header-bar { background: #E8151B; height: 4px; width: 100%; }
+.field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #666; display: block; margin-bottom: 6px; }
+.field-input { width: 100%; background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 3px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0A; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.field-input:focus { border-color: #E8151B; box-shadow: 0 0 0 2px rgba(232,21,27,0.2); }
+.field-input::placeholder { color: #BBB; }
+textarea.field-input { min-height: 90px; resize: vertical; }
+.opt-card { border: 1px solid #E0E0E0; border-radius: 3px; padding: 14px 16px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 12px; }
+.opt-card:hover { border-color: #E8151B; background: #FFF8F8; }
+.opt-card.selected { border-color: #E8151B; background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
+.opt-card input[type=radio] { accent-color: #E8151B; flex-shrink: 0; }
+.q-table { width: 100%; border-collapse: collapse; }
+.q-table tr { border-bottom: 1px solid #F0F0F0; }
+.q-table tr:last-child { border: none; }
+.q-table td { padding: 10px 0; font-size: 14px; color: #666; }
+.q-table td:last-child { text-align: right; color: #0A0A0A; font-weight: 500; }
+.q-table .sec-label { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #BBB; font-weight: 700; padding-top: 18px; }
+.q-table .total-row td { font-size: 20px; font-weight: 700; color: #E8151B; padding-top: 16px; border-top: 2px solid #E8151B; }
+.q-table .sub-row td { font-size: 13px; color: #777; padding-top: 6px; }
+.btn-ghost { padding: 10px 22px; border: 1px solid #E0E0E0; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: #888; background: transparent; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+.btn-ghost:hover { border-color: #999; color: #333; }
+.btn-primary { padding: 10px 26px; background: #E8151B; border: none; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: white; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.04em; text-transform: uppercase; }
+.btn-primary:hover { background: #B00E12; }
+.btn-save { padding: 11px 28px; background: white; border: 1px solid #333; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; color: #0A0A0A; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+.btn-save:hover { background: #E8151B; border-color: #E8151B; color: white; }
+.btn-save.loading { opacity: 0.6; pointer-events: none; }
+.toast { position: fixed; bottom: 28px; right: 28px; background: #0A0A0A; border: 1px solid #333; color: white; padding: 14px 20px; border-radius: 3px; font-size: 13px; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 10px; transform: translateY(80px); opacity: 0; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 999; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: #0A2A1A; border-color: #1A6A3A; }
+.toast.error { background: #1A0000; border-color: #E8151B; }
+.section-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.05em; color: #0A0A0A; line-height: 1; }
+.section-title span { color: #E8151B; }
+.price-badge { display: inline-flex; align-items: center; gap: 5px; background: #FFF0F0; color: #E8151B; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 2px; border: 1px solid #FFCCCC; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topnav">
+  <div class="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-7 h-7 bg-brand flex items-center justify-center rounded-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M4 4h16v16H4V4zm2 2v12h12V6H6zm2 2h8v8H8V8z"/></svg>
+      </div>
+      <span class="logo-text">Frame</span><span style="font-size:14px;color:#999;margin-left:4px;letter-spacing:0.05em;"> QUOTATION</span>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn-ghost text-xs" onclick="resetForm()">NEW QUOTE</button>
+      <button class="btn-ghost text-xs" onclick="goToDashboard()" style="border-color:#0A0A0A;color:#0A0A0A;">← DASHBOARD</button>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="max-w-4xl mx-auto px-6 py-10 pb-20">
+  <div class="mb-8">
+    <div class="section-title">NEW FRAME <span>QUOTATION</span></div>
+    <p class="text-sm mt-1 tracking-wide" style="color:#999;">Complete each step to generate a frame quotation.</p>
+  </div>
+  <div id="stepper-wrap" class="mb-6 bg-gray-50 border border-gray-200 rounded-sm p-5 flex items-center gap-2 overflow-x-auto"></div>
+  <div class="card" id="formCard">
+    <div class="card-header-bar"></div>
+    <div class="px-7 py-5 border-b border-gray-100 flex items-center gap-4" id="cardHeader"></div>
+    <div class="px-7 py-7" id="cardBody"></div>
+    <div class="px-7 py-5 border-t border-gray-100 flex justify-between items-center bg-gray-50" id="cardFooter"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<input type="hidden" id="server-token" value="<?= injectedToken ?>">
+<input type="hidden" id="app-url"      value="<?= appUrl ?>">
+<input type="hidden" id="server-user"  value="<?= userName ?>">
+
+<script>
+const SERVER_TOKEN = (document.getElementById('server-token')||{}).value || '';
+const APP_URL      = (document.getElementById('app-url')||{}).value || '';
+
+function goToDashboard() {
+  if (SERVER_TOKEN && APP_URL) {
+    window.top.location.href = APP_URL + '?page=dashboard&token=' + encodeURIComponent(SERVER_TOKEN);
+  }
+}
+
+// ─── LIVE PRICING ─────────────────────────────────────────────────
+let PRICES = { withMatting: 600, withoutMatting: 550 };
+let pricesLoaded = false;
+
+function loadPricing() {
+  google.script.run
+    .withSuccessHandler(function(p) {
+      if (p) {
+        if (p.withMatting    > 0) PRICES.withMatting    = p.withMatting;
+        if (p.withoutMatting > 0) PRICES.withoutMatting = p.withoutMatting;
+      }
+      pricesLoaded = true;
+      renderBody();
+    })
+    .withFailureHandler(function() { pricesLoaded = true; })
+    .getFramePricing();
+}
+
+// ─── STATE ────────────────────────────────────────────────────────
+let step = 0;
+
+const d = {
+  // Step 0 — Client Info
+  clientName: '', contact: '', email: '', dateNeeded: '',
+  // Step 1 — Frame Dimensions
+  width: '', height: '', quantity: 1, matting: '',
+  // Step 2 — Notes & Summary
+  notes: '',
+  taxType: 'non-vat',
+};
+
+// ─── CALCULATIONS ─────────────────────────────────────────────────
+function ratePerSqft() {
+  if (d.matting === 'With Matting')    return PRICES.withMatting    || 600;
+  if (d.matting === 'Without Matting') return PRICES.withoutMatting || 550;
+  return 0;
+}
+function areaPerPc() { return (parseFloat(d.width)||0) * (parseFloat(d.height)||0); }
+function totalSqft() { return areaPerPc() * (parseInt(d.quantity)||1); }
+function baseAmt()   { return totalSqft() * ratePerSqft(); }
+
+const VAT = 0.12;
+function subtotal()   { return baseAmt(); }
+function taxAmt()     { const s=subtotal(); return d.taxType==='vat-exclusive'?s*VAT:d.taxType==='vat-inclusive'?s-s/(1+VAT):0; }
+function grandTotal() { return d.taxType==='vat-exclusive'?subtotal()*(1+VAT):subtotal(); }
+function dp()         { return grandTotal()*0.5; }
+function bal()        { return grandTotal()-dp(); }
+function php(n)       { return '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s)       { return (s||'').split('<').join('&lt;').split('>').join('&gt;'); }
+function v(id)        { return (document.getElementById(id)||{}).value||''; }
+
+function taxToggleHtml() {
+  const opts = [{key:'non-vat',label:'Non-VAT'},{key:'vat-inclusive',label:'VAT Incl. 12%'},{key:'vat-exclusive',label:'VAT Excl. 12%'}];
+  const tx = d.taxType||'non-vat';
+  const btns = opts.map(function(o){
+    const a=tx===o.key;
+    return '<button onclick="setTaxType(\''+o.key+'\')" style="padding:6px 14px;border:1px solid '+(a?'#E8151B':'#E0E0E0')+';border-radius:3px;font-size:12px;font-weight:'+(a?'700':'500')+';cursor:pointer;background:'+(a?'#E8151B':'#FAFAFA')+';color:'+(a?'#fff':'#888')+';transition:all .15s;">'+o.label+'</button>';
+  }).join('');
+  return '<tr><td colspan="2" style="padding:12px 0 6px;"><div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:8px;">TAX</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+btns+'</div></td></tr>';
+}
+function setTaxType(key) { d.taxType=key; renderBody(); }
+
+// ─── STEPS ────────────────────────────────────────────────────────
+const STEPS = [
+  { label: 'Client Info',   sub: 'Name, contact & pickup date' },
+  { label: 'Frame Specs',   sub: 'Dimensions, quantity & matting' },
+  { label: 'Quotation',     sub: 'Full breakdown & summary' },
+];
+
+function renderStepper() {
+  const el = document.getElementById('stepper-wrap');
+  el.innerHTML = '';
+  STEPS.forEach((s, i) => {
+    const state = i < step ? 'done' : i === step ? 'active' : '';
+    el.innerHTML += `
+      <div class="flex flex-col items-center gap-1 cursor-pointer min-w-fit" onclick="goTo(${i})">
+        <div class="step-circle ${state}">${i < step ? '✓' : i+1}</div>
+        <span style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${i===step?'#E8151B':i<step?'#999':'#BBB'};white-space:nowrap;">${s.label}</span>
+      </div>
+      ${i < STEPS.length-1 ? `<div class="step-line flex-1 ${i < step ? 'done' : ''}" style="margin-bottom:18px;"></div>` : ''}
+    `;
+  });
+}
+
+function renderHeader() {
+  const s = STEPS[step];
+  document.getElementById('cardHeader').innerHTML = `
+    <div style="width:42px;height:42px;background:#E8151B;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:white;">${step+1}</span>
+    </div>
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:#0A0A0A;line-height:1.1;">${s.label.toUpperCase()}</div>
+      <div style="font-size:12px;color:#555;margin-top:2px;">${s.sub}</div>
+    </div>`;
+}
+
+function renderBody() {
+  const el = document.getElementById('cardBody');
+
+  // ── STEP 0: CLIENT INFO ──────────────────────────────────────────
+  if (step === 0) {
+    el.innerHTML = `
+      <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
+        <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+          <label class="field-label">Full Name / Company</label>
+          <input class="field-input" id="f_name" value="${esc(d.clientName)}" placeholder="Juan dela Cruz">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Contact Number</label>
+          <input class="field-input" id="f_contact" value="${esc(d.contact)}" placeholder="09XX XXX XXXX" maxlength="13" oninput="formatPhone(this)" onkeypress="return event.charCode>=48&&event.charCode<=57">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Email Address <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+          <input class="field-input" id="f_email" value="${esc(d.email||'')}" placeholder="email@example.com" type="email">
+        </div>
+        <div class="flex flex-col gap-1" style="grid-column:1/-1;">
+          <label class="field-label">Target Pickup Date</label>
+          <input class="field-input" id="f_dateneeded" type="date" value="${esc(d.dateNeeded||'')}" min="${new Date().toISOString().split('T')[0]}">
+        </div>
+      </div>`;
+  }
+
+  // ── STEP 1: FRAME SPECS ──────────────────────────────────────────
+  else if (step === 1) {
+    const mattingOpts = [
+      { key: 'With Matting',    price: PRICES.withMatting    || 600, icon: '🖼️' },
+      { key: 'Without Matting', price: PRICES.withoutMatting || 550, icon: '🔲' },
+    ];
+    const mattingCards = mattingOpts.map(o => {
+      const sel = d.matting === o.key;
+      return `<label class="opt-card ${sel?'selected':''}" onclick="d.matting='${o.key}';renderBody();">
+        <input type="radio" name="matting" ${sel?'checked':''}>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:#0A0A0A;">${o.icon} ${o.key}</div>
+        </div>
+        <div class="price-badge">${php(o.price)} / sq ft</div>
+      </label>`;
+    }).join('');
+
+    const area = areaPerPc();
+    const totalSq = totalSqft();
+    const rate = ratePerSqft();
+    const costPreview = (d.matting && d.width && d.height) ? `
+      <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:14px 16px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Frame Cost</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;letter-spacing:0.05em;">${php(rate*totalSq)}</div>
+        <div style="font-size:11px;color:#999;margin-top:2px;">${totalSq.toFixed(2)} sq ft × ${php(rate)} / sq ft</div>
+      </div>` : '';
+
+    el.innerHTML = `
+      <div class="flex flex-col gap-5">
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Matting</label>
+          <div class="flex flex-col gap-2">${mattingCards}</div>
+        </div>
+        <div class="grid gap-5" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Width (ft)</label>
+            <input class="field-input" id="f_width" type="number" min="0" step="0.01" value="${d.width||''}" placeholder="e.g. 2" oninput="d.width=this.value;renderBody();">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Height (ft)</label>
+            <input class="field-input" id="f_height" type="number" min="0" step="0.01" value="${d.height||''}" placeholder="e.g. 3" oninput="d.height=this.value;renderBody();">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Quantity</label>
+            <input class="field-input" id="f_qty" type="number" min="1" value="${d.quantity||1}" placeholder="1" oninput="d.quantity=parseInt(this.value)||1;renderBody();">
+          </div>
+        </div>
+        ${d.width && d.height ? `<div style="font-size:12px;color:#888;">Area per frame: <strong>${area.toFixed(2)} sq ft</strong> · Total: <strong>${totalSq.toFixed(2)} sq ft</strong></div>` : ''}
+        ${costPreview}
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+          <textarea class="field-input" id="f_notes" placeholder="Frame color, mat color, delivery notes...">${esc(d.notes||'')}</textarea>
+        </div>
+      </div>`;
+  }
+
+  // ── STEP 2: QUOTATION SUMMARY ─────────────────────────────────────
+  else if (step === 2) {
+    const qty = parseInt(d.quantity)||1;
+    const w = parseFloat(d.width)||0;
+    const h = parseFloat(d.height)||0;
+    const area = areaPerPc();
+    const totalSq = totalSqft();
+    const rate = ratePerSqft();
+
+    el.innerHTML = `
+      <!-- Client Box -->
+      <div style="background:#FFFFFF;border:1px solid #E0E0E0;border-left:3px solid #E8151B;padding:16px 20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;">${esc(d.clientName)||'—'}</div>
+          <div style="font-size:12px;color:#555;margin-top:2px;">${esc(d.contact)||''}</div>
+          ${d.dateNeeded?`<div style="font-size:12px;color:#E8151B;margin-top:4px;font-weight:600;">📅 Pickup: ${new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>`:''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#444;font-weight:700;">Quote Date</div>
+          <div style="font-size:13px;color:#888;margin-top:2px;">${new Date().toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>
+        </div>
+      </div>
+
+      <table class="q-table">
+        <tr><td colspan="2" class="sec-label">FRAME SPECIFICATIONS</td></tr>
+        <tr><td>Matting</td><td>${esc(d.matting)||'—'}</td></tr>
+        <tr><td>Dimensions</td><td>${w} ft × ${h} ft</td></tr>
+        <tr><td>Quantity</td><td>${qty} frame(s)</td></tr>
+        <tr><td>Area / frame</td><td>${area.toFixed(2)} sq ft</td></tr>
+        <tr><td>Total Area</td><td>${totalSq.toFixed(2)} sq ft</td></tr>
+
+        <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
+        <tr><td>${totalSq.toFixed(2)} sq ft × ${php(rate)} / sq ft</td><td>${php(rate*totalSq)}</td></tr>
+
+        <tr><td colspan="2" style="height:8px;"></td></tr>
+        ${taxToggleHtml()}
+        ${taxAmt()>0?`<tr class="sub-row"><td>${d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)'}</td><td>${php(taxAmt())}</td></tr>`:''}
+        <tr class="total-row"><td>TOTAL AMOUNT</td><td>${php(grandTotal())}</td></tr>
+        <tr class="sub-row"><td>Downpayment (50%)</td><td>${php(dp())}</td></tr>
+        <tr class="sub-row"><td>Balance</td><td>${php(bal())}</td></tr>
+      </table>
+      ${d.notes?`<div style="margin-top:16px;background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;padding:12px 16px;font-size:13px;color:#555;"><strong>Notes:</strong> ${esc(d.notes)}</div>`:''}`;
+  }
+}
+
+function renderFooter() {
+  const el   = document.getElementById('cardFooter');
+  const back = step > 0 ? `<button class="btn-ghost" onclick="prev()">← BACK</button>` : `<span></span>`;
+  const next = step < STEPS.length - 1
+    ? `<div class="flex items-center gap-4">
+        <span style="font-size:11px;color:#444;letter-spacing:0.06em;text-transform:uppercase;">Step ${step+1} of ${STEPS.length}</span>
+        <button class="btn-primary" onclick="next()">CONTINUE →</button>
+      </div>`
+    : `<div class="flex items-center gap-3">
+        <button class="btn-ghost" onclick="window.print()">🖨 PRINT</button>
+        <button class="btn-save" id="saveBtn" onclick="saveToSheet()">💾 SAVE QUOTATION</button>
+      </div>`;
+  el.innerHTML = back + next;
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────
+function formatPhone(input) {
+  let digits = input.value.replace(/\D/g, '');
+  if (digits.length > 11) digits = digits.slice(0, 11);
+  let f = digits;
+  if (digits.length > 4 && digits.length <= 7) f = digits.slice(0,4)+' '+digits.slice(4);
+  else if (digits.length > 7) f = digits.slice(0,4)+' '+digits.slice(4,7)+' '+digits.slice(7);
+  input.value = f; d.contact = f;
+}
+
+function saveStep() {
+  if (step === 0) { d.clientName=v('f_name'); d.contact=v('f_contact'); d.email=v('f_email'); d.dateNeeded=v('f_dateneeded'); }
+  if (step === 1) {
+    d.width    = v('f_width');
+    d.height   = v('f_height');
+    d.quantity = parseInt(v('f_qty'))||1;
+    d.notes    = v('f_notes');
+  }
+}
+
+function next() {
+  saveStep();
+  if (step === 0) {
+    const fields = [
+      { id:'f_name',       val:d.clientName, label:'Full Name' },
+      { id:'f_contact',    val:d.contact,    label:'Contact Number' },
+      { id:'f_dateneeded', val:d.dateNeeded, label:'Target Pickup Date' },
+    ];
+    fields.forEach(f => { const el=document.getElementById(f.id); if(el) el.style.borderColor=''; });
+    const empty = fields.filter(f => !f.val.trim());
+    if (empty.length) {
+      empty.forEach(f => { const el=document.getElementById(f.id); if(el) el.style.borderColor='#E8151B'; });
+      showToast('⚠ Please fill in: ' + empty.map(f=>f.label).join(', '), 'error');
+      return;
+    }
+    const digits = d.contact.replace(/\D/g,'');
+    if (digits.length !== 11) {
+      document.getElementById('f_contact').style.borderColor='#E8151B';
+      showToast('⚠ Contact number must be 11 digits.', 'error');
+      return;
+    }
+  }
+  if (step === 1) {
+    if (!d.matting) { showToast('⚠ Please select a matting option.', 'error'); return; }
+    if (!parseFloat(d.width) || !parseFloat(d.height)) {
+      showToast('⚠ Please enter both width and height.', 'error');
+      return;
+    }
+  }
+  if (step < STEPS.length - 1) { step++; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+}
+
+function prev() { saveStep(); if (step > 0) { step--; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); } }
+function goTo(i) { if (i < step) { saveStep(); step = i; render(); } }
+
+function render() {
+  renderStepper(); renderHeader(); renderBody(); renderFooter();
+  const fc = document.getElementById('formCard');
+  fc.style.animation = 'none'; requestAnimationFrame(() => { fc.style.animation = ''; });
+}
+
+function resetForm() {
+  if (!confirm('Start a new quotation? Current data will be cleared.')) return;
+  d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
+  d.width=''; d.height=''; d.quantity=1; d.matting='';
+  d.notes=''; d.taxType='non-vat';
+  step=0; render();
+}
+
+function saveToSheet() {
+  const btn = document.getElementById('saveBtn');
+  btn.classList.add('loading'); btn.textContent = '⏳ SAVING...';
+  const payload = {
+    clientName:   d.clientName,
+    contact:      d.contact,
+    email:        d.email,
+    dateNeeded:   d.dateNeeded,
+    width:        parseFloat(d.width)||0,
+    height:       parseFloat(d.height)||0,
+    quantity:     parseInt(d.quantity)||1,
+    matting:      d.matting,
+    ratePerSqft:  ratePerSqft(),
+    totalAmount:  grandTotal(),
+    notes:        d.notes,
+    salesStaff:   (document.getElementById('server-user')||{}).value||'',
+    taxType:      d.taxType||'non-vat',
+    taxAmount:    taxAmt(),
+    token:        SERVER_TOKEN,
+  };
+  google.script.run
+    .withSuccessHandler(function(qn) {
+      showToast('✓ Saved — ' + qn, 'success');
+      btn.classList.remove('loading'); btn.textContent = '✓ SAVED';
+      btn.style.background='#0A2A1A'; btn.style.borderColor='#1A6A3A'; btn.style.color='#4AE89A';
+    })
+    .withFailureHandler(function(err) {
+      showToast('⚠ ' + err.message, 'error');
+      btn.classList.remove('loading'); btn.textContent = '💾 SAVE QUOTATION';
+    })
+    .saveFrameOrder(payload);
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => { t.className = 'toast ' + type; }, 3500);
+}
+
+render();
+loadPricing();
+</script>
+</body>
+</html>

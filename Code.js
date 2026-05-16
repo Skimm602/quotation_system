@@ -10,6 +10,7 @@ const SHEET_DATABASE          = 'Database';
 const TARP_SHEET              = 'Tarp Quotations';   // ✅ FIX #1 — constant was missing
 const RECEIPT_SHEET           = 'Receipt Quotations';
 const BOOKBIND_SHEET          = 'Bookbind Quotations';
+const FRAME_SHEET             = 'Frame Quotations';
 
 function setupMainSSId() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -62,6 +63,9 @@ function doGet(e) {
   }
   if (page === 'bookbind') {
     return serveWithToken_('Bookbind', 'Quotation System — Bookbinding', token, appUrl);
+  }
+  if (page === 'frame') {
+    return serveWithToken_('Frame', 'Quotation System — Frame', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -516,8 +520,57 @@ function getDashboardData(token) {
       });
     }
 
+    // ── FRAME QUOTES ────────────────────────────────────────────
+    let frameQuotes = [];
+    const frameSheet = ss.getSheetByName(FRAME_SHEET);
+    if (frameSheet) {
+      const fdata = frameSheet.getDataRange().getValues();
+      // If first row is data (no header), start from 0; otherwise skip header row
+      const fStart = fdata.length > 0 && String(fdata[0][0]).startsWith('FQ-') ? 0 : 1;
+      frameQuotes = fdata.slice(fStart).filter(r => r[0] && String(r[0]).startsWith('FQ-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[21] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          width:            row[6]  || 0,
+          height:           row[7]  || 0,
+          quantity:         row[8]  || 1,
+          sqft:             row[9]  || 0,
+          totalSqft:        row[10] || 0,
+          matting:          String(row[11] || ''),
+          rate:             row[12] || 0,
+          baseAmount:       row[13] || 0,
+          totalAmount:      row[14] || 0,
+          downpayment:      row[15] || 0,
+          balance:          row[16] || 0,
+          notes:            String(row[17] || ''),
+          salesStaff:       String(row[18] || ''),
+          status:           String(row[19] || 'Pending'),
+          approvedBy:       String(row[20] || ''),
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          taxType:          String(row[22] || 'non-vat'),
+          taxAmount:        parseFloat(row[23]) || 0,
+          quoteType:        'frame',
+          signageType:      'Frame — ' + String(row[11] || ''),
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: '', addonDesignFee: 0,
+          addonRush: '', addonRushFee: 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1112,6 +1165,118 @@ function getTarpPricing() {
   } catch(e) {
     return defaults;
   }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  FRAME PRICING  (live from external spreadsheet, Frame sheet)
+// ══════════════════════════════════════════════════════════════════
+function getFramePricing() {
+  const defaults = { withMatting: 600, withoutMatting: 550 };
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Frame');
+    if (!sheet) return defaults;
+
+    // Sheet layout: col A = category ("Frame"), col B = label, col C = price (per sq ft)
+    const rows = sheet.getDataRange().getValues();
+    const result = Object.assign({}, defaults);
+
+    for (let i = 0; i < rows.length; i++) {
+      const key = String(rows[i][1] || '').trim().toLowerCase();
+      const raw = rows[i][2];
+      const val = typeof raw === 'number'
+        ? raw
+        : parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
+      if (!key || val <= 0) continue;
+      // "without" must be checked first because "with matting" is a substring of "without matting"
+      if (key.includes('without') || key.includes('no matting') || key.includes('w/o')) {
+        result.withoutMatting = val;
+      } else if (key.includes('with') || key.includes('matting')) {
+        result.withMatting = val;
+      }
+    }
+
+    return result;
+  } catch(e) {
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE FRAME ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveFrameOrder(data) {
+  const ss  = getMainSS_();
+  let sheet = ss.getSheetByName(FRAME_SHEET);
+
+  if (!sheet) sheet = ss.insertSheet(FRAME_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email',
+    'Date Needed',
+    'Width (ft)', 'Height (ft)', 'Quantity', 'Area/pc (sqft)', 'Total Sqft',
+    'Matting', 'Rate/sqft',
+    'Base Amount', 'Total Amount', 'Downpayment', 'Balance',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Payment Term', 'Tax Type', 'Tax Amount',
+  ];
+
+  // Auto-insert header row if missing
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1,1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('FQ-')) {
+    if (firstCell.startsWith('FQ-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'FQ-' + String(lastRow).padStart(4, '0');
+
+  const session2  = data.token ? getSessionData_(data.token) : null;
+  const staffName = session2 ? (session2.username || session2.name) : (data.salesStaff || '');
+
+  const w        = parseFloat(data.width)  || 0;
+  const h        = parseFloat(data.height) || 0;
+  const qty      = parseInt(data.quantity) || 1;
+  const area     = w * h;
+  const totalSq  = area * qty;
+  const rate     = parseFloat(data.ratePerSqft) || 0;
+  const baseAmt  = totalSq * rate;
+  const totalAmt = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : baseAmt;
+  const dp       = totalAmt * 0.5;
+  const bal      = totalAmt - dp;
+
+  sheet.appendRow([
+    quoteNum,                                  // A  col 1  - Quote #
+    new Date(),                                // B  col 2  - Date
+    data.clientName       || '',               // C  col 3  - Client Name
+    data.contact          || '',               // D  col 4  - Contact
+    data.email            || '',               // E  col 5  - Email
+    data.dateNeeded       || '',               // F  col 6  - Date Needed
+    w,                                         // G  col 7  - Width
+    h,                                         // H  col 8  - Height
+    qty,                                       // I  col 9  - Quantity
+    parseFloat(area.toFixed(2)),               // J  col 10 - Area/pc
+    parseFloat(totalSq.toFixed(2)),            // K  col 11 - Total Sqft
+    data.matting          || '',               // L  col 12 - Matting (With/Without)
+    rate,                                      // M  col 13 - Rate/sqft
+    parseFloat(baseAmt.toFixed(2)),            // N  col 14 - Base Amount
+    parseFloat(totalAmt.toFixed(2)),           // O  col 15 - Total Amount
+    parseFloat(dp.toFixed(2)),                 // P  col 16 - Downpayment
+    parseFloat(bal.toFixed(2)),                // Q  col 17 - Balance
+    data.notes            || '',               // R  col 18 - Special Instructions
+    staffName,                                 // S  col 19 - Sales Staff
+    'Pending',                                 // T  col 20 - Status
+    '',                                        // U  col 21 - Approved By
+    '',                                        // V  col 22 - Payment Term
+    data.taxType          || 'non-vat',        // W  col 23 - Tax Type
+    parseFloat(data.taxAmount) || 0,           // X  col 24 - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 14, 1, 4).setNumberFormat('₱#,##0.00');
+  return quoteNum;
 }
 
 // ══════════════════════════════════════════════════════════════════
