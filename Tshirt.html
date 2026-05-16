@@ -120,10 +120,13 @@ function goToDashboard() {
 }
 
 // ─── LIVE PRICING ─────────────────────────────────────────────────
+// PRICING shape mirrors the T-shirt sheet:
+//   sublimation: { 'Logo only': 40, 'A4 Size': 100, 'A3 Size': 160 }
+//   dtf:         { 'Logo only': 50, 'A4 Size': 150, 'A3 Size': 250 }
+//   fullSub:     { 'T-shirt': 650, 'Polo Shirt': 750, 'Long Sleeves': 850 }
+//   shirts:      { 'Plain Drift White': 105, 'Plain Drift Colored': 120, 'Plain Cotton Polo Shirt': 190 }
 let PRICING = {
-  print:   { sublimationA4: 0, sublimationA3: 0, dtfA4: 0, dtfA3: 0 },
-  shirt:   { dryfitWhite: 0, dryfitColored: 0, cotton: 0, polo: 0 },
-  fullSub: { tshirt: 0, polo: 0, longSleeves: 0 },
+  sublimation: {}, dtf: {}, fullSub: {}, shirts: {},
   rushFee: 150, designFee: 250, fullSubMinQty: 15,
 };
 let pricesLoaded = false;
@@ -132,9 +135,10 @@ function loadPricing() {
   google.script.run
     .withSuccessHandler(function(p) {
       if (p) {
-        if (p.print)   Object.assign(PRICING.print, p.print);
-        if (p.shirt)   Object.assign(PRICING.shirt, p.shirt);
-        if (p.fullSub) Object.assign(PRICING.fullSub, p.fullSub);
+        if (p.sublimation) PRICING.sublimation = p.sublimation;
+        if (p.dtf)         PRICING.dtf         = p.dtf;
+        if (p.fullSub)     PRICING.fullSub     = p.fullSub;
+        if (p.shirts)      PRICING.shirts      = p.shirts;
         if (p.rushFee       > 0) PRICING.rushFee       = p.rushFee;
         if (p.designFee     > 0) PRICING.designFee     = p.designFee;
         if (p.fullSubMinQty > 0) PRICING.fullSubMinQty = p.fullSubMinQty;
@@ -145,6 +149,20 @@ function loadPricing() {
     .withFailureHandler(function() { pricesLoaded = true; renderBody(); })
     .getTshirtPricing();
 }
+
+function logoSizeOptions() {
+  // Use whichever section has data; merge keys from both Sublimation & DTF
+  const keys = new Set();
+  Object.keys(PRICING.sublimation || {}).forEach(k => keys.add(k));
+  Object.keys(PRICING.dtf         || {}).forEach(k => keys.add(k));
+  // Preferred order — Logo only, A4 Size, A3 Size
+  const order = ['Logo only', 'A4 Size', 'A3 Size'];
+  const ordered = order.filter(k => keys.has(k));
+  Array.from(keys).forEach(k => { if (ordered.indexOf(k) === -1) ordered.push(k); });
+  return ordered;
+}
+function shirtOptions()   { return Object.keys(PRICING.shirts  || {}); }
+function fullSubOptions() { return Object.keys(PRICING.fullSub || {}); }
 
 // ─── STATE ────────────────────────────────────────────────────────
 let step = 0;
@@ -170,36 +188,20 @@ const d = {
 
 // ─── CALCULATIONS ─────────────────────────────────────────────────
 function printPriceForLogo() {
-  if (d.printType === 'Sublimation') {
-    if (d.logoSize === 'A4') return PRICING.print.sublimationA4 || 0;
-    if (d.logoSize === 'A3') return PRICING.print.sublimationA3 || 0;
-  }
-  if (d.printType === 'DTF') {
-    if (d.logoSize === 'A4') return PRICING.print.dtfA4 || 0;
-    if (d.logoSize === 'A3') return PRICING.print.dtfA3 || 0;
-  }
+  if (!d.logoSize) return 0;
+  if (d.printType === 'Sublimation') return (PRICING.sublimation || {})[d.logoSize] || 0;
+  if (d.printType === 'DTF')         return (PRICING.dtf         || {})[d.logoSize] || 0;
   return 0;
 }
 
 function shirtPriceForChoice() {
   if (d.hasOwnShirt !== 'No' || !d.shirtChoice) return 0;
-  const m = {
-    'Plain Dryfit White':   PRICING.shirt.dryfitWhite,
-    'Plain Dryfit Colored': PRICING.shirt.dryfitColored,
-    'Plain Cotton':         PRICING.shirt.cotton,
-    'Polo Shirt':           PRICING.shirt.polo,
-  };
-  return m[d.shirtChoice] || 0;
+  return (PRICING.shirts || {})[d.shirtChoice] || 0;
 }
 
 function fullSubUnitPrice() {
-  if (d.printType !== 'Full Sublimation') return 0;
-  const m = {
-    'T-Shirt':      PRICING.fullSub.tshirt,
-    'Polo':         PRICING.fullSub.polo,
-    'Long Sleeves': PRICING.fullSub.longSleeves,
-  };
-  return m[d.garmentType] || 0;
+  if (d.printType !== 'Full Sublimation' || !d.garmentType) return 0;
+  return (PRICING.fullSub || {})[d.garmentType] || 0;
 }
 
 function unitPrice() {
@@ -330,23 +332,20 @@ function renderBody() {
     // Logo size selector (Sublimation / DTF only)
     let logoSizeHtml = '';
     if (isPrintOnly) {
-      const a4Price = d.printType==='Sublimation' ? PRICING.print.sublimationA4 : PRICING.print.dtfA4;
-      const a3Price = d.printType==='Sublimation' ? PRICING.print.sublimationA3 : PRICING.print.dtfA3;
+      const opts = logoSizeOptions();
+      const priceMap = d.printType==='Sublimation' ? (PRICING.sublimation||{}) : (PRICING.dtf||{});
+      const cards = opts.length ? opts.map(k => {
+        const sel = d.logoSize === k;
+        return `<label class="opt-card ${sel?'selected':''}" onclick="d.logoSize='${k.replace(/'/g,"\\'")}';renderBody();">
+          <input type="radio" name="lsize" ${sel?'checked':''}>
+          <div style="flex:1;font-size:14px;font-weight:700;">${esc(k)}</div>
+          <div class="price-badge">${php(priceMap[k]||0)} / print</div>
+        </label>`;
+      }).join('') : `<div style="padding:12px;background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;font-size:12px;color:#8A6500;">No ${d.printType} prices found in T-shirt sheet.</div>`;
       logoSizeHtml = `
         <div>
           <label class="field-label" style="margin-bottom:10px;">Logo Size</label>
-          <div class="flex flex-col gap-2">
-            <label class="opt-card ${d.logoSize==='A4'?'selected':''}" onclick="d.logoSize='A4';renderBody();">
-              <input type="radio" name="lsize" ${d.logoSize==='A4'?'checked':''}>
-              <div style="flex:1;font-size:14px;font-weight:700;">A4</div>
-              <div class="price-badge">${php(a4Price)} / print</div>
-            </label>
-            <label class="opt-card ${d.logoSize==='A3'?'selected':''}" onclick="d.logoSize='A3';renderBody();">
-              <input type="radio" name="lsize" ${d.logoSize==='A3'?'checked':''}>
-              <div style="flex:1;font-size:14px;font-weight:700;">A3</div>
-              <div class="price-badge">${php(a3Price)} / print</div>
-            </label>
-          </div>
+          <div class="flex flex-col gap-2">${cards}</div>
         </div>`;
     }
 
@@ -362,20 +361,16 @@ function renderBody() {
           </div>
         </div>`;
       if (d.hasOwnShirt === 'No') {
-        const shirts = [
-          { key: 'Plain Dryfit White',   price: PRICING.shirt.dryfitWhite,   icon: '👕' },
-          { key: 'Plain Dryfit Colored', price: PRICING.shirt.dryfitColored, icon: '👕' },
-          { key: 'Plain Cotton',         price: PRICING.shirt.cotton,        icon: '👕' },
-          { key: 'Polo Shirt',           price: PRICING.shirt.polo,          icon: '👔' },
-        ];
-        const shirtCards = shirts.map(s => {
-          const sel = d.shirtChoice === s.key;
-          return `<label class="opt-card ${sel?'selected':''}" onclick="d.shirtChoice='${s.key}';renderBody();">
+        const opts = shirtOptions();
+        const shirtCards = opts.length ? opts.map(k => {
+          const sel = d.shirtChoice === k;
+          const icon = /polo/i.test(k) ? '👔' : '👕';
+          return `<label class="opt-card ${sel?'selected':''}" onclick="d.shirtChoice='${k.replace(/'/g,"\\'")}';renderBody();">
             <input type="radio" name="schoice" ${sel?'checked':''}>
-            <div style="flex:1;font-size:14px;font-weight:700;">${s.icon} ${s.key}</div>
-            <div class="price-badge">${php(s.price)} / pc</div>
+            <div style="flex:1;font-size:14px;font-weight:700;">${icon} ${esc(k)}</div>
+            <div class="price-badge">${php(PRICING.shirts[k]||0)} / pc</div>
           </label>`;
-        }).join('');
+        }).join('') : `<div style="padding:12px;background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;font-size:12px;color:#8A6500;">No shirt options found under "If with shirt, add" in T-shirt sheet.</div>`;
         shirtSourceHtml += `
           <div>
             <label class="field-label" style="margin-bottom:10px;">Shirt to use</label>
@@ -387,19 +382,16 @@ function renderBody() {
     // Full Sublimation garment type
     let fullSubHtml = '';
     if (isFullSub) {
-      const garments = [
-        { key: 'T-Shirt',      price: PRICING.fullSub.tshirt,      icon: '👕' },
-        { key: 'Polo',         price: PRICING.fullSub.polo,        icon: '👔' },
-        { key: 'Long Sleeves', price: PRICING.fullSub.longSleeves, icon: '🥋' },
-      ];
-      const gCards = garments.map(g => {
-        const sel = d.garmentType === g.key;
-        return `<label class="opt-card ${sel?'selected':''}" onclick="d.garmentType='${g.key}';renderBody();">
+      const opts = fullSubOptions();
+      const gCards = opts.length ? opts.map(k => {
+        const sel = d.garmentType === k;
+        const icon = /long/i.test(k) ? '🥋' : /polo/i.test(k) ? '👔' : '👕';
+        return `<label class="opt-card ${sel?'selected':''}" onclick="d.garmentType='${k.replace(/'/g,"\\'")}';renderBody();">
           <input type="radio" name="garment" ${sel?'checked':''}>
-          <div style="flex:1;font-size:14px;font-weight:700;">${g.icon} ${g.key}</div>
-          <div class="price-badge">${php(g.price)} / pc</div>
+          <div style="flex:1;font-size:14px;font-weight:700;">${icon} ${esc(k)}</div>
+          <div class="price-badge">${php(PRICING.fullSub[k]||0)} / pc</div>
         </label>`;
-      }).join('');
+      }).join('') : `<div style="padding:12px;background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;font-size:12px;color:#8A6500;">No Full Sublimation options found in T-shirt sheet.</div>`;
       fullSubHtml = `
         <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;padding:11px 14px;font-size:12px;color:#8A6500;display:flex;gap:8px;">
           <span>ℹ️</span>

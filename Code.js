@@ -1519,59 +1519,91 @@ function saveFrameOrder(data) {
 // ══════════════════════════════════════════════════════════════════
 function getTshirtPricing() {
   const defaults = {
-    print:   { sublimationA4: 0, sublimationA3: 0, dtfA4: 0, dtfA3: 0 },
-    shirt:   { dryfitWhite: 0, dryfitColored: 0, cotton: 0, polo: 0 },
-    fullSub: { tshirt: 0, polo: 0, longSleeves: 0 },
+    sublimation: {}, dtf: {}, fullSub: {}, shirts: {},
     rushFee: 150, designFee: 250, fullSubMinQty: 15,
   };
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
-    const sheet = ss.getSheetByName('T-Shirt');
+    const ss = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    // Try multiple capitalizations since tab name may vary
+    let sheet = ss.getSheetByName('T-shirt') || ss.getSheetByName('T-Shirt')
+             || ss.getSheetByName('Tshirt')  || ss.getSheetByName('TShirt');
     if (!sheet) return defaults;
 
-    // Sheet layout: col A = category ("T-Shirt"), col B = label, col C = price
     const rows = sheet.getDataRange().getValues();
     const result = {
-      print:   Object.assign({}, defaults.print),
-      shirt:   Object.assign({}, defaults.shirt),
-      fullSub: Object.assign({}, defaults.fullSub),
+      sublimation: {}, dtf: {}, fullSub: {}, shirts: {},
       rushFee: defaults.rushFee, designFee: defaults.designFee, fullSubMinQty: defaults.fullSubMinQty,
     };
 
-    for (let i = 0; i < rows.length; i++) {
-      const label = String(rows[i][1] || '').trim();
-      const raw   = rows[i][2];
-      const val   = typeof raw === 'number'
-        ? raw
-        : parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
-      if (!label || val <= 0) continue;
-      const k = label.toLowerCase();
+    function parsePrice(raw) {
+      if (typeof raw === 'number') return raw;
+      return parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
+    }
 
-      // Check most-specific keywords first to avoid mismatches
-      if (k.includes('rush')) {
-        result.rushFee = val;
-      } else if (k.includes('design') || k.includes('artwork') || k.includes('layout')) {
-        result.designFee = val;
-      } else if (k.includes('full sub') || k.includes('fullsub') || k.includes('full sublimation')) {
-        if (k.includes('long'))  result.fullSub.longSleeves = val;
-        else if (k.includes('polo'))   result.fullSub.polo = val;
-        else if (k.includes('t-shirt') || k.includes('tshirt') || k.includes('shirt')) result.fullSub.tshirt = val;
-      } else if (k.includes('sublimation') || k.startsWith('sub ') || k === 'sub') {
-        if (k.includes('a3')) result.print.sublimationA3 = val;
-        else if (k.includes('a4')) result.print.sublimationA4 = val;
-      } else if (k.includes('dtf')) {
-        if (k.includes('a3')) result.print.dtfA3 = val;
-        else if (k.includes('a4')) result.print.dtfA4 = val;
-      } else if (k.includes('dryfit') || k.includes('dri-fit') || k.includes('dri fit')) {
-        if (k.includes('color') || k.includes('colour')) result.shirt.dryfitColored = val;
-        else if (k.includes('white')) result.shirt.dryfitWhite = val;
-        else result.shirt.dryfitWhite = val;  // default if just "Dryfit"
-      } else if (k.includes('cotton')) {
-        result.shirt.cotton = val;
-      } else if (k.includes('polo')) {
-        result.shirt.polo = val;
-      } else if (k.includes('min') && (k.includes('qty') || k.includes('quantity') || k.includes('order'))) {
-        result.fullSubMinQty = val;
+    // Step 1: find category header columns by scanning every row for the labels
+    let subCol = -1, dtfCol = -1, fullSubCol = -1, headerRowIdx = -1;
+    for (let r = 0; r < rows.length && headerRowIdx === -1; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        const v = String(rows[r][c] || '').trim().toLowerCase();
+        if (v === 'sublimation' && subCol === -1) { subCol = c; headerRowIdx = r; }
+        if (v === 'dtf' && dtfCol === -1) { dtfCol = c; headerRowIdx = r; }
+        if ((v === 'full sublimation' || v === 'full sub') && fullSubCol === -1) { fullSubCol = c; headerRowIdx = r; }
+      }
+    }
+
+    // Step 2: read items below the header row (label = col, price = col+1)
+    if (headerRowIdx >= 0) {
+      for (let r = headerRowIdx + 1; r < rows.length; r++) {
+        const row = rows[r];
+
+        // Stop reading section data once we hit blank rows or section dividers
+        if (subCol >= 0) {
+          const label = String(row[subCol] || '').trim();
+          const price = parsePrice(row[subCol + 1]);
+          if (label && price > 0 && !/^if /i.test(label)) result.sublimation[label] = price;
+        }
+        if (dtfCol >= 0) {
+          const label = String(row[dtfCol] || '').trim();
+          const price = parsePrice(row[dtfCol + 1]);
+          if (label && price > 0 && !/^if /i.test(label)) result.dtf[label] = price;
+        }
+        if (fullSubCol >= 0) {
+          const label = String(row[fullSubCol] || '').trim();
+          const price = parsePrice(row[fullSubCol + 1]);
+          if (label && price > 0 && !/^if /i.test(label)) result.fullSub[label] = price;
+        }
+      }
+    }
+
+    // Step 3: find the "If with shirt, add" section — its prices apply to Sublimation/DTF
+    let shirtSectionStart = -1;
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        const v = String(rows[r][c] || '').trim().toLowerCase();
+        if (v.indexOf('if with shirt') === 0 || v === 'if with shirt, add') {
+          shirtSectionStart = r + 1;
+          break;
+        }
+      }
+      if (shirtSectionStart >= 0) break;
+    }
+    if (shirtSectionStart >= 0) {
+      for (let r = shirtSectionStart; r < rows.length; r++) {
+        const label = String(rows[r][0] || '').trim();
+        const price = parsePrice(rows[r][1]);
+        if (label && price > 0) result.shirts[label] = price;
+      }
+    }
+
+    // Step 4: scan everywhere for optional Rush / Design / Min Qty rows
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 0; c < rows[r].length - 1; c++) {
+        const v = String(rows[r][c] || '').trim().toLowerCase();
+        const next = parsePrice(rows[r][c + 1]);
+        if (!v || next <= 0) continue;
+        if (v === 'rush' || v.indexOf('rush ') === 0) result.rushFee = next;
+        else if (v.indexOf('design') === 0 || v.indexOf('artwork') === 0) result.designFee = next;
+        else if (v.indexOf('min') === 0 && (v.indexOf('qty') >= 0 || v.indexOf('order') >= 0)) result.fullSubMinQty = next;
       }
     }
 
