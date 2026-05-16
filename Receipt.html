@@ -151,8 +151,19 @@ const d = {
   paperType: '', colors: ['White'],
   perforation: 'Yes', numbering: 'Yes', startingNo: '',
   qty: 0, dateNeeded: '', notes: '',
+  rushOrder: '',
   taxType: 'non-vat',
 };
+
+let RUSH_FEE = 150;
+
+function loadReceiptRushFee() {
+  if (typeof google === 'undefined' || !google.script) return;
+  google.script.run
+    .withSuccessHandler(function(fee) { if (fee && fee > 0) { RUSH_FEE = fee; renderBody(); } })
+    .withFailureHandler(function() {})
+    .getReceiptRushFee();
+}
 
 const STEPS = [
   { label: 'Customer Info',  sub: 'Company, name & contact details' },
@@ -444,6 +455,15 @@ function renderBody() {
             min="${new Date().toISOString().split('T')[0]}" oninput="d.dateNeeded=this.value">
         </div>
       </div>
+      <div class="field mt-5"><label class="field-label">Rush Order? <span style="font-size:11px;color:var(--gray-400);font-weight:400;">(rush fee ${php(RUSH_FEE||150)} applies)</span></label>
+        <div class="flex gap-2">
+          ${['Yes','No'].map(o=>`
+            <label class="choice-card flex-1 ${d.rushOrder===o?'selected':''}" onclick="d.rushOrder='${o}';renderBody()">
+              <input type="radio" name="rush" ${d.rushOrder===o?'checked':''}><div class="choice-card-label">${o}</div>
+            </label>`).join('')}
+        </div>
+        ${d.rushOrder==='Yes'?`<div style="margin-top:8px;background:#FFF5F5;border:1px solid #FFCCCC;border-radius:3px;padding:10px 12px;font-size:12px;color:#CC1015;">⚡ Rush fee of <strong>${php(RUSH_FEE||150)}</strong> will be added.</div>`:''}
+      </div>
       <div class="field mt-5"><label class="field-label">Notes / Special Instructions</label>
         <textarea class="field-input" id="f_notes" placeholder="Additional details, delivery, or remarks…">${esc(d.notes)}</textarea>
       </div>
@@ -603,6 +623,8 @@ function submitOrder() {
     totalPrice:   computeFinalTotal(),
     notes:        d.notes,
     salesStaff:   TOKEN,
+    rushOrder:    d.rushOrder || '',
+    rushFee:      rushFeeAmt(),
     taxType:      d.taxType || 'non-vat',
     taxAmount:    receiptTaxAmt(),
   };
@@ -623,7 +645,7 @@ function submitOrder() {
 
 function resetForm(){
   if (!confirm('Start a new order? Current data will be cleared.')) return;
-  Object.assign(d,{company:'',lastName:'',firstName:'',email:'',mobile:'',customerType:'new',copies:'',size:'',paperType:'',colors:['White'],perforation:'Yes',numbering:'Yes',startingNo:'',qty:0,dateNeeded:'',notes:''});
+  Object.assign(d,{company:'',lastName:'',firstName:'',email:'',mobile:'',customerType:'new',copies:'',size:'',paperType:'',colors:['White'],perforation:'Yes',numbering:'Yes',startingNo:'',qty:0,dateNeeded:'',notes:'',rushOrder:''});
   step=0; render();
 }
 
@@ -665,9 +687,11 @@ function computeTotal() {
   return match.sellingPrice;
 }
 
+function rushFeeAmt() { return d.rushOrder === 'Yes' ? (RUSH_FEE || 150) : 0; }
 const VAT = 0.12;
-function receiptTaxAmt()    { const s=computeTotal(); return (d.taxType||'non-vat')==='vat-exclusive'?s*VAT:(d.taxType||'non-vat')==='vat-inclusive'?s-s/(1+VAT):0; }
-function computeFinalTotal(){ return (d.taxType||'non-vat')==='vat-exclusive'?computeTotal()*(1+VAT):computeTotal(); }
+function computeSubtotal()  { return computeTotal() + rushFeeAmt(); }
+function receiptTaxAmt()    { const s=computeSubtotal(); return (d.taxType||'non-vat')==='vat-exclusive'?s*VAT:(d.taxType||'non-vat')==='vat-inclusive'?s-s/(1+VAT):0; }
+function computeFinalTotal(){ return (d.taxType||'non-vat')==='vat-exclusive'?computeSubtotal()*(1+VAT):computeSubtotal(); }
 
 function taxToggleHtml() {
   const opts=[{key:'non-vat',label:'Non-VAT'},{key:'vat-inclusive',label:'VAT Incl. 12%'},{key:'vat-exclusive',label:'VAT Excl. 12%'}];
@@ -680,6 +704,7 @@ function taxToggleHtml() {
 }
 
 loadPricing();
+loadReceiptRushFee();
 
 function render(){
   renderStepper(); renderHead(); renderBody(); renderFoot();

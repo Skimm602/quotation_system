@@ -474,6 +474,10 @@ function getDashboardData(token) {
   paymentTermValue: String(row[22] || '').includes('No Down') ? 0 : String(row[22] || '').includes('25%') ? 0.25 : String(row[22] || '').includes('Full') ? 1 : 0.5,
   taxType:      String(row[23] || 'non-vat'),
   taxAmount:    parseFloat(row[24]) || 0,
+  rushOrder:    String(row[25] || ''),
+  rushFee:      parseFloat(row[26]) || 0,
+  addonRush:    String(row[25] || ''),
+  addonRushFee: parseFloat(row[26]) || 0,
   status:      String(row[19] || 'Pending'),
   approvedBy:  String(row[20] || ''),
   salesStaff:  String(row[20] || ''),
@@ -557,12 +561,14 @@ function getDashboardData(token) {
           paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
           taxType:          String(row[22] || 'non-vat'),
           taxAmount:        parseFloat(row[23]) || 0,
+          rushOrder:        String(row[24] || ''),
+          rushFee:          parseFloat(row[25]) || 0,
           quoteType:        'frame',
           signageType:      'Frame — ' + String(row[11] || ''),
           address: '', delivery: '', lighting: '', material: '',
           mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
           addonDesign: '', addonDesignFee: 0,
-          addonRush: '', addonRushFee: 0,
+          addonRush: String(row[24] || ''),  addonRushFee: parseFloat(row[25]) || 0,
           addonElec: '', addonElecFee: 0,
           addonTransport: '', addonTransportFee: 0,
         };
@@ -626,6 +632,10 @@ function getQuoteForPDF(token, quoteNum) {
                         : String(r[22]||'').includes('Full')  ? 1 : 0.5,
         taxType:   String(r[23] || 'non-vat'),
         taxAmount: parseFloat(r[24]) || 0,
+        rushOrder: String(r[25] || ''),
+        rushFee:   parseFloat(r[26]) || 0,
+        addonRush: String(r[25] || ''),
+        addonRushFee: parseFloat(r[26]) || 0,
       };
     }
     return null;
@@ -772,12 +782,14 @@ function getQuoteForPDF(token, quoteNum) {
                         : ptLabel.includes('Full')  ? 1 : 0.5,
         taxType:          String(r[22] || 'non-vat'),
         taxAmount:        parseFloat(r[23]) || 0,
+        rushOrder:        String(r[24] || ''),
+        rushFee:          parseFloat(r[25]) || 0,
         quoteType:        'frame',
         signageType:      'Frame — ' + String(r[11] || ''),
         address: '', delivery: '', lighting: '', material: '',
         mounting: '', mountFee: 0, complexitySurcharge: 0, designFee: 0,
         addonDesign: '', addonDesignFee: 0,
-        addonRush: '', addonRushFee: 0,
+        addonRush: String(r[24] || ''), addonRushFee: parseFloat(r[25]) || 0,
         addonElec: '', addonElecFee: 0,
         addonTransport: '', addonTransportFee: 0,
       };
@@ -865,7 +877,7 @@ function updateQuoteStatus(token, quoteNum, status) {
         sheet.getRange(i+1, 20).setValue(status);        // col T (index 19) = Status
         sheet.getRange(i+1, 21).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH')); // col U = Approved By
         const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
-        sheet.getRange(i+1, 1, 1, 22).setBackground(color);
+        sheet.getRange(i+1, 1, 1, 27).setBackground(color);
         return { success: true };
       }
     }
@@ -897,7 +909,7 @@ function updateQuoteStatus(token, quoteNum, status) {
         sheet.getRange(i+1, 20).setValue(status);  // col T = Status
         sheet.getRange(i+1, 21).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col U = Approved By
         const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
-        sheet.getRange(i+1, 1, 1, 24).setBackground(color);
+        sheet.getRange(i+1, 1, 1, 26).setBackground(color);
         return { success: true };
       }
     }
@@ -1240,13 +1252,13 @@ function getTarpPricing() {
 //  FRAME PRICING  (live from external spreadsheet, Frame sheet)
 // ══════════════════════════════════════════════════════════════════
 function getFramePricing() {
-  const defaults = { withMatting: 600, withoutMatting: 550 };
+  const defaults = { withMatting: 600, withoutMatting: 550, rushFee: 150 };
   try {
     const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
     const sheet = ss.getSheetByName('Frame');
     if (!sheet) return defaults;
 
-    // Sheet layout: col A = category ("Frame"), col B = label, col C = price (per sq ft)
+    // Sheet layout: col A = category ("Frame"), col B = label, col C = price
     const rows = sheet.getDataRange().getValues();
     const result = Object.assign({}, defaults);
 
@@ -1257,8 +1269,10 @@ function getFramePricing() {
         ? raw
         : parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
       if (!key || val <= 0) continue;
-      // "without" must be checked first because "with matting" is a substring of "without matting"
-      if (key.includes('without') || key.includes('no matting') || key.includes('w/o')) {
+      // Order matters: check "without" and "rush" before generic "with" / "matting"
+      if (key.includes('rush')) {
+        result.rushFee = val;
+      } else if (key.includes('without') || key.includes('no matting') || key.includes('w/o')) {
         result.withoutMatting = val;
       } else if (key.includes('with') || key.includes('matting')) {
         result.withMatting = val;
@@ -1288,6 +1302,7 @@ function saveFrameOrder(data) {
     'Base Amount', 'Total Amount', 'Downpayment', 'Balance',
     'Special Instructions', 'Sales Staff',
     'Status', 'Approved By', 'Payment Term', 'Tax Type', 'Tax Amount',
+    'Rush Order', 'Rush Fee',
   ];
 
   // Auto-insert header row if missing
@@ -1313,7 +1328,8 @@ function saveFrameOrder(data) {
   const totalSq  = area * qty;
   const rate     = parseFloat(data.ratePerSqft) || 0;
   const baseAmt  = totalSq * rate;
-  const totalAmt = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : baseAmt;
+  const rushFee  = parseFloat(data.rushFee) || 0;
+  const totalAmt = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee);
   const dp       = totalAmt * 0.5;
   const bal      = totalAmt - dp;
 
@@ -1342,6 +1358,8 @@ function saveFrameOrder(data) {
     '',                                        // V  col 22 - Payment Term
     data.taxType          || 'non-vat',        // W  col 23 - Tax Type
     parseFloat(data.taxAmount) || 0,           // X  col 24 - Tax Amount
+    data.rushOrder        || '',               // Y  col 25 - Rush Order
+    parseFloat(rushFee.toFixed(2)),            // Z  col 26 - Rush Fee
   ]);
 
   sheet.getRange(sheet.getLastRow(), 14, 1, 4).setNumberFormat('₱#,##0.00');
@@ -1552,19 +1570,6 @@ function saveQuotation(data) {
   return quoteNum;
 }
 
-function getReceiptPricing() {
-  const ss = SpreadsheetApp.openById('1ClnO3Z6xGXa2V6AVijXIfqIJDlI2zLVVKRJdEeE4ebM');
-  const sheet = ss.getSheetByName('Pricing'); // i-change kung lain ang sheet name
-  const data = sheet.getDataRange().getValues();
-  return data.slice(1).filter(r => r[0]).map(row => ({
-    printType:    String(row[0] || ''),
-    copies:       Number(row[1] || 0),
-    sizeDiv:      Number(row[2] || 0),
-    booklets:     Number(row[3] || 0),
-    sellingPrice: Number(row[4] || 0),
-  }));
-}
-
 // ================================================
 // SAVE RECEIPT ORDER
 // ══════════════════════════════════════════════════════════════════
@@ -1584,6 +1589,7 @@ function saveReceiptOrder(payload) {
       'Perforation','Numbering','Starting No','Quantity','Date Needed',
       'Total Price','Status','Sales Staff','Notes',
       'Payment Term','Tax Type','Tax Amount',
+      'Rush Order','Rush Fee',
     ];
     sheet.appendRow(headers);
     sheet.getRange(1,1,1,headers.length)
@@ -1626,6 +1632,8 @@ function saveReceiptOrder(payload) {
     '',                               // W  col 23 - Payment Term (set by savePaymentTerm)
     payload.taxType  || 'non-vat',   // X  col 24 - Tax Type
     parseFloat(payload.taxAmount)||0, // Y  col 25 - Tax Amount
+    payload.rushOrder|| '',           // Z  col 26 - Rush Order
+    parseFloat(payload.rushFee)||0,   // AA col 27 - Rush Fee
   ]);
 
   sheet.getRange(sheet.getLastRow(), 19, 1, 1).setNumberFormat('₱#,##0.00');
@@ -1662,8 +1670,11 @@ function getReceiptPricing() {
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (!row[0]) continue;
+      const printType = String(row[0]).trim();
+      // Skip the Rush row — it's read by getReceiptRushFee() instead
+      if (printType.toLowerCase().includes('rush')) continue;
       rows.push({
-        printType:   String(row[0]).trim(),   // Carbonless / Newsprint
+        printType:   printType,                // Carbonless / Newsprint
         copies:      row[1],                   // 2, 3, 4
         sizeDiv:     row[2],                   // 1,2,3,4,6,8
         booklets:    row[3],                   // quantity
@@ -1674,6 +1685,40 @@ function getReceiptPricing() {
   } catch(e) {
     Logger.log('getReceiptPricing error: ' + e.message);
     return null;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  GET RECEIPT RUSH FEE  (looks for a row labeled "Rush" in Receipt sheet)
+// ══════════════════════════════════════════════════════════════════
+function getReceiptRushFee() {
+  const defaultFee = 150;
+  try {
+    const extSS    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const extSheet = extSS.getSheetByName('Receipt');
+    if (!extSheet) return defaultFee;
+
+    const data = extSheet.getDataRange().getValues();
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      // Search any cell in the row for the "Rush" label
+      for (let c = 0; c < row.length; c++) {
+        const cell = String(row[c] || '').trim().toLowerCase();
+        if (cell === 'rush' || cell.startsWith('rush ')) {
+          // The price is expected in the next non-empty numeric cell
+          for (let n = c + 1; n < row.length; n++) {
+            const raw = row[n];
+            const val = typeof raw === 'number'
+              ? raw
+              : parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
+            if (val > 0) return val;
+          }
+        }
+      }
+    }
+    return defaultFee;
+  } catch(e) {
+    return defaultFee;
   }
 }
 // ══════════════════════════════════════════════════════════════════

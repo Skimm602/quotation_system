@@ -41,6 +41,9 @@ textarea.field-input { min-height: 90px; resize: vertical; }
 .opt-card:hover { border-color: #E8151B; background: #FFF8F8; }
 .opt-card.selected { border-color: #E8151B; background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
 .opt-card input[type=radio] { accent-color: #E8151B; flex-shrink: 0; }
+.yn-btn { flex: 1; padding: 10px 0; border: 1px solid #E0E0E0; border-radius: 3px; font-size: 13px; font-weight: 600; cursor: pointer; background: #FAFAFA; color: #888; transition: all 0.15s; text-align: center; }
+.yn-btn.yes.active { background: #E6FFF3; border-color: #1A6A3A; color: #1A6A3A; }
+.yn-btn.no.active  { background: #FFF5F5; border-color: #E8151B; color: #E8151B; }
 .q-table { width: 100%; border-collapse: collapse; }
 .q-table tr { border-bottom: 1px solid #F0F0F0; }
 .q-table tr:last-child { border: none; }
@@ -115,7 +118,7 @@ function goToDashboard() {
 }
 
 // ─── LIVE PRICING ─────────────────────────────────────────────────
-let PRICES = { withMatting: 600, withoutMatting: 550 };
+let PRICES = { withMatting: 600, withoutMatting: 550, rushFee: 150 };
 let pricesLoaded = false;
 
 function loadPricing() {
@@ -124,6 +127,7 @@ function loadPricing() {
       if (p) {
         if (p.withMatting    > 0) PRICES.withMatting    = p.withMatting;
         if (p.withoutMatting > 0) PRICES.withoutMatting = p.withoutMatting;
+        if (p.rushFee        > 0) PRICES.rushFee        = p.rushFee;
       }
       pricesLoaded = true;
       renderBody();
@@ -140,6 +144,7 @@ const d = {
   clientName: '', contact: '', email: '', dateNeeded: '',
   // Step 1 — Frame Dimensions
   width: '', height: '', quantity: 1, matting: '',
+  rushOrder: '',
   // Step 2 — Notes & Summary
   notes: '',
   taxType: 'non-vat',
@@ -154,9 +159,10 @@ function ratePerSqft() {
 function areaPerPc() { return (parseFloat(d.width)||0) * (parseFloat(d.height)||0); }
 function totalSqft() { return areaPerPc() * (parseInt(d.quantity)||1); }
 function baseAmt()   { return totalSqft() * ratePerSqft(); }
+function rushFeeAmt() { return d.rushOrder === 'Yes' ? (PRICES.rushFee || 150) : 0; }
 
 const VAT = 0.12;
-function subtotal()   { return baseAmt(); }
+function subtotal()   { return baseAmt() + rushFeeAmt(); }
 function taxAmt()     { const s=subtotal(); return d.taxType==='vat-exclusive'?s*VAT:d.taxType==='vat-inclusive'?s-s/(1+VAT):0; }
 function grandTotal() { return d.taxType==='vat-exclusive'?subtotal()*(1+VAT):subtotal(); }
 function dp()         { return grandTotal()*0.5; }
@@ -284,6 +290,18 @@ function renderBody() {
           </div>
         </div>
         ${d.width && d.height ? `<div style="font-size:12px;color:#888;">Area per frame: <strong>${area.toFixed(2)} sq ft</strong> · Total: <strong>${totalSq.toFixed(2)} sq ft</strong></div>` : ''}
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Rush Order? <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(rush fee applies)</span></label>
+          <div style="display:flex;gap:8px;">
+            <button class="yn-btn yes ${d.rushOrder==='Yes'?'active':''}" onclick="d.rushOrder='Yes';renderBody();">Yes — ${php(PRICES.rushFee||150)}</button>
+            <button class="yn-btn no  ${d.rushOrder==='No' ?'active':''}" onclick="d.rushOrder='No';renderBody();">No</button>
+          </div>
+        </div>
+        ${d.rushOrder==='Yes' ? `
+          <div style="background:#FFF5F5;border:1px solid #FFCCCC;border-radius:3px;padding:12px 14px;font-size:13px;color:#CC1015;display:flex;gap:8px;">
+            <span>⚡</span>
+            <span>Rush fee of <strong>${php(PRICES.rushFee||150)}</strong> will be added to the total.</span>
+          </div>` : ''}
         ${costPreview}
         <div class="flex flex-col gap-1">
           <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
@@ -322,9 +340,11 @@ function renderBody() {
         <tr><td>Quantity</td><td>${qty} frame(s)</td></tr>
         <tr><td>Area / frame</td><td>${area.toFixed(2)} sq ft</td></tr>
         <tr><td>Total Area</td><td>${totalSq.toFixed(2)} sq ft</td></tr>
+        <tr><td>Rush Order</td><td>${d.rushOrder||'—'}</td></tr>
 
         <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
         <tr><td>${totalSq.toFixed(2)} sq ft × ${php(rate)} / sq ft</td><td>${php(rate*totalSq)}</td></tr>
+        ${rushFeeAmt()>0?`<tr><td>Rush Fee</td><td>${php(rushFeeAmt())}</td></tr>`:''}
 
         <tr><td colspan="2" style="height:8px;"></td></tr>
         ${taxToggleHtml()}
@@ -416,7 +436,7 @@ function render() {
 function resetForm() {
   if (!confirm('Start a new quotation? Current data will be cleared.')) return;
   d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
-  d.width=''; d.height=''; d.quantity=1; d.matting='';
+  d.width=''; d.height=''; d.quantity=1; d.matting=''; d.rushOrder='';
   d.notes=''; d.taxType='non-vat';
   step=0; render();
 }
@@ -434,6 +454,8 @@ function saveToSheet() {
     quantity:     parseInt(d.quantity)||1,
     matting:      d.matting,
     ratePerSqft:  ratePerSqft(),
+    rushOrder:    d.rushOrder,
+    rushFee:      rushFeeAmt(),
     totalAmount:  grandTotal(),
     notes:        d.notes,
     salesStaff:   (document.getElementById('server-user')||{}).value||'',
