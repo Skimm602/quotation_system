@@ -120,16 +120,24 @@ function goToDashboard() {
 }
 
 // ─── LIVE PRICING ─────────────────────────────────────────────────
-let PRICING = { types: [], rushFee: 150, designFee: 250 };
+let PRICING = {
+  print:   { sublimationA4: 0, sublimationA3: 0, dtfA4: 0, dtfA3: 0 },
+  shirt:   { dryfitWhite: 0, dryfitColored: 0, cotton: 0, polo: 0 },
+  fullSub: { tshirt: 0, polo: 0, longSleeves: 0 },
+  rushFee: 150, designFee: 250, fullSubMinQty: 15,
+};
 let pricesLoaded = false;
 
 function loadPricing() {
   google.script.run
     .withSuccessHandler(function(p) {
       if (p) {
-        if (Array.isArray(p.types) && p.types.length) PRICING.types = p.types;
-        if (p.rushFee   > 0) PRICING.rushFee   = p.rushFee;
-        if (p.designFee > 0) PRICING.designFee = p.designFee;
+        if (p.print)   Object.assign(PRICING.print, p.print);
+        if (p.shirt)   Object.assign(PRICING.shirt, p.shirt);
+        if (p.fullSub) Object.assign(PRICING.fullSub, p.fullSub);
+        if (p.rushFee       > 0) PRICING.rushFee       = p.rushFee;
+        if (p.designFee     > 0) PRICING.designFee     = p.designFee;
+        if (p.fullSubMinQty > 0) PRICING.fullSubMinQty = p.fullSubMinQty;
       }
       pricesLoaded = true;
       renderBody();
@@ -145,10 +153,13 @@ const d = {
   // Step 0 — Client Info
   clientName: '', contact: '', email: '', dateNeeded: '',
   // Step 1 — Shirt Specs
-  shirtType: '',         // e.g. Cotton / Drifit / etc. (from live pricing)
+  printType: '',         // 'Sublimation' / 'DTF' / 'Full Sublimation'
+  logoSize: '',          // 'A4' / 'A3' (only for Sublimation/DTF)
+  hasOwnShirt: '',       // 'Yes' / 'No' (only for Sublimation/DTF)
+  shirtChoice: '',       // 'Plain Dryfit White' / 'Plain Dryfit Colored' / 'Plain Cotton' / 'Polo Shirt'  (when hasOwnShirt='No')
+  garmentType: '',       // 'T-Shirt' / 'Polo' / 'Long Sleeves' (only for Full Sublimation)
   shirtColor: '',
-  printLocation: '',     // Front / Back / Front & Back
-  sizeBreakdown: '',     // e.g. "S:5, M:10, L:5"
+  sizeBreakdown: '',
   quantity: 1,
   rushOrder: '',
   designService: '',
@@ -158,11 +169,43 @@ const d = {
 };
 
 // ─── CALCULATIONS ─────────────────────────────────────────────────
-function selectedType() {
-  if (!d.shirtType) return null;
-  return PRICING.types.find(t => t.label === d.shirtType) || null;
+function printPriceForLogo() {
+  if (d.printType === 'Sublimation') {
+    if (d.logoSize === 'A4') return PRICING.print.sublimationA4 || 0;
+    if (d.logoSize === 'A3') return PRICING.print.sublimationA3 || 0;
+  }
+  if (d.printType === 'DTF') {
+    if (d.logoSize === 'A4') return PRICING.print.dtfA4 || 0;
+    if (d.logoSize === 'A3') return PRICING.print.dtfA3 || 0;
+  }
+  return 0;
 }
-function unitPrice()   { const t = selectedType(); return t ? t.price : 0; }
+
+function shirtPriceForChoice() {
+  if (d.hasOwnShirt !== 'No' || !d.shirtChoice) return 0;
+  const m = {
+    'Plain Dryfit White':   PRICING.shirt.dryfitWhite,
+    'Plain Dryfit Colored': PRICING.shirt.dryfitColored,
+    'Plain Cotton':         PRICING.shirt.cotton,
+    'Polo Shirt':           PRICING.shirt.polo,
+  };
+  return m[d.shirtChoice] || 0;
+}
+
+function fullSubUnitPrice() {
+  if (d.printType !== 'Full Sublimation') return 0;
+  const m = {
+    'T-Shirt':      PRICING.fullSub.tshirt,
+    'Polo':         PRICING.fullSub.polo,
+    'Long Sleeves': PRICING.fullSub.longSleeves,
+  };
+  return m[d.garmentType] || 0;
+}
+
+function unitPrice() {
+  if (d.printType === 'Full Sublimation') return fullSubUnitPrice();
+  return printPriceForLogo() + shirtPriceForChoice();
+}
 function baseAmt()     { return unitPrice() * (parseInt(d.quantity)||1); }
 function rushFeeAmt()  { return d.rushOrder === 'Yes' ? (PRICING.rushFee || 150) : 0; }
 function designFeeAmt(){ return d.designService === 'Yes' ? (PRICING.designFee || 250) : 0; }
@@ -187,6 +230,20 @@ function taxToggleHtml() {
   return '<tr><td colspan="2" style="padding:12px 0 6px;"><div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:8px;">TAX</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+btns+'</div></td></tr>';
 }
 function setTaxType(key) { d.taxType=key; renderBody(); }
+
+function setPrintType(pt) {
+  d.printType = pt;
+  // Reset dependent fields when switching print type
+  d.logoSize = '';
+  d.hasOwnShirt = '';
+  d.shirtChoice = '';
+  d.garmentType = '';
+  if (pt === 'Full Sublimation') {
+    const minQ = PRICING.fullSubMinQty || 15;
+    if ((parseInt(d.quantity)||1) < minQ) d.quantity = minQ;
+  }
+  renderBody();
+}
 
 // ─── STEPS ────────────────────────────────────────────────────────
 const STEPS = [
@@ -250,75 +307,168 @@ function renderBody() {
 
   // ── STEP 1: SHIRT SPECS ──────────────────────────────────────────
   else if (step === 1) {
-    const typeCards = PRICING.types.length
-      ? PRICING.types.map(t => {
-          const sel = d.shirtType === t.label;
-          return `<label class="opt-card ${sel?'selected':''}" onclick="d.shirtType='${t.label.replace(/'/g, "\\'")}';renderBody();">
-            <input type="radio" name="ttype" ${sel?'checked':''}>
-            <div style="flex:1;">
-              <div style="font-size:14px;font-weight:700;color:#0A0A0A;">👕 ${esc(t.label)}</div>
-            </div>
-            <div class="price-badge">${php(t.price)} / pc</div>
+    const isFullSub = d.printType === 'Full Sublimation';
+    const isPrintOnly = d.printType === 'Sublimation' || d.printType === 'DTF';
+
+    // Print Type cards
+    const printTypes = [
+      { key: 'Sublimation',      icon: '🎨', sub: 'Print only — pick Logo size' },
+      { key: 'DTF',              icon: '🖨️', sub: 'Print only — pick Logo size' },
+      { key: 'Full Sublimation', icon: '👕', sub: 'Shop provides shirt · Min 15 pcs' },
+    ];
+    const ptCards = printTypes.map(pt => {
+      const sel = d.printType === pt.key;
+      return `<label class="opt-card ${sel?'selected':''}" onclick="setPrintType('${pt.key}')">
+        <input type="radio" name="ptype" ${sel?'checked':''}>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:#0A0A0A;">${pt.icon} ${pt.key}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px;">${pt.sub}</div>
+        </div>
+      </label>`;
+    }).join('');
+
+    // Logo size selector (Sublimation / DTF only)
+    let logoSizeHtml = '';
+    if (isPrintOnly) {
+      const a4Price = d.printType==='Sublimation' ? PRICING.print.sublimationA4 : PRICING.print.dtfA4;
+      const a3Price = d.printType==='Sublimation' ? PRICING.print.sublimationA3 : PRICING.print.dtfA3;
+      logoSizeHtml = `
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Logo Size</label>
+          <div class="flex flex-col gap-2">
+            <label class="opt-card ${d.logoSize==='A4'?'selected':''}" onclick="d.logoSize='A4';renderBody();">
+              <input type="radio" name="lsize" ${d.logoSize==='A4'?'checked':''}>
+              <div style="flex:1;font-size:14px;font-weight:700;">A4</div>
+              <div class="price-badge">${php(a4Price)} / print</div>
+            </label>
+            <label class="opt-card ${d.logoSize==='A3'?'selected':''}" onclick="d.logoSize='A3';renderBody();">
+              <input type="radio" name="lsize" ${d.logoSize==='A3'?'checked':''}>
+              <div style="flex:1;font-size:14px;font-weight:700;">A3</div>
+              <div class="price-badge">${php(a3Price)} / print</div>
+            </label>
+          </div>
+        </div>`;
+    }
+
+    // Has-own-shirt + shirt choice (Sublimation/DTF only)
+    let shirtSourceHtml = '';
+    if (isPrintOnly && d.logoSize) {
+      shirtSourceHtml = `
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Does the client have their own shirt?</label>
+          <div style="display:flex;gap:8px;">
+            <button class="yn-btn yes ${d.hasOwnShirt==='Yes'?'active':''}" onclick="d.hasOwnShirt='Yes';d.shirtChoice='';renderBody();">Yes — print only</button>
+            <button class="yn-btn no  ${d.hasOwnShirt==='No' ?'active':''}" onclick="d.hasOwnShirt='No';renderBody();">No — shop provides shirt</button>
+          </div>
+        </div>`;
+      if (d.hasOwnShirt === 'No') {
+        const shirts = [
+          { key: 'Plain Dryfit White',   price: PRICING.shirt.dryfitWhite,   icon: '👕' },
+          { key: 'Plain Dryfit Colored', price: PRICING.shirt.dryfitColored, icon: '👕' },
+          { key: 'Plain Cotton',         price: PRICING.shirt.cotton,        icon: '👕' },
+          { key: 'Polo Shirt',           price: PRICING.shirt.polo,          icon: '👔' },
+        ];
+        const shirtCards = shirts.map(s => {
+          const sel = d.shirtChoice === s.key;
+          return `<label class="opt-card ${sel?'selected':''}" onclick="d.shirtChoice='${s.key}';renderBody();">
+            <input type="radio" name="schoice" ${sel?'checked':''}>
+            <div style="flex:1;font-size:14px;font-weight:700;">${s.icon} ${s.key}</div>
+            <div class="price-badge">${php(s.price)} / pc</div>
           </label>`;
-        }).join('')
-      : `<div style="padding:14px;background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;font-size:12px;color:#8A6500;">Pricing not loaded yet, or no T-Shirt rows found in the spreadsheet's <strong>T-Shirt</strong> tab.</div>`;
+        }).join('');
+        shirtSourceHtml += `
+          <div>
+            <label class="field-label" style="margin-bottom:10px;">Shirt to use</label>
+            <div class="flex flex-col gap-2">${shirtCards}</div>
+          </div>`;
+      }
+    }
 
-    const locations = ['Front Only', 'Back Only', 'Front & Back'];
-    const locBtns = locations.map(loc =>
-      `<button class="loc-btn ${d.printLocation===loc?'active':''}" onclick="d.printLocation='${loc}';renderBody();">${loc}</button>`
-    ).join('');
+    // Full Sublimation garment type
+    let fullSubHtml = '';
+    if (isFullSub) {
+      const garments = [
+        { key: 'T-Shirt',      price: PRICING.fullSub.tshirt,      icon: '👕' },
+        { key: 'Polo',         price: PRICING.fullSub.polo,        icon: '👔' },
+        { key: 'Long Sleeves', price: PRICING.fullSub.longSleeves, icon: '🥋' },
+      ];
+      const gCards = garments.map(g => {
+        const sel = d.garmentType === g.key;
+        return `<label class="opt-card ${sel?'selected':''}" onclick="d.garmentType='${g.key}';renderBody();">
+          <input type="radio" name="garment" ${sel?'checked':''}>
+          <div style="flex:1;font-size:14px;font-weight:700;">${g.icon} ${g.key}</div>
+          <div class="price-badge">${php(g.price)} / pc</div>
+        </label>`;
+      }).join('');
+      fullSubHtml = `
+        <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;padding:11px 14px;font-size:12px;color:#8A6500;display:flex;gap:8px;">
+          <span>ℹ️</span>
+          <span><strong>Full Sublimation</strong> — Shop provides shirt. Minimum order of <strong>${PRICING.fullSubMinQty || 15} pcs</strong>.</span>
+        </div>
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Garment Type</label>
+          <div class="flex flex-col gap-2">${gCards}</div>
+        </div>`;
+    }
 
+    // Cost preview
     const up = unitPrice();
-    const costPreview = (d.shirtType && d.quantity) ? `
+    const qty = parseInt(d.quantity)||1;
+    const canPreview = d.printType && (
+      isFullSub ? d.garmentType
+                : (d.logoSize && (d.hasOwnShirt==='Yes' || (d.hasOwnShirt==='No' && d.shirtChoice)))
+    );
+    const costPreview = canPreview && up > 0 ? `
       <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:14px 16px;">
         <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Shirt Cost</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;letter-spacing:0.05em;">${php(up*(parseInt(d.quantity)||1))}</div>
-        <div style="font-size:11px;color:#999;margin-top:2px;">${d.quantity} pc(s) × ${php(up)} each</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;letter-spacing:0.05em;">${php(up*qty)}</div>
+        <div style="font-size:11px;color:#999;margin-top:2px;">${qty} pc(s) × ${php(up)} each</div>
       </div>` : '';
 
     el.innerHTML = `
       <div class="flex flex-col gap-5">
         <div>
-          <label class="field-label" style="margin-bottom:10px;">Shirt Type / Print Method</label>
-          <div class="flex flex-col gap-2">${typeCards}</div>
+          <label class="field-label" style="margin-bottom:10px;">Type of Printing</label>
+          <div class="flex flex-col gap-2">${ptCards}</div>
         </div>
-        <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
-          <div class="flex flex-col gap-1">
-            <label class="field-label">Shirt Color</label>
-            <input class="field-input" id="f_color" value="${esc(d.shirtColor||'')}" placeholder="e.g. Black, White, Red" oninput="d.shirtColor=this.value;">
+        ${logoSizeHtml}
+        ${shirtSourceHtml}
+        ${fullSubHtml}
+        ${d.printType ? `
+          <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
+            <div class="flex flex-col gap-1">
+              <label class="field-label">Shirt Color <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+              <input class="field-input" id="f_color" value="${esc(d.shirtColor||'')}" placeholder="e.g. Black, White, Red" oninput="d.shirtColor=this.value;">
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="field-label">Quantity ${isFullSub?`<span style="color:#E8151B;font-weight:400;text-transform:none;letter-spacing:0;">(min ${PRICING.fullSubMinQty||15})</span>`:''}</label>
+              <input class="field-input" id="f_qty" type="number" min="${isFullSub?(PRICING.fullSubMinQty||15):1}" value="${d.quantity||1}" placeholder="1" oninput="d.quantity=parseInt(this.value)||1;renderBody();">
+            </div>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="field-label">Quantity</label>
-            <input class="field-input" id="f_qty" type="number" min="1" value="${d.quantity||1}" placeholder="1" oninput="d.quantity=parseInt(this.value)||1;renderBody();">
+            <label class="field-label">Size Breakdown <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <input class="field-input" id="f_sizes" value="${esc(d.sizeBreakdown||'')}" placeholder="e.g. S:5, M:10, L:5, XL:3" oninput="d.sizeBreakdown=this.value;">
           </div>
-        </div>
-        <div>
-          <label class="field-label" style="margin-bottom:8px;">Print Location</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">${locBtns}</div>
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="field-label">Size Breakdown <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
-          <input class="field-input" id="f_sizes" value="${esc(d.sizeBreakdown||'')}" placeholder="e.g. S:5, M:10, L:5, XL:3" oninput="d.sizeBreakdown=this.value;">
-        </div>
-        <div>
-          <label class="field-label" style="margin-bottom:10px;">Rush Order? <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(rush fee applies)</span></label>
-          <div style="display:flex;gap:8px;">
-            <button class="yn-btn yes ${d.rushOrder==='Yes'?'active':''}" onclick="d.rushOrder='Yes';renderBody();">Yes — ${php(PRICING.rushFee||150)}</button>
-            <button class="yn-btn no  ${d.rushOrder==='No' ?'active':''}" onclick="d.rushOrder='No';renderBody();">No</button>
+          <div>
+            <label class="field-label" style="margin-bottom:10px;">Rush Order? <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(rush fee applies)</span></label>
+            <div style="display:flex;gap:8px;">
+              <button class="yn-btn yes ${d.rushOrder==='Yes'?'active':''}" onclick="d.rushOrder='Yes';renderBody();">Yes — ${php(PRICING.rushFee||150)}</button>
+              <button class="yn-btn no  ${d.rushOrder==='No' ?'active':''}" onclick="d.rushOrder='No';renderBody();">No</button>
+            </div>
           </div>
-        </div>
-        <div>
-          <label class="field-label" style="margin-bottom:10px;">Design / Artwork Service? <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(design fee applies if Yes)</span></label>
-          <div style="display:flex;gap:8px;">
-            <button class="yn-btn yes ${d.designService==='Yes'?'active':''}" onclick="d.designService='Yes';renderBody();">Yes — ${php(PRICING.designFee||250)}</button>
-            <button class="yn-btn no  ${d.designService==='No' ?'active':''}" onclick="d.designService='No';renderBody();">No</button>
+          <div>
+            <label class="field-label" style="margin-bottom:10px;">Design / Artwork Service? <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(design fee applies if Yes)</span></label>
+            <div style="display:flex;gap:8px;">
+              <button class="yn-btn yes ${d.designService==='Yes'?'active':''}" onclick="d.designService='Yes';renderBody();">Yes — ${php(PRICING.designFee||250)}</button>
+              <button class="yn-btn no  ${d.designService==='No' ?'active':''}" onclick="d.designService='No';renderBody();">No</button>
+            </div>
           </div>
-        </div>
-        ${costPreview}
-        <div class="flex flex-col gap-1">
-          <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
-          <textarea class="field-input" id="f_notes" placeholder="Logo placement, exact colors, delivery notes...">${esc(d.notes||'')}</textarea>
-        </div>
+          ${costPreview}
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <textarea class="field-input" id="f_notes" placeholder="Logo placement, exact colors, delivery notes...">${esc(d.notes||'')}</textarea>
+          </div>
+        ` : ''}
       </div>`;
   }
 
@@ -345,16 +495,21 @@ function renderBody() {
 
       <table class="q-table">
         <tr><td colspan="2" class="sec-label">SHIRT SPECIFICATIONS</td></tr>
-        <tr><td>Shirt Type</td><td>${esc(d.shirtType)||'—'}</td></tr>
+        <tr><td>Print Type</td><td>${esc(d.printType)||'—'}</td></tr>
+        ${d.logoSize?`<tr><td>Logo Size</td><td>${esc(d.logoSize)}</td></tr>`:''}
+        ${d.printType==='Full Sublimation'?`<tr><td>Garment Type</td><td>${esc(d.garmentType)||'—'}</td></tr>`:''}
+        ${d.hasOwnShirt?`<tr><td>Client Has Own Shirt?</td><td>${esc(d.hasOwnShirt)}</td></tr>`:''}
+        ${d.shirtChoice?`<tr><td>Shop-Provided Shirt</td><td>${esc(d.shirtChoice)}</td></tr>`:''}
         ${d.shirtColor?`<tr><td>Color</td><td>${esc(d.shirtColor)}</td></tr>`:''}
-        ${d.printLocation?`<tr><td>Print Location</td><td>${esc(d.printLocation)}</td></tr>`:''}
         ${d.sizeBreakdown?`<tr><td>Size Breakdown</td><td>${esc(d.sizeBreakdown)}</td></tr>`:''}
         <tr><td>Quantity</td><td>${qty} pc(s)</td></tr>
         <tr><td>Rush Order</td><td>${d.rushOrder||'—'}</td></tr>
         <tr><td>Design Service</td><td>${d.designService||'—'}</td></tr>
 
         <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
-        <tr><td>${esc(d.shirtType||'Shirt')} × ${qty}</td><td>${php(up*qty)}</td></tr>
+        ${d.printType==='Full Sublimation'
+          ? `<tr><td>Full Sub ${esc(d.garmentType||'')} × ${qty}</td><td>${php(up*qty)}</td></tr>`
+          : `<tr><td>${esc(d.printType||'Print')} ${esc(d.logoSize||'')}${d.shirtChoice?' + '+esc(d.shirtChoice):''} × ${qty}</td><td>${php(up*qty)}</td></tr>`}
         ${rush>0?`<tr><td>Rush Fee</td><td>${php(rush)}</td></tr>`:''}
         ${desf>0?`<tr><td>Design Fee</td><td>${php(desf)}</td></tr>`:''}
 
@@ -397,10 +552,10 @@ function formatPhone(input) {
 function saveStep() {
   if (step === 0) { d.clientName=v('f_name'); d.contact=v('f_contact'); d.email=v('f_email'); d.dateNeeded=v('f_dateneeded'); }
   if (step === 1) {
-    d.shirtColor    = v('f_color');
-    d.sizeBreakdown = v('f_sizes');
-    d.quantity      = parseInt(v('f_qty'))||1;
-    d.notes         = v('f_notes');
+    if (document.getElementById('f_color'))  d.shirtColor    = v('f_color');
+    if (document.getElementById('f_sizes'))  d.sizeBreakdown = v('f_sizes');
+    if (document.getElementById('f_qty'))    d.quantity      = parseInt(v('f_qty'))||1;
+    if (document.getElementById('f_notes'))  d.notes         = v('f_notes');
   }
 }
 
@@ -427,8 +582,21 @@ function next() {
     }
   }
   if (step === 1) {
-    if (!d.shirtType)     { showToast('⚠ Please select a Shirt Type.', 'error'); return; }
-    if (!d.printLocation) { showToast('⚠ Please select a Print Location.', 'error'); return; }
+    if (!d.printType) { showToast('⚠ Please select a Print Type.', 'error'); return; }
+    if (d.printType === 'Full Sublimation') {
+      if (!d.garmentType) { showToast('⚠ Please select a Garment Type.', 'error'); return; }
+      const minQ = PRICING.fullSubMinQty || 15;
+      if ((parseInt(d.quantity)||1) < minQ) {
+        showToast('⚠ Full Sublimation requires a minimum of ' + minQ + ' pcs.', 'error');
+        return;
+      }
+    } else {
+      if (!d.logoSize)    { showToast('⚠ Please select a Logo Size (A4 or A3).', 'error'); return; }
+      if (!d.hasOwnShirt) { showToast('⚠ Please indicate if the client has their own shirt.', 'error'); return; }
+      if (d.hasOwnShirt === 'No' && !d.shirtChoice) {
+        showToast('⚠ Please choose a shirt option.', 'error'); return;
+      }
+    }
     if (!d.rushOrder)     { showToast('⚠ Please indicate if this is a Rush Order.', 'error'); return; }
     if (!d.designService) { showToast('⚠ Please indicate if Design Service is needed.', 'error'); return; }
   }
@@ -447,8 +615,9 @@ function render() {
 function resetForm() {
   if (!confirm('Start a new quotation? Current data will be cleared.')) return;
   d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
-  d.shirtType=''; d.shirtColor=''; d.printLocation=''; d.sizeBreakdown='';
-  d.quantity=1; d.rushOrder=''; d.designService='';
+  d.printType=''; d.logoSize=''; d.hasOwnShirt=''; d.shirtChoice=''; d.garmentType='';
+  d.shirtColor=''; d.sizeBreakdown=''; d.quantity=1;
+  d.rushOrder=''; d.designService='';
   d.notes=''; d.taxType='non-vat';
   step=0; render();
 }
@@ -461,11 +630,16 @@ function saveToSheet() {
     contact:       d.contact,
     email:         d.email,
     dateNeeded:    d.dateNeeded,
-    shirtType:     d.shirtType,
+    printType:     d.printType,
+    logoSize:      d.logoSize,
+    hasOwnShirt:   d.hasOwnShirt,
+    shirtChoice:   d.shirtChoice,
+    garmentType:   d.garmentType,
     shirtColor:    d.shirtColor,
-    printLocation: d.printLocation,
     sizeBreakdown: d.sizeBreakdown,
     quantity:      parseInt(d.quantity)||1,
+    printPrice:    printPriceForLogo(),
+    shirtPrice:    shirtPriceForChoice(),
     unitPrice:     unitPrice(),
     rushOrder:     d.rushOrder,
     rushFee:       rushFeeAmt(),

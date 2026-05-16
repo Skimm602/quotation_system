@@ -426,10 +426,20 @@ const termValue = q.paymentTermLabel && q.paymentTermLabel.includes('Full') ? 1
     const tQty   = q.quantity || 1;
     const tUnit  = parseFloat(q.unitPrice) || 0;
     const tBase  = tUnit * tQty;
-    const descParts = [`<strong>T-Shirt — ${q.shirtType || ''}</strong>`];
+    const isFullSub = q.printType === 'Full Sublimation';
+    const headline = isFullSub
+      ? `<strong>T-Shirt — Full Sublimation ${q.garmentType || ''}</strong>`
+      : `<strong>T-Shirt — ${q.printType || ''} ${q.logoSize || ''}${q.shirtChoice ? ' + ' + q.shirtChoice : ''}</strong>`;
+    const descParts = [headline];
+    if (!isFullSub && q.hasOwnShirt === 'Yes') descParts.push('Print only (client provides shirt)');
     if (q.shirtColor)    descParts.push('Color: ' + q.shirtColor);
-    if (q.printLocation) descParts.push('Print Location: ' + q.printLocation);
     if (q.sizeBreakdown) descParts.push('Sizes: ' + q.sizeBreakdown);
+    if (!isFullSub) {
+      const pp = parseFloat(q.printPrice) || 0;
+      const sp = parseFloat(q.shirtPrice) || 0;
+      if (pp > 0 && sp > 0) descParts.push('Print: ' + php(pp) + ' + Shirt: ' + php(sp));
+      else if (pp > 0)      descParts.push('Print price: ' + php(pp));
+    }
     if (q.notes)         descParts.push('Notes: ' + q.notes);
     rows += `<tr>
       <td class="center">${lineNum++}</td>

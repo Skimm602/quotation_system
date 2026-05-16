@@ -588,7 +588,13 @@ function getDashboardData(token) {
       tshirtQuotes = tsdata.slice(tStart).filter(r => r[0] && String(r[0]).startsWith('SH-')).map(row => {
         let dateStr = '';
         try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
-        const ptLabel = String(row[24] || '');
+        const ptLabel = String(row[29] || '');
+        const printType   = String(row[6]  || '');
+        const garmentType = String(row[10] || '');
+        const shirtChoice = String(row[9]  || '');
+        const sigType = printType === 'Full Sublimation'
+          ? 'T-Shirt — Full Sub ' + garmentType
+          : 'T-Shirt — ' + printType + (row[7] ? ' ' + row[7] : '');
         return {
           quoteNum:         String(row[0]  || ''),
           date:             dateStr,
@@ -596,34 +602,39 @@ function getDashboardData(token) {
           contact:          String(row[3]  || ''),
           email:            String(row[4]  || ''),
           dateNeeded:       String(row[5]  || ''),
-          shirtType:        String(row[6]  || ''),
-          sizeBreakdown:    String(row[7]  || ''),
-          shirtColor:       String(row[8]  || ''),
-          printLocation:    String(row[9]  || ''),
-          quantity:         row[10] || 1,
-          unitPrice:        row[11] || 0,
-          baseAmount:       row[12] || 0,
-          rushOrder:        String(row[13] || ''),
-          rushFee:          parseFloat(row[14]) || 0,
-          designService:    String(row[15] || ''),
-          designFee:        parseFloat(row[16]) || 0,
-          totalAmount:      row[17] || 0,
-          downpayment:      row[18] || 0,
-          balance:          row[19] || 0,
-          notes:            String(row[20] || ''),
-          salesStaff:       String(row[21] || ''),
-          status:           String(row[22] || 'Pending'),
-          approvedBy:       String(row[23] || ''),
+          printType:        printType,
+          logoSize:         String(row[7]  || ''),
+          hasOwnShirt:      String(row[8]  || ''),
+          shirtChoice:      shirtChoice,
+          garmentType:      garmentType,
+          shirtColor:       String(row[11] || ''),
+          sizeBreakdown:    String(row[12] || ''),
+          quantity:         row[13] || 1,
+          printPrice:       parseFloat(row[14]) || 0,
+          shirtPrice:       parseFloat(row[15]) || 0,
+          unitPrice:        parseFloat(row[16]) || 0,
+          baseAmount:       parseFloat(row[17]) || 0,
+          rushOrder:        String(row[18] || ''),
+          rushFee:          parseFloat(row[19]) || 0,
+          designService:    String(row[20] || ''),
+          designFee:        parseFloat(row[21]) || 0,
+          totalAmount:      parseFloat(row[22]) || 0,
+          downpayment:      parseFloat(row[23]) || 0,
+          balance:          parseFloat(row[24]) || 0,
+          notes:            String(row[25] || ''),
+          salesStaff:       String(row[26] || ''),
+          status:           String(row[27] || 'Pending'),
+          approvedBy:       String(row[28] || ''),
           paymentTermLabel: ptLabel,
           paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
-          taxType:          String(row[25] || 'non-vat'),
-          taxAmount:        parseFloat(row[26]) || 0,
+          taxType:          String(row[30] || 'non-vat'),
+          taxAmount:        parseFloat(row[31]) || 0,
           quoteType:        'tshirt',
-          signageType:      'T-Shirt — ' + String(row[6] || ''),
+          signageType:      sigType,
           address: '', delivery: '', lighting: '', material: '',
           mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
-          addonDesign: String(row[15] || ''), addonDesignFee: parseFloat(row[16]) || 0,
-          addonRush:   String(row[13] || ''), addonRushFee:   parseFloat(row[14]) || 0,
+          addonDesign: String(row[20] || ''), addonDesignFee: parseFloat(row[21]) || 0,
+          addonRush:   String(row[18] || ''), addonRushFee:   parseFloat(row[19]) || 0,
           addonElec: '', addonElecFee: 0,
           addonTransport: '', addonTransportFee: 0,
         };
@@ -862,7 +873,12 @@ function getQuoteForPDF(token, quoteNum) {
       const r = rows[i];
       let dateStr = '';
       try { dateStr = r[1] ? new Date(r[1]).toISOString() : ''; } catch(e) {}
-      const ptLabel = String(r[24] || '');
+      const ptLabel = String(r[29] || '');
+      const printType   = String(r[6]  || '');
+      const garmentType = String(r[10] || '');
+      const sigType = printType === 'Full Sublimation'
+        ? 'T-Shirt — Full Sub ' + garmentType
+        : 'T-Shirt — ' + printType + (r[7] ? ' ' + r[7] : '');
       return {
         quoteNum:         qn,
         date:             dateStr,
@@ -870,36 +886,41 @@ function getQuoteForPDF(token, quoteNum) {
         contact:          String(r[3]  || ''),
         email:            String(r[4]  || ''),
         dateNeeded:       String(r[5]  || ''),
-        shirtType:        String(r[6]  || ''),
-        sizeBreakdown:    String(r[7]  || ''),
-        shirtColor:       String(r[8]  || ''),
-        printLocation:    String(r[9]  || ''),
-        quantity:         r[10] || 1,
-        unitPrice:        parseFloat(r[11]) || 0,
-        baseAmount:       parseFloat(r[12]) || 0,
-        rushOrder:        String(r[13] || ''),
-        rushFee:          parseFloat(r[14]) || 0,
-        designService:    String(r[15] || ''),
-        designFee:        parseFloat(r[16]) || 0,
-        totalAmount:      parseFloat(r[17]) || 0,
-        downpayment:      parseFloat(r[18]) || 0,
-        balance:          parseFloat(r[19]) || 0,
-        notes:            String(r[20] || ''),
-        salesStaff:       String(r[21] || ''),
-        status:           String(r[22] || 'Pending'),
-        approvedBy:       String(r[23] || ''),
+        printType:        printType,
+        logoSize:         String(r[7]  || ''),
+        hasOwnShirt:      String(r[8]  || ''),
+        shirtChoice:      String(r[9]  || ''),
+        garmentType:      garmentType,
+        shirtColor:       String(r[11] || ''),
+        sizeBreakdown:    String(r[12] || ''),
+        quantity:         r[13] || 1,
+        printPrice:       parseFloat(r[14]) || 0,
+        shirtPrice:       parseFloat(r[15]) || 0,
+        unitPrice:        parseFloat(r[16]) || 0,
+        baseAmount:       parseFloat(r[17]) || 0,
+        rushOrder:        String(r[18] || ''),
+        rushFee:          parseFloat(r[19]) || 0,
+        designService:    String(r[20] || ''),
+        designFee:        parseFloat(r[21]) || 0,
+        totalAmount:      parseFloat(r[22]) || 0,
+        downpayment:      parseFloat(r[23]) || 0,
+        balance:          parseFloat(r[24]) || 0,
+        notes:            String(r[25] || ''),
+        salesStaff:       String(r[26] || ''),
+        status:           String(r[27] || 'Pending'),
+        approvedBy:       String(r[28] || ''),
         paymentTermLabel: ptLabel,
         paymentTermValue: ptLabel.includes('No Down') ? 0
                         : ptLabel.includes('25%')   ? 0.25
                         : ptLabel.includes('Full')  ? 1 : 0.5,
-        taxType:          String(r[25] || 'non-vat'),
-        taxAmount:        parseFloat(r[26]) || 0,
+        taxType:          String(r[30] || 'non-vat'),
+        taxAmount:        parseFloat(r[31]) || 0,
         quoteType:        'tshirt',
-        signageType:      'T-Shirt — ' + String(r[6] || ''),
+        signageType:      sigType,
         address: '', delivery: '', lighting: '', material: '',
         mounting: '', mountFee: 0, complexitySurcharge: 0,
-        addonDesign: String(r[15] || ''), addonDesignFee: parseFloat(r[16]) || 0,
-        addonRush:   String(r[13] || ''), addonRushFee:   parseFloat(r[14]) || 0,
+        addonDesign: String(r[20] || ''), addonDesignFee: parseFloat(r[21]) || 0,
+        addonRush:   String(r[18] || ''), addonRushFee:   parseFloat(r[19]) || 0,
         addonElec: '', addonElecFee: 0,
         addonTransport: '', addonTransportFee: 0,
       };
@@ -1033,10 +1054,10 @@ function updateQuoteStatus(token, quoteNum, status) {
     const data = sheet.getDataRange().getValues();
     for (let i = 0; i < data.length; i++) {
       if (String(data[i][0]).trim() === quoteNum) {
-        sheet.getRange(i+1, 23).setValue(status);  // col W = Status
-        sheet.getRange(i+1, 24).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col X = Approved By
+        sheet.getRange(i+1, 28).setValue(status);  // col AB = Status
+        sheet.getRange(i+1, 29).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col AC = Approved By
         const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
-        sheet.getRange(i+1, 1, 1, 27).setBackground(color);
+        sheet.getRange(i+1, 1, 1, 32).setBackground(color);
         return { success: true };
       }
     }
@@ -1497,7 +1518,12 @@ function saveFrameOrder(data) {
 //  T-SHIRT PRICING  (live from external spreadsheet, T-Shirt sheet)
 // ══════════════════════════════════════════════════════════════════
 function getTshirtPricing() {
-  const defaults = { types: [], rushFee: 150, designFee: 250 };
+  const defaults = {
+    print:   { sublimationA4: 0, sublimationA3: 0, dtfA4: 0, dtfA3: 0 },
+    shirt:   { dryfitWhite: 0, dryfitColored: 0, cotton: 0, polo: 0 },
+    fullSub: { tshirt: 0, polo: 0, longSleeves: 0 },
+    rushFee: 150, designFee: 250, fullSubMinQty: 15,
+  };
   try {
     const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
     const sheet = ss.getSheetByName('T-Shirt');
@@ -1505,9 +1531,12 @@ function getTshirtPricing() {
 
     // Sheet layout: col A = category ("T-Shirt"), col B = label, col C = price
     const rows = sheet.getDataRange().getValues();
-    const types = [];
-    let rushFee   = defaults.rushFee;
-    let designFee = defaults.designFee;
+    const result = {
+      print:   Object.assign({}, defaults.print),
+      shirt:   Object.assign({}, defaults.shirt),
+      fullSub: Object.assign({}, defaults.fullSub),
+      rushFee: defaults.rushFee, designFee: defaults.designFee, fullSubMinQty: defaults.fullSubMinQty,
+    };
 
     for (let i = 0; i < rows.length; i++) {
       const label = String(rows[i][1] || '').trim();
@@ -1516,17 +1545,37 @@ function getTshirtPricing() {
         ? raw
         : parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
       if (!label || val <= 0) continue;
-      const labelL = label.toLowerCase();
-      if (labelL.includes('rush')) {
-        rushFee = val;
-      } else if (labelL.includes('design') || labelL.includes('artwork') || labelL.includes('layout')) {
-        designFee = val;
-      } else {
-        types.push({ label: label, price: val });
+      const k = label.toLowerCase();
+
+      // Check most-specific keywords first to avoid mismatches
+      if (k.includes('rush')) {
+        result.rushFee = val;
+      } else if (k.includes('design') || k.includes('artwork') || k.includes('layout')) {
+        result.designFee = val;
+      } else if (k.includes('full sub') || k.includes('fullsub') || k.includes('full sublimation')) {
+        if (k.includes('long'))  result.fullSub.longSleeves = val;
+        else if (k.includes('polo'))   result.fullSub.polo = val;
+        else if (k.includes('t-shirt') || k.includes('tshirt') || k.includes('shirt')) result.fullSub.tshirt = val;
+      } else if (k.includes('sublimation') || k.startsWith('sub ') || k === 'sub') {
+        if (k.includes('a3')) result.print.sublimationA3 = val;
+        else if (k.includes('a4')) result.print.sublimationA4 = val;
+      } else if (k.includes('dtf')) {
+        if (k.includes('a3')) result.print.dtfA3 = val;
+        else if (k.includes('a4')) result.print.dtfA4 = val;
+      } else if (k.includes('dryfit') || k.includes('dri-fit') || k.includes('dri fit')) {
+        if (k.includes('color') || k.includes('colour')) result.shirt.dryfitColored = val;
+        else if (k.includes('white')) result.shirt.dryfitWhite = val;
+        else result.shirt.dryfitWhite = val;  // default if just "Dryfit"
+      } else if (k.includes('cotton')) {
+        result.shirt.cotton = val;
+      } else if (k.includes('polo')) {
+        result.shirt.polo = val;
+      } else if (k.includes('min') && (k.includes('qty') || k.includes('quantity') || k.includes('order'))) {
+        result.fullSubMinQty = val;
       }
     }
 
-    return { types: types, rushFee: rushFee, designFee: designFee };
+    return result;
   } catch(e) {
     return defaults;
   }
@@ -1544,8 +1593,9 @@ function saveTshirtOrder(data) {
   const headers = [
     'Quote #', 'Date', 'Client Name', 'Contact', 'Email',
     'Date Needed',
-    'Shirt Type', 'Size Breakdown', 'Shirt Color', 'Print Location', 'Quantity',
-    'Unit Price', 'Base Amount',
+    'Print Type', 'Logo Size', 'Has Own Shirt', 'Shirt Choice', 'Garment Type',
+    'Shirt Color', 'Size Breakdown', 'Quantity',
+    'Print Price/Unit', 'Shirt Price/Unit', 'Unit Price', 'Base Amount',
     'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
     'Total Amount', 'Downpayment', 'Balance',
     'Special Instructions', 'Sales Staff',
@@ -1568,14 +1618,16 @@ function saveTshirtOrder(data) {
   const session2  = data.token ? getSessionData_(data.token) : null;
   const staffName = session2 ? (session2.username || session2.name) : (data.salesStaff || '');
 
-  const qty       = parseInt(data.quantity) || 1;
-  const unitPrice = parseFloat(data.unitPrice) || 0;
-  const baseAmt   = unitPrice * qty;
-  const rushFee   = parseFloat(data.rushFee)   || 0;
-  const designFee = parseFloat(data.designFee) || 0;
-  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
-  const dp        = totalAmt * 0.5;
-  const bal       = totalAmt - dp;
+  const qty        = parseInt(data.quantity) || 1;
+  const printPrice = parseFloat(data.printPrice) || 0;
+  const shirtPrice = parseFloat(data.shirtPrice) || 0;
+  const unitPrice  = parseFloat(data.unitPrice)  || (printPrice + shirtPrice);
+  const baseAmt    = unitPrice * qty;
+  const rushFee    = parseFloat(data.rushFee)   || 0;
+  const designFee  = parseFloat(data.designFee) || 0;
+  const totalAmt   = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+  const dp         = totalAmt * 0.5;
+  const bal        = totalAmt - dp;
 
   sheet.appendRow([
     quoteNum,                                  // A  col 1  - Quote #
@@ -1584,30 +1636,35 @@ function saveTshirtOrder(data) {
     data.contact          || '',               // D  col 4  - Contact
     data.email            || '',               // E  col 5  - Email
     data.dateNeeded       || '',               // F  col 6  - Date Needed
-    data.shirtType        || '',               // G  col 7  - Shirt Type (fabric/print method)
-    data.sizeBreakdown    || '',               // H  col 8  - Size Breakdown
-    data.shirtColor       || '',               // I  col 9  - Shirt Color
-    data.printLocation    || '',               // J  col 10 - Print Location
-    qty,                                       // K  col 11 - Quantity
-    parseFloat(unitPrice.toFixed(2)),          // L  col 12 - Unit Price
-    parseFloat(baseAmt.toFixed(2)),            // M  col 13 - Base Amount
-    data.rushOrder        || '',               // N  col 14 - Rush Order
-    parseFloat(rushFee.toFixed(2)),            // O  col 15 - Rush Fee
-    data.designService    || '',               // P  col 16 - Design Service
-    parseFloat(designFee.toFixed(2)),          // Q  col 17 - Design Fee
-    parseFloat(totalAmt.toFixed(2)),           // R  col 18 - Total Amount
-    parseFloat(dp.toFixed(2)),                 // S  col 19 - Downpayment
-    parseFloat(bal.toFixed(2)),                // T  col 20 - Balance
-    data.notes            || '',               // U  col 21 - Special Instructions
-    staffName,                                 // V  col 22 - Sales Staff
-    'Pending',                                 // W  col 23 - Status
-    '',                                        // X  col 24 - Approved By
-    '',                                        // Y  col 25 - Payment Term
-    data.taxType          || 'non-vat',        // Z  col 26 - Tax Type
-    parseFloat(data.taxAmount) || 0,           // AA col 27 - Tax Amount
+    data.printType        || '',               // G  col 7  - Print Type
+    data.logoSize         || '',               // H  col 8  - Logo Size
+    data.hasOwnShirt      || '',               // I  col 9  - Has Own Shirt
+    data.shirtChoice      || '',               // J  col 10 - Shirt Choice
+    data.garmentType      || '',               // K  col 11 - Garment Type (Full Sub)
+    data.shirtColor       || '',               // L  col 12 - Shirt Color
+    data.sizeBreakdown    || '',               // M  col 13 - Size Breakdown
+    qty,                                       // N  col 14 - Quantity
+    parseFloat(printPrice.toFixed(2)),         // O  col 15 - Print Price/Unit
+    parseFloat(shirtPrice.toFixed(2)),         // P  col 16 - Shirt Price/Unit
+    parseFloat(unitPrice.toFixed(2)),          // Q  col 17 - Unit Price
+    parseFloat(baseAmt.toFixed(2)),            // R  col 18 - Base Amount
+    data.rushOrder        || '',               // S  col 19 - Rush Order
+    parseFloat(rushFee.toFixed(2)),            // T  col 20 - Rush Fee
+    data.designService    || '',               // U  col 21 - Design Service
+    parseFloat(designFee.toFixed(2)),          // V  col 22 - Design Fee
+    parseFloat(totalAmt.toFixed(2)),           // W  col 23 - Total Amount
+    parseFloat(dp.toFixed(2)),                 // X  col 24 - Downpayment
+    parseFloat(bal.toFixed(2)),                // Y  col 25 - Balance
+    data.notes            || '',               // Z  col 26 - Special Instructions
+    staffName,                                 // AA col 27 - Sales Staff
+    'Pending',                                 // AB col 28 - Status
+    '',                                        // AC col 29 - Approved By
+    '',                                        // AD col 30 - Payment Term
+    data.taxType          || 'non-vat',        // AE col 31 - Tax Type
+    parseFloat(data.taxAmount) || 0,           // AF col 32 - Tax Amount
   ]);
 
-  sheet.getRange(sheet.getLastRow(), 12, 1, 9).setNumberFormat('₱#,##0.00');
+  sheet.getRange(sheet.getLastRow(), 15, 1, 11).setNumberFormat('₱#,##0.00');
   return quoteNum;
 }
 
@@ -2038,7 +2095,7 @@ else if (quoteNum.startsWith('TQ-')) ptCol = 27; // col AA
 else if (quoteNum.startsWith('RQ-')) ptCol = 23; // col W
 else if (quoteNum.startsWith('BQ-')) ptCol = 28; // col AB
 else if (quoteNum.startsWith('FQ-')) ptCol = 22; // col V
-else if (quoteNum.startsWith('SH-')) ptCol = 25; // col Y
+else if (quoteNum.startsWith('SH-')) ptCol = 30; // col AD
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
