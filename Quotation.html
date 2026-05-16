@@ -338,6 +338,7 @@ const termValue = q.paymentTermLabel && q.paymentTermLabel.includes('Full') ? 1
   const isReceipt   = String(q.quoteNum || '').startsWith('RQ-');
   const isTarpMulti = String(q.quoteNum || '').startsWith('TQ-') && q.items && q.items.length > 0;
   const isBookbind  = String(q.quoteNum || '').startsWith('BQ-');
+  const isFrame     = String(q.quoteNum || '').startsWith('FQ-');
 
   if (isTarpMulti) {
     // One row per item in the cart
@@ -391,6 +392,25 @@ const termValue = q.paymentTermLabel && q.paymentTermLabel.includes('Full') ? 1
         <td class="right">${php(rushFee)}</td>
       </tr>`;
     }
+  } else if (isFrame) {
+    const fQty   = q.quantity || 1;
+    const w      = q.width  || 0;
+    const h      = q.height || 0;
+    const areaPc = (parseFloat(w) || 0) * (parseFloat(h) || 0);
+    const rate   = parseFloat(q.rate) || 0;
+    const unitPr = areaPc * rate;
+    const lineTotal = unitPr * fQty;
+    const descParts = [`<strong>Frame — ${q.matting || ''}</strong>`];
+    descParts.push('Size: ' + w + ' × ' + h + ' ft (' + areaPc.toFixed(2) + ' sq ft per frame)');
+    descParts.push('Rate: ' + php(rate) + ' / sq ft');
+    if (q.notes) descParts.push('Notes: ' + q.notes);
+    rows += `<tr>
+      <td class="center">${lineNum++}</td>
+      <td style="line-height:1.75;">${descParts.join('<br>')}</td>
+      <td class="center">${fQty}</td>
+      <td class="right">${php(unitPr)}</td>
+      <td class="right">${php(lineTotal)}</td>
+    </tr>`;
   } else {
     // Single-item (signage or single tarp or receipt)
     let descParts = [];

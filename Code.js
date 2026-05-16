@@ -733,6 +733,58 @@ function getQuoteForPDF(token, quoteNum) {
     return null;
   }
 
+  // ── Frame ────────────────────────────────────────────────────────
+  if (qn.startsWith('FQ-')) {
+    const sheet = ss.getSheetByName(FRAME_SHEET);
+    if (!sheet) return null;
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]).trim() !== qn) continue;
+      const r = rows[i];
+      let dateStr = '';
+      try { dateStr = r[1] ? new Date(r[1]).toISOString() : ''; } catch(e) {}
+      const ptLabel = String(r[21] || '');
+      return {
+        quoteNum:         qn,
+        date:             dateStr,
+        clientName:       String(r[2]  || ''),
+        contact:          String(r[3]  || ''),
+        email:            String(r[4]  || ''),
+        dateNeeded:       String(r[5]  || ''),
+        width:            r[6]  || 0,
+        height:           r[7]  || 0,
+        quantity:         r[8]  || 1,
+        sqft:             r[9]  || 0,
+        totalSqft:        r[10] || 0,
+        matting:          String(r[11] || ''),
+        rate:             r[12] || 0,
+        baseAmount:       r[13] || 0,
+        totalAmount:      r[14] || 0,
+        downpayment:      r[15] || 0,
+        balance:          r[16] || 0,
+        notes:            String(r[17] || ''),
+        salesStaff:       String(r[18] || ''),
+        status:           String(r[19] || 'Pending'),
+        approvedBy:       String(r[20] || ''),
+        paymentTermLabel: ptLabel,
+        paymentTermValue: ptLabel.includes('No Down') ? 0
+                        : ptLabel.includes('25%')   ? 0.25
+                        : ptLabel.includes('Full')  ? 1 : 0.5,
+        taxType:          String(r[22] || 'non-vat'),
+        taxAmount:        parseFloat(r[23]) || 0,
+        quoteType:        'frame',
+        signageType:      'Frame — ' + String(r[11] || ''),
+        address: '', delivery: '', lighting: '', material: '',
+        mounting: '', mountFee: 0, complexitySurcharge: 0, designFee: 0,
+        addonDesign: '', addonDesignFee: 0,
+        addonRush: '', addonRushFee: 0,
+        addonElec: '', addonElecFee: 0,
+        addonTransport: '', addonTransportFee: 0,
+      };
+    }
+    return null;
+  }
+
   // ── Signage ──────────────────────────────────────────────────────
   const sheet = ss.getSheetByName(SHEET_QUOTATIONS);
   if (!sheet) return null;
@@ -802,6 +854,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isTarp      = String(quoteNum).startsWith('TQ-');
   const isReceipt   = String(quoteNum).startsWith('RQ-');
   const isBookbind  = String(quoteNum).startsWith('BQ-');
+  const isFrame     = String(quoteNum).startsWith('FQ-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -833,6 +886,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Bookbind order not found: ' + quoteNum);
+  }
+
+  if (isFrame) {
+    const sheet = ss.getSheetByName(FRAME_SHEET);
+    if (!sheet) throw new Error('Frame Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 20).setValue(status);  // col T = Status
+        sheet.getRange(i+1, 21).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col U = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 24).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Frame order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -1663,12 +1732,13 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('TQ-')) sheetName = 'Tarp Quotations';
   else if (quoteNum.startsWith('RQ-')) sheetName = 'Receipt Quotations';
   else if (quoteNum.startsWith('BQ-')) sheetName = BOOKBIND_SHEET;
+  else if (quoteNum.startsWith('FQ-')) sheetName = FRAME_SHEET;
   else throw new Error('Unknown quote type');
-  
+
   const sh = ss.getSheetByName(sheetName);
   const data = sh.getDataRange().getValues();
   const headers = data[0];
-  
+
   // Find or create Payment Term column
   // Fixed column per sheet type (1-based)
 let ptCol;
@@ -1676,6 +1746,7 @@ if (quoteNum.startsWith('SQ-')) ptCol = 42;      // col AP
 else if (quoteNum.startsWith('TQ-')) ptCol = 27; // col AA
 else if (quoteNum.startsWith('RQ-')) ptCol = 23; // col W
 else if (quoteNum.startsWith('BQ-')) ptCol = 28; // col AB
+else if (quoteNum.startsWith('FQ-')) ptCol = 22; // col V
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
