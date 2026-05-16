@@ -11,6 +11,7 @@ const TARP_SHEET              = 'Tarp Quotations';   // ✅ FIX #1 — constant 
 const RECEIPT_SHEET           = 'Receipt Quotations';
 const BOOKBIND_SHEET          = 'Bookbind Quotations';
 const FRAME_SHEET             = 'Frame Quotations';
+const TSHIRT_SHEET            = 'Tshirt Quotations';
 
 function setupMainSSId() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -66,6 +67,9 @@ function doGet(e) {
   }
   if (page === 'frame') {
     return serveWithToken_('Frame', 'Quotation System — Frame', token, appUrl);
+  }
+  if (page === 'tshirt') {
+    return serveWithToken_('Tshirt', 'Quotation System — T-Shirt', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -575,8 +579,59 @@ function getDashboardData(token) {
       });
     }
 
+    // ── T-SHIRT QUOTES ──────────────────────────────────────────
+    let tshirtQuotes = [];
+    const tshirtSheet = ss.getSheetByName(TSHIRT_SHEET);
+    if (tshirtSheet) {
+      const tsdata = tshirtSheet.getDataRange().getValues();
+      const tStart = tsdata.length > 0 && String(tsdata[0][0]).startsWith('SH-') ? 0 : 1;
+      tshirtQuotes = tsdata.slice(tStart).filter(r => r[0] && String(r[0]).startsWith('SH-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[24] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          shirtType:        String(row[6]  || ''),
+          sizeBreakdown:    String(row[7]  || ''),
+          shirtColor:       String(row[8]  || ''),
+          printLocation:    String(row[9]  || ''),
+          quantity:         row[10] || 1,
+          unitPrice:        row[11] || 0,
+          baseAmount:       row[12] || 0,
+          rushOrder:        String(row[13] || ''),
+          rushFee:          parseFloat(row[14]) || 0,
+          designService:    String(row[15] || ''),
+          designFee:        parseFloat(row[16]) || 0,
+          totalAmount:      row[17] || 0,
+          downpayment:      row[18] || 0,
+          balance:          row[19] || 0,
+          notes:            String(row[20] || ''),
+          salesStaff:       String(row[21] || ''),
+          status:           String(row[22] || 'Pending'),
+          approvedBy:       String(row[23] || ''),
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          taxType:          String(row[25] || 'non-vat'),
+          taxAmount:        parseFloat(row[26]) || 0,
+          quoteType:        'tshirt',
+          signageType:      'T-Shirt — ' + String(row[6] || ''),
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[15] || ''), addonDesignFee: parseFloat(row[16]) || 0,
+          addonRush:   String(row[13] || ''), addonRushFee:   parseFloat(row[14]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -797,6 +852,61 @@ function getQuoteForPDF(token, quoteNum) {
     return null;
   }
 
+  // ── T-Shirt ──────────────────────────────────────────────────────
+  if (qn.startsWith('SH-')) {
+    const sheet = ss.getSheetByName(TSHIRT_SHEET);
+    if (!sheet) return null;
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]).trim() !== qn) continue;
+      const r = rows[i];
+      let dateStr = '';
+      try { dateStr = r[1] ? new Date(r[1]).toISOString() : ''; } catch(e) {}
+      const ptLabel = String(r[24] || '');
+      return {
+        quoteNum:         qn,
+        date:             dateStr,
+        clientName:       String(r[2]  || ''),
+        contact:          String(r[3]  || ''),
+        email:            String(r[4]  || ''),
+        dateNeeded:       String(r[5]  || ''),
+        shirtType:        String(r[6]  || ''),
+        sizeBreakdown:    String(r[7]  || ''),
+        shirtColor:       String(r[8]  || ''),
+        printLocation:    String(r[9]  || ''),
+        quantity:         r[10] || 1,
+        unitPrice:        parseFloat(r[11]) || 0,
+        baseAmount:       parseFloat(r[12]) || 0,
+        rushOrder:        String(r[13] || ''),
+        rushFee:          parseFloat(r[14]) || 0,
+        designService:    String(r[15] || ''),
+        designFee:        parseFloat(r[16]) || 0,
+        totalAmount:      parseFloat(r[17]) || 0,
+        downpayment:      parseFloat(r[18]) || 0,
+        balance:          parseFloat(r[19]) || 0,
+        notes:            String(r[20] || ''),
+        salesStaff:       String(r[21] || ''),
+        status:           String(r[22] || 'Pending'),
+        approvedBy:       String(r[23] || ''),
+        paymentTermLabel: ptLabel,
+        paymentTermValue: ptLabel.includes('No Down') ? 0
+                        : ptLabel.includes('25%')   ? 0.25
+                        : ptLabel.includes('Full')  ? 1 : 0.5,
+        taxType:          String(r[25] || 'non-vat'),
+        taxAmount:        parseFloat(r[26]) || 0,
+        quoteType:        'tshirt',
+        signageType:      'T-Shirt — ' + String(r[6] || ''),
+        address: '', delivery: '', lighting: '', material: '',
+        mounting: '', mountFee: 0, complexitySurcharge: 0,
+        addonDesign: String(r[15] || ''), addonDesignFee: parseFloat(r[16]) || 0,
+        addonRush:   String(r[13] || ''), addonRushFee:   parseFloat(r[14]) || 0,
+        addonElec: '', addonElecFee: 0,
+        addonTransport: '', addonTransportFee: 0,
+      };
+    }
+    return null;
+  }
+
   // ── Signage ──────────────────────────────────────────────────────
   const sheet = ss.getSheetByName(SHEET_QUOTATIONS);
   if (!sheet) return null;
@@ -867,6 +977,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isReceipt   = String(quoteNum).startsWith('RQ-');
   const isBookbind  = String(quoteNum).startsWith('BQ-');
   const isFrame     = String(quoteNum).startsWith('FQ-');
+  const isTshirt    = String(quoteNum).startsWith('SH-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -914,6 +1025,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Frame order not found: ' + quoteNum);
+  }
+
+  if (isTshirt) {
+    const sheet = ss.getSheetByName(TSHIRT_SHEET);
+    if (!sheet) throw new Error('Tshirt Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 23).setValue(status);  // col W = Status
+        sheet.getRange(i+1, 24).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col X = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 27).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('T-Shirt order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -1367,6 +1494,124 @@ function saveFrameOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  T-SHIRT PRICING  (live from external spreadsheet, T-Shirt sheet)
+// ══════════════════════════════════════════════════════════════════
+function getTshirtPricing() {
+  const defaults = { types: [], rushFee: 150, designFee: 250 };
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('T-Shirt');
+    if (!sheet) return defaults;
+
+    // Sheet layout: col A = category ("T-Shirt"), col B = label, col C = price
+    const rows = sheet.getDataRange().getValues();
+    const types = [];
+    let rushFee   = defaults.rushFee;
+    let designFee = defaults.designFee;
+
+    for (let i = 0; i < rows.length; i++) {
+      const label = String(rows[i][1] || '').trim();
+      const raw   = rows[i][2];
+      const val   = typeof raw === 'number'
+        ? raw
+        : parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
+      if (!label || val <= 0) continue;
+      const labelL = label.toLowerCase();
+      if (labelL.includes('rush')) {
+        rushFee = val;
+      } else if (labelL.includes('design') || labelL.includes('artwork') || labelL.includes('layout')) {
+        designFee = val;
+      } else {
+        types.push({ label: label, price: val });
+      }
+    }
+
+    return { types: types, rushFee: rushFee, designFee: designFee };
+  } catch(e) {
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE T-SHIRT ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveTshirtOrder(data) {
+  const ss  = getMainSS_();
+  let sheet = ss.getSheetByName(TSHIRT_SHEET);
+
+  if (!sheet) sheet = ss.insertSheet(TSHIRT_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email',
+    'Date Needed',
+    'Shirt Type', 'Size Breakdown', 'Shirt Color', 'Print Location', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Total Amount', 'Downpayment', 'Balance',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Payment Term', 'Tax Type', 'Tax Amount',
+  ];
+
+  // Auto-insert header row if missing
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1,1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('SH-')) {
+    if (firstCell.startsWith('SH-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'SH-' + String(lastRow).padStart(4, '0');
+
+  const session2  = data.token ? getSessionData_(data.token) : null;
+  const staffName = session2 ? (session2.username || session2.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity) || 1;
+  const unitPrice = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = unitPrice * qty;
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+  const dp        = totalAmt * 0.5;
+  const bal       = totalAmt - dp;
+
+  sheet.appendRow([
+    quoteNum,                                  // A  col 1  - Quote #
+    new Date(),                                // B  col 2  - Date
+    data.clientName       || '',               // C  col 3  - Client Name
+    data.contact          || '',               // D  col 4  - Contact
+    data.email            || '',               // E  col 5  - Email
+    data.dateNeeded       || '',               // F  col 6  - Date Needed
+    data.shirtType        || '',               // G  col 7  - Shirt Type (fabric/print method)
+    data.sizeBreakdown    || '',               // H  col 8  - Size Breakdown
+    data.shirtColor       || '',               // I  col 9  - Shirt Color
+    data.printLocation    || '',               // J  col 10 - Print Location
+    qty,                                       // K  col 11 - Quantity
+    parseFloat(unitPrice.toFixed(2)),          // L  col 12 - Unit Price
+    parseFloat(baseAmt.toFixed(2)),            // M  col 13 - Base Amount
+    data.rushOrder        || '',               // N  col 14 - Rush Order
+    parseFloat(rushFee.toFixed(2)),            // O  col 15 - Rush Fee
+    data.designService    || '',               // P  col 16 - Design Service
+    parseFloat(designFee.toFixed(2)),          // Q  col 17 - Design Fee
+    parseFloat(totalAmt.toFixed(2)),           // R  col 18 - Total Amount
+    parseFloat(dp.toFixed(2)),                 // S  col 19 - Downpayment
+    parseFloat(bal.toFixed(2)),                // T  col 20 - Balance
+    data.notes            || '',               // U  col 21 - Special Instructions
+    staffName,                                 // V  col 22 - Sales Staff
+    'Pending',                                 // W  col 23 - Status
+    '',                                        // X  col 24 - Approved By
+    '',                                        // Y  col 25 - Payment Term
+    data.taxType          || 'non-vat',        // Z  col 26 - Tax Type
+    parseFloat(data.taxAmount) || 0,           // AA col 27 - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 12, 1, 9).setNumberFormat('₱#,##0.00');
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -1778,6 +2023,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('RQ-')) sheetName = 'Receipt Quotations';
   else if (quoteNum.startsWith('BQ-')) sheetName = BOOKBIND_SHEET;
   else if (quoteNum.startsWith('FQ-')) sheetName = FRAME_SHEET;
+  else if (quoteNum.startsWith('SH-')) sheetName = TSHIRT_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -1792,6 +2038,7 @@ else if (quoteNum.startsWith('TQ-')) ptCol = 27; // col AA
 else if (quoteNum.startsWith('RQ-')) ptCol = 23; // col W
 else if (quoteNum.startsWith('BQ-')) ptCol = 28; // col AB
 else if (quoteNum.startsWith('FQ-')) ptCol = 22; // col V
+else if (quoteNum.startsWith('SH-')) ptCol = 25; // col Y
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
