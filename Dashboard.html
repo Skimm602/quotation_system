@@ -131,6 +131,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
             <span class="nq-icon">👕</span>
             <span>T-Shirt Quote</span>
           </div>
+          <div class="nq-option" onclick="goToMug()">
+            <span class="nq-icon">☕</span>
+            <span>Mug Quote</span>
+          </div>
         </div>
       </div>
       <!-- END NEW QUOTE DROPDOWN -->
@@ -175,6 +179,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
         <button onclick="switchTab('tshirt')" id="tab-tshirt"
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
           T-SHIRT
+        </button>
+        <button onclick="switchTab('mug')" id="tab-mug"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          MUG
         </button>
       </div>
 
@@ -441,6 +449,17 @@ function goToTshirt() {
   }).getAppUrl();
 }
 
+function goToMug() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=mug&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
 function setupDashboard() {
   const u = currentUser, role = (u.role||'').toLowerCase();
   document.getElementById('sidebarName').textContent = u.name;
@@ -487,13 +506,13 @@ let currentTab = 'all';
 
 function switchTab(tab) {
   currentTab = tab;
-  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt'].forEach(t => {
+  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
     btn.style.borderBottom = t === tab ? '3px solid #E8151B' : '3px solid transparent';
     btn.style.color        = t === tab ? '#0A0A0A' : '#999';
   });
-  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT' };
+  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG' };
   const el = document.getElementById('recentLabel');
   if (el) el.textContent = labels[tab] || 'QUOTATIONS';
   renderStats(); renderRecentTable();
@@ -506,6 +525,7 @@ function getFilteredByTab() {
   if (currentTab === 'bookbind')  return allQuotes.filter(q => String(q.quoteNum).startsWith('BQ-'));
   if (currentTab === 'frame')     return allQuotes.filter(q => String(q.quoteNum).startsWith('FQ-'));
   if (currentTab === 'tshirt')    return allQuotes.filter(q => String(q.quoteNum).startsWith('SH-'));
+  if (currentTab === 'mug')       return allQuotes.filter(q => String(q.quoteNum).startsWith('MUG-'));
   return allQuotes;
 }
 
