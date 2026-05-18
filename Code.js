@@ -12,6 +12,7 @@ const RECEIPT_SHEET           = 'Receipt Quotations';
 const BOOKBIND_SHEET          = 'Bookbind Quotations';
 const FRAME_SHEET             = 'Frame Quotations';
 const TSHIRT_SHEET            = 'Tshirt Quotations';
+const MUG_SHEET               = 'Mug Quotations';
 
 function setupMainSSId() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -70,6 +71,9 @@ function doGet(e) {
   }
   if (page === 'tshirt') {
     return serveWithToken_('Tshirt', 'Quotation System — T-Shirt', token, appUrl);
+  }
+  if (page === 'mug') {
+    return serveWithToken_('Mug', 'Quotation System — Mug', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1706,6 +1710,163 @@ function saveTshirtOrder(data) {
   ]);
 
   sheet.getRange(sheet.getLastRow(), 15, 1, 11).setNumberFormat('₱#,##0.00');
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  GET MUG PRICING
+// ══════════════════════════════════════════════════════════════════
+function getMugPricing() {
+  const defaults = {
+    mugs: {
+      'White Mug':                      180,
+      'Inner Color Mug':                190,
+      'Neon Color Mug':                 210,
+      'Enamel Mug':                     280,
+      'Gold / Silver Glitter Mug':      240,
+      'Clear / Frosted Mug':            210,
+      'Heart Handle Glitter Magic Mug': 240,
+      'Clear / Frosted Beer Mug':       390,
+    },
+    qtyTiers: [
+      { min: 1,  max: 11,   discount: 0  },
+      { min: 12, max: 23,   discount: 5  },
+      { min: 24, max: 47,   discount: 10 },
+      { min: 48, max: 9999, discount: 15 },
+    ],
+    rushFee: 150, designFee: 250,
+  };
+  try {
+    const ss = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Mugs') || ss.getSheetByName('Mug');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    const result = {
+      mugs:      Object.assign({}, defaults.mugs),
+      qtyTiers:  defaults.qtyTiers.map(t => Object.assign({}, t)),
+      rushFee:   defaults.rushFee,
+      designFee: defaults.designFee,
+    };
+
+    function parsePrice(raw) {
+      if (typeof raw === 'number') return raw;
+      return parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
+    }
+    function canon(s) {
+      return String(s || '').trim().replace(/\s+/g, ' ')
+        .toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    // Read rows: col A = label, col B = value
+    // Special rows: Rush, Design, Tier12, Tier24, Tier48 (discount %)
+    const customMugs = {};
+    let foundMug = false;
+    for (let r = 0; r < rows.length; r++) {
+      const label = String(rows[r][0] || '').trim();
+      const val   = parsePrice(rows[r][1]);
+      if (!label) continue;
+      const lower = label.toLowerCase();
+
+      if (lower === 'rush' || lower.startsWith('rush '))       { result.rushFee   = val || result.rushFee;   continue; }
+      if (lower.startsWith('design') || lower.startsWith('artwork')) { result.designFee = val || result.designFee; continue; }
+
+      // Qty tier rows: "Tier12 5" means 12+ pcs get 5% off
+      const tierMatch = lower.match(/^tier\s*(\d+)/);
+      if (tierMatch) {
+        const tierMin = parseInt(tierMatch[1]);
+        const disc    = val;
+        const idx     = result.qtyTiers.findIndex(t => t.min === tierMin);
+        if (idx >= 0) result.qtyTiers[idx].discount = disc;
+        continue;
+      }
+
+      if (val > 0) {
+        customMugs[canon(label)] = val;
+        foundMug = true;
+      }
+    }
+    if (foundMug) result.mugs = customMugs;
+    return result;
+  } catch(e) {
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE MUG ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveMugOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(MUG_SHEET);
+  if (!sheet) sheet = ss.insertSheet(MUG_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Mug Type', 'Quantity',
+    'Base Price/Unit', 'Discount %', 'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Total Amount', 'Downpayment', 'Balance',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Payment Term', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('MUG-')) {
+    if (firstCell.startsWith('MUG-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'MUG-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)   || 1;
+  const baseP     = parseFloat(data.basePrice) || 0;
+  const discPct   = parseFloat(data.discountPct) || 0;
+  const unitP     = parseFloat(data.unitPrice) || baseP * (1 - discPct / 100);
+  const baseAmt   = unitP * qty;
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+  const dp        = totalAmt * 0.5;
+  const bal       = totalAmt - dp;
+
+  sheet.appendRow([
+    quoteNum,                               // A  - Quote #
+    new Date(),                             // B  - Date
+    data.clientName    || '',               // C  - Client Name
+    data.contact       || '',               // D  - Contact
+    data.email         || '',               // E  - Email
+    data.dateNeeded    || '',               // F  - Date Needed
+    data.mugType       || '',               // G  - Mug Type
+    qty,                                    // H  - Quantity
+    parseFloat(baseP.toFixed(2)),           // I  - Base Price/Unit
+    discPct,                                // J  - Discount %
+    parseFloat(unitP.toFixed(2)),           // K  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),         // L  - Base Amount
+    data.rushOrder     || '',               // M  - Rush Order
+    parseFloat(rushFee.toFixed(2)),         // N  - Rush Fee
+    data.designService || '',               // O  - Design Service
+    parseFloat(designFee.toFixed(2)),       // P  - Design Fee
+    parseFloat(totalAmt.toFixed(2)),        // Q  - Total Amount
+    parseFloat(dp.toFixed(2)),              // R  - Downpayment
+    parseFloat(bal.toFixed(2)),             // S  - Balance
+    data.notes         || '',               // T  - Special Instructions
+    staffName,                              // U  - Sales Staff
+    'Pending',                              // V  - Status
+    '',                                     // W  - Approved By
+    '',                                     // X  - Payment Term
+    data.taxType       || 'non-vat',        // Y  - Tax Type
+    parseFloat(data.taxAmount) || 0,        // Z  - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 9, 1, 11).setNumberFormat('₱#,##0.00');
   return quoteNum;
 }
 
