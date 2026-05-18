@@ -175,6 +175,44 @@ const d = {
   taxType:       'non-vat',
 };
 
+// ─── LIGHTWEIGHT QTY UPDATE (no re-render) ────────────────────────
+function updateQtyDisplay() {
+  const qty        = parseInt(d.quantity) || 0;
+  const selTiers   = d.mugType ? ((PRICING.mugs || {})[d.mugType] || []) : [];
+  const activeTier = getActiveTier(qty);
+  const minQ       = d.mugType ? getMinQty() : 1;
+  const up         = unitPrice();
+
+  const tiersEl = document.getElementById('qty-tiers');
+  if (tiersEl) {
+    tiersEl.innerHTML = selTiers.length
+      ? selTiers.map(function(t, i) {
+          const nextMin  = selTiers[i + 1] ? selTiers[i + 1].minQty - 1 : 9999;
+          const label    = nextMin >= 9999 ? t.minQty + '+ pcs' : t.minQty + '–' + nextMin + ' pcs';
+          const isActive = activeTier && activeTier.minQty === t.minQty;
+          return '<div class="tier-chip ' + (isActive ? 'active' : '') + '" onclick="d.quantity=' + t.minQty + ';var fi=document.getElementById(\'f_qty\');if(fi)fi.value=' + t.minQty + ';updateQtyDisplay();" style="cursor:pointer;">'
+            + '<div style="font-size:10px;">' + label + '</div>'
+            + '<div style="font-size:12px;font-weight:700;margin-top:2px;">' + php(t.price) + '/pc</div>'
+            + '</div>';
+        }).join('')
+      : '<div style="font-size:11px;color:#BBB;">Select a mug type to see price tiers.</div>';
+  }
+
+  const previewEl = document.getElementById('cost-preview');
+  if (previewEl) {
+    const canPreview = d.mugType && qty >= minQ && up > 0;
+    previewEl.innerHTML = canPreview
+      ? '<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">'
+          + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Mug Cost</div>'
+          + '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:34px;color:#E8151B;letter-spacing:0.05em;line-height:1;">' + php(up * qty) + '</div>'
+          + '<div style="font-size:12px;color:#999;margin-top:5px;">' + qty + ' pc(s) \xd7 ' + php(up) + '/pc</div>'
+          + '</div>'
+      : (d.mugType && qty > 0 && qty < minQ
+          ? '<div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;padding:12px 16px;font-size:12px;color:#8A6500;">Minimum order for <strong>' + esc(d.mugType) + '</strong> is <strong>' + minQ + ' pcs</strong>.</div>'
+          : '');
+  }
+}
+
 // ─── CALCULATIONS ─────────────────────────────────────────────────
 function unitPrice()    { const t = getActiveTier(d.quantity); return t ? t.price : 0; }
 function baseAmt()      { return unitPrice() * (parseInt(d.quantity) || 0); }
@@ -301,7 +339,7 @@ function renderBody() {
           const nextMin  = selTiers[i + 1] ? selTiers[i + 1].minQty - 1 : 9999;
           const label    = nextMin >= 9999 ? t.minQty + '+ pcs' : t.minQty + '–' + nextMin + ' pcs';
           const isActive = activeTier && activeTier.minQty === t.minQty;
-          return `<div class="tier-chip ${isActive ? 'active' : ''}" onclick="d.quantity=${t.minQty};renderBody();" style="cursor:pointer;">
+          return `<div class="tier-chip ${isActive ? 'active' : ''}" onclick="d.quantity=${t.minQty};var fi=document.getElementById('f_qty');if(fi)fi.value=${t.minQty};updateQtyDisplay();" style="cursor:pointer;">
             <div style="font-size:10px;">${label}</div>
             <div style="font-size:12px;font-weight:700;margin-top:2px;">${php(t.price)}/pc</div>
           </div>`;
@@ -334,10 +372,10 @@ function renderBody() {
           <label class="field-label">Quantity</label>
           <input type="number" class="field-input" id="f_qty" value="${qty}" min="${d.mugType ? getMinQty() : 1}"
             style="max-width:160px;font-size:20px;font-weight:700;text-align:center;padding:10px;"
-            oninput="d.quantity=parseInt(this.value)||1;renderBody();">
+            oninput="d.quantity=parseInt(this.value)||0;updateQtyDisplay();">
           <div>
             <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:7px;">PRICE TIERS${d.mugType ? ' — ' + esc(d.mugType) : ''}</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">${tierChips}</div>
+            <div id="qty-tiers" style="display:flex;gap:6px;flex-wrap:wrap;">${tierChips}</div>
           </div>
         </div>
 
@@ -357,7 +395,7 @@ function renderBody() {
           </div>
         </div>
 
-        ${costPreview}
+        <div id="cost-preview">${costPreview}</div>
 
         <div class="flex flex-col gap-1">
           <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
