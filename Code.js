@@ -1719,76 +1719,56 @@ function saveTshirtOrder(data) {
 function getMugPricing() {
   const defaults = {
     mugs: {
-      'White Mug':                      180,
-      'Inner Color Mug':                190,
-      'Neon Color Mug':                 210,
-      'Enamel Mug':                     280,
-      'Gold / Silver Glitter Mug':      240,
-      'Clear / Frosted Mug':            210,
-      'Heart Handle Glitter Magic Mug': 240,
-      'Clear / Frosted Beer Mug':       390,
+      'White Mug':                      [{minQty:5,price:180},{minQty:10,price:150},{minQty:25,price:125},{minQty:50,price:100}],
+      'Inner Color Mug':                [{minQty:5,price:190},{minQty:10,price:160},{minQty:25,price:140},{minQty:50,price:130}],
+      'Neon Color Mug':                 [{minQty:5,price:210},{minQty:10,price:195},{minQty:25,price:185},{minQty:50,price:175}],
+      'Enamel Mug':                     [{minQty:5,price:280},{minQty:10,price:260},{minQty:25,price:250},{minQty:50,price:240}],
+      'Gold/Silver Glitter Mug':        [{minQty:5,price:240},{minQty:10,price:230},{minQty:25,price:225},{minQty:50,price:220}],
+      'Clear/Frosted Mug':              [{minQty:5,price:220},{minQty:10,price:210},{minQty:25,price:200},{minQty:50,price:195}],
+      'Heart Handle Glitter Magic Mug': [{minQty:5,price:240},{minQty:10,price:230},{minQty:25,price:225},{minQty:50,price:220}],
+      'Clear/Frosted Beer Mug':         [{minQty:5,price:390},{minQty:10,price:375},{minQty:25,price:360},{minQty:50,price:350}],
     },
-    qtyTiers: [
-      { min: 1,  max: 11,   discount: 0  },
-      { min: 12, max: 23,   discount: 5  },
-      { min: 24, max: 47,   discount: 10 },
-      { min: 48, max: 9999, discount: 15 },
-    ],
     rushFee: 150, designFee: 250,
   };
   try {
-    const ss = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
-    const sheet = ss.getSheetByName('Mugs') || ss.getSheetByName('Mug');
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Mugs') || ss.getSheetByName('Mug') || ss.getSheetByName('Table2');
     if (!sheet) return defaults;
 
     const rows = sheet.getDataRange().getValues();
-    const result = {
-      mugs:      Object.assign({}, defaults.mugs),
-      qtyTiers:  defaults.qtyTiers.map(t => Object.assign({}, t)),
-      rushFee:   defaults.rushFee,
-      designFee: defaults.designFee,
-    };
 
-    function parsePrice(raw) {
-      if (typeof raw === 'number') return raw;
-      return parseFloat(String(raw || '').replace(/[^\d.]/g, '')) || 0;
+    // Find header row: first row where multiple cells contain "mug"
+    let headerIdx = -1;
+    for (let i = 0; i < rows.length; i++) {
+      const mugCols = rows[i].filter(c => /mug/i.test(String(c))).length;
+      if (mugCols >= 2) { headerIdx = i; break; }
     }
-    function canon(s) {
-      return String(s || '').trim().replace(/\s+/g, ' ')
-        .toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+    if (headerIdx < 0) return defaults;
+
+    const headers  = rows[headerIdx];
+    const tierRows = rows.slice(headerIdx + 1).filter(r => r.some(c => /\d+\s*pcs?/i.test(String(c))));
+    if (!tierRows.length) return defaults;
+
+    function parseTierCell(cell) {
+      const s = String(cell || '').trim();
+      const qtyM   = s.match(/(\d+)\s*pcs?/i);
+      const priceM = s.match(/[P₱]\s*(\d+)/) || s.match(/\.?\s*(\d{2,})\s*$/);
+      if (!qtyM || !priceM) return null;
+      return { minQty: parseInt(qtyM[1]), price: parseInt(priceM[1]) };
     }
 
-    // Read rows: col A = label, col B = value
-    // Special rows: Rush, Design, Tier12, Tier24, Tier48 (discount %)
-    const customMugs = {};
-    let foundMug = false;
-    for (let r = 0; r < rows.length; r++) {
-      const label = String(rows[r][0] || '').trim();
-      const val   = parsePrice(rows[r][1]);
-      if (!label) continue;
-      const lower = label.toLowerCase();
-
-      if (lower === 'rush' || lower.startsWith('rush '))       { result.rushFee   = val || result.rushFee;   continue; }
-      if (lower.startsWith('design') || lower.startsWith('artwork')) { result.designFee = val || result.designFee; continue; }
-
-      // Qty tier rows: "Tier12 5" means 12+ pcs get 5% off
-      const tierMatch = lower.match(/^tier\s*(\d+)/);
-      if (tierMatch) {
-        const tierMin = parseInt(tierMatch[1]);
-        const disc    = val;
-        const idx     = result.qtyTiers.findIndex(t => t.min === tierMin);
-        if (idx >= 0) result.qtyTiers[idx].discount = disc;
-        continue;
-      }
-
-      if (val > 0) {
-        customMugs[canon(label)] = val;
-        foundMug = true;
-      }
+    const result = { mugs: {}, rushFee: defaults.rushFee, designFee: defaults.designFee };
+    for (let col = 0; col < headers.length; col++) {
+      const mugName = String(headers[col]).trim();
+      if (!mugName || !/mug/i.test(mugName)) continue;
+      const tiers = tierRows.map(r => parseTierCell(r[col])).filter(Boolean);
+      tiers.sort((a, b) => a.minQty - b.minQty);
+      if (tiers.length) result.mugs[mugName] = tiers;
     }
-    if (foundMug) result.mugs = customMugs;
-    return result;
+
+    return Object.keys(result.mugs).length ? result : defaults;
   } catch(e) {
+    Logger.log('getMugPricing error: ' + e);
     return defaults;
   }
 }

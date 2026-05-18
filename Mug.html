@@ -121,21 +121,15 @@ function goToDashboard() {
 // ─── PRICING ──────────────────────────────────────────────────────
 let PRICING = {
   mugs: {
-    'White Mug':                      180,
-    'Inner Color Mug':                190,
-    'Neon Color Mug':                 210,
-    'Enamel Mug':                     280,
-    'Gold / Silver Glitter Mug':      240,
-    'Clear / Frosted Mug':            210,
-    'Heart Handle Glitter Magic Mug': 240,
-    'Clear / Frosted Beer Mug':       390,
+    'White Mug':                      [{minQty:5,price:180},{minQty:10,price:150},{minQty:25,price:125},{minQty:50,price:100}],
+    'Inner Color Mug':                [{minQty:5,price:190},{minQty:10,price:160},{minQty:25,price:140},{minQty:50,price:130}],
+    'Neon Color Mug':                 [{minQty:5,price:210},{minQty:10,price:195},{minQty:25,price:185},{minQty:50,price:175}],
+    'Enamel Mug':                     [{minQty:5,price:280},{minQty:10,price:260},{minQty:25,price:250},{minQty:50,price:240}],
+    'Gold/Silver Glitter Mug':        [{minQty:5,price:240},{minQty:10,price:230},{minQty:25,price:225},{minQty:50,price:220}],
+    'Clear/Frosted Mug':              [{minQty:5,price:220},{minQty:10,price:210},{minQty:25,price:200},{minQty:50,price:195}],
+    'Heart Handle Glitter Magic Mug': [{minQty:5,price:240},{minQty:10,price:230},{minQty:25,price:225},{minQty:50,price:220}],
+    'Clear/Frosted Beer Mug':         [{minQty:5,price:390},{minQty:10,price:375},{minQty:25,price:360},{minQty:50,price:350}],
   },
-  qtyTiers: [
-    { min: 1,  max: 11,   discount: 0  },
-    { min: 12, max: 23,   discount: 5  },
-    { min: 24, max: 47,   discount: 10 },
-    { min: 48, max: 9999, discount: 15 },
-  ],
   rushFee:   150,
   designFee: 250,
 };
@@ -145,8 +139,7 @@ function loadPricing() {
   google.script.run
     .withSuccessHandler(function(p) {
       if (p) {
-        if (p.mugs      && Object.keys(p.mugs).length)  PRICING.mugs      = p.mugs;
-        if (p.qtyTiers  && p.qtyTiers.length)           PRICING.qtyTiers  = p.qtyTiers;
+        if (p.mugs && Object.keys(p.mugs).length) PRICING.mugs = p.mugs;
         if (p.rushFee   > 0) PRICING.rushFee   = p.rushFee;
         if (p.designFee > 0) PRICING.designFee = p.designFee;
       }
@@ -158,15 +151,15 @@ function loadPricing() {
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────
-function getTier(qty) {
+function getMugTiers()  { return ((PRICING.mugs || {})[d.mugType]) || []; }
+function getMinQty()    { const t = getMugTiers(); return t.length ? t[0].minQty : 1; }
+function getActiveTier(qty) {
+  const tiers = getMugTiers();
+  if (!tiers.length) return null;
   const q = parseInt(qty) || 0;
-  return PRICING.qtyTiers.find(function(t) { return q >= t.min && q <= t.max; })
-      || PRICING.qtyTiers[0];
-}
-
-function discountedUnitPrice(basePrice, qty) {
-  const tier = getTier(qty);
-  return basePrice * (1 - tier.discount / 100);
+  let active = null;
+  for (let i = 0; i < tiers.length; i++) { if (q >= tiers[i].minQty) active = tiers[i]; }
+  return active;
 }
 
 // ─── STATE ────────────────────────────────────────────────────────
@@ -183,10 +176,8 @@ const d = {
 };
 
 // ─── CALCULATIONS ─────────────────────────────────────────────────
-function basePrice()    { return (PRICING.mugs || {})[d.mugType] || 0; }
-function discountPct()  { return getTier(d.quantity).discount; }
-function unitPrice()    { return discountedUnitPrice(basePrice(), d.quantity); }
-function baseAmt()      { return unitPrice() * (parseInt(d.quantity) || 1); }
+function unitPrice()    { const t = getActiveTier(d.quantity); return t ? t.price : 0; }
+function baseAmt()      { return unitPrice() * (parseInt(d.quantity) || 0); }
 function rushFeeAmt()   { return d.rushOrder    === 'Yes' ? (PRICING.rushFee   || 150) : 0; }
 function designFeeAmt() { return d.designService === 'Yes' ? (PRICING.designFee || 250) : 0; }
 
@@ -285,48 +276,51 @@ function renderBody() {
   // ── STEP 1: MUG SPECS ───────────────────────────────────────────
   else if (step === 1) {
     const qty  = parseInt(d.quantity) || 1;
-    const tier = getTier(qty);
-    const bp   = basePrice();
-    const up   = unitPrice();
 
     // Mug type grid
     const mugKeys  = Object.keys(PRICING.mugs || {});
     const mugCards = mugKeys.length
       ? mugKeys.map(function(k) {
-          const sel  = d.mugType === k;
-          const icon = MUG_ICONS[k] || '☕';
-          const pr   = (PRICING.mugs || {})[k] || 0;
-          return `<div class="mug-card ${sel ? 'selected' : ''}" onclick="d.mugType='${k.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';renderBody();">
-            <div style="font-size:28px;margin-bottom:6px;">${icon}</div>
-            <div style="font-size:12px;font-weight:700;color:${sel ? '#E8151B' : '#0A0A0A'};line-height:1.3;">${esc(k)}</div>
-            <div class="price-badge" style="margin-top:8px;justify-content:center;">${php(pr)}</div>
+          const sel    = d.mugType === k;
+          const icon   = MUG_ICONS[k] || '☕';
+          const tiers  = (PRICING.mugs || {})[k] || [];
+          const minT   = tiers[0];
+          return `<div class="mug-card ${sel ? 'selected' : ''}" onclick="d.mugType='${k.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';d.quantity=Math.max(d.quantity,${minT?minT.minQty:1});renderBody();">
+            <div style="font-size:26px;margin-bottom:5px;">${icon}</div>
+            <div style="font-size:11px;font-weight:700;color:${sel ? '#E8151B' : '#0A0A0A'};line-height:1.3;margin-bottom:5px;">${esc(k)}</div>
+            ${minT ? `<div style="font-size:9px;color:#AAA;margin-bottom:3px;">Min. ${minT.minQty} pcs</div><div class="price-badge" style="justify-content:center;font-size:10px;">${php(minT.price)}/pc</div>` : ''}
           </div>`;
         }).join('')
-      : `<div style="padding:14px;background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;font-size:12px;color:#8A6500;grid-column:1/-1;">No mug prices found in Mug sheet. Using built-in defaults.</div>`;
+      : `<div style="padding:14px;background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;font-size:12px;color:#8A6500;grid-column:1/-1;">No mug prices loaded. Using built-in defaults.</div>`;
 
-    // Volume discount tier chips
-    const tierChips = PRICING.qtyTiers.map(function(t) {
-      const isActive = tier.min === t.min;
-      const label    = t.max >= 9999 ? t.min + '+ pcs' : t.min + '–' + t.max + ' pcs';
-      const disc     = t.discount > 0 ? '-' + t.discount + '%' : 'Base';
-      return `<div class="tier-chip ${isActive ? 'active' : ''}">
-        <div style="font-size:11px;">${label}</div>
-        <div style="font-size:12px;font-weight:700;margin-top:2px;">${disc}</div>
-      </div>`;
-    }).join('');
+    // Price tier chips for selected mug
+    const selTiers  = d.mugType ? ((PRICING.mugs || {})[d.mugType] || []) : [];
+    const activeTier = getActiveTier(qty);
+    const tierChips = selTiers.length
+      ? selTiers.map(function(t, i) {
+          const nextMin  = selTiers[i + 1] ? selTiers[i + 1].minQty - 1 : 9999;
+          const label    = nextMin >= 9999 ? t.minQty + '+ pcs' : t.minQty + '–' + nextMin + ' pcs';
+          const isActive = activeTier && activeTier.minQty === t.minQty;
+          return `<div class="tier-chip ${isActive ? 'active' : ''}" onclick="d.quantity=${t.minQty};renderBody();" style="cursor:pointer;">
+            <div style="font-size:10px;">${label}</div>
+            <div style="font-size:12px;font-weight:700;margin-top:2px;">${php(t.price)}/pc</div>
+          </div>`;
+        }).join('')
+      : '<div style="font-size:11px;color:#BBB;">Select a mug type to see price tiers.</div>';
 
     // Cost preview
-    const canPreview = d.mugType && qty > 0;
-    const costPreview = canPreview && up > 0 ? `
-      <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">
-        <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Mug Cost</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:#E8151B;letter-spacing:0.05em;line-height:1;">${php(up * qty)}</div>
-        <div style="font-size:12px;color:#999;margin-top:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span>${qty} pc(s) × ${php(up)} each</span>
-          ${tier.discount > 0 ? '<span style="background:#E8151B;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:2px;">-' + tier.discount + '% OFF</span>' : ''}
-        </div>
-        ${tier.discount > 0 ? `<div style="font-size:11px;color:#BBB;margin-top:3px;">Base price: ${php(bp)} → Discounted: ${php(up)}/pc</div>` : ''}
-      </div>` : '';
+    const minQ = d.mugType ? getMinQty() : 1;
+    const up   = unitPrice();
+    const canPreview = d.mugType && qty >= minQ && up > 0;
+    const costPreview = canPreview
+      ? `<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Mug Cost</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:#E8151B;letter-spacing:0.05em;line-height:1;">${php(up * qty)}</div>
+          <div style="font-size:12px;color:#999;margin-top:5px;">${qty} pc(s) × ${php(up)}/pc</div>
+        </div>`
+      : (d.mugType && qty < minQ
+          ? `<div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;padding:12px 16px;font-size:12px;color:#8A6500;">Minimum order for <strong>${esc(d.mugType)}</strong> is <strong>${minQ} pcs</strong>.</div>`
+          : '');
 
     el.innerHTML = `
       <div class="flex flex-col gap-6">
@@ -338,13 +332,12 @@ function renderBody() {
 
         <div class="flex flex-col gap-3">
           <label class="field-label">Quantity</label>
-          <input type="number" class="field-input" id="f_qty" value="${qty}" min="1"
+          <input type="number" class="field-input" id="f_qty" value="${qty}" min="${d.mugType ? getMinQty() : 1}"
             style="max-width:160px;font-size:20px;font-weight:700;text-align:center;padding:10px;"
             oninput="d.quantity=parseInt(this.value)||1;renderBody();">
           <div>
-            <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:7px;">VOLUME DISCOUNT</div>
+            <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:7px;">PRICE TIERS${d.mugType ? ' — ' + esc(d.mugType) : ''}</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">${tierChips}</div>
-            ${tier.discount === 0 && qty < 12 ? `<div style="font-size:11px;color:#888;margin-top:6px;">Order <strong>12+</strong> pcs to unlock volume discounts.</div>` : ''}
           </div>
         </div>
 
@@ -377,9 +370,7 @@ function renderBody() {
   // ── STEP 2: QUOTATION SUMMARY ─────────────────────────────────────
   else if (step === 2) {
     const qty  = parseInt(d.quantity) || 1;
-    const bp   = basePrice();
     const up   = unitPrice();
-    const pct  = discountPct();
     const rush = rushFeeAmt();
     const desf = designFeeAmt();
 
@@ -405,14 +396,8 @@ function renderBody() {
 
         <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
         <tr>
-          <td>
-            ${esc(d.mugType || 'Mug')} × ${qty}
-            ${pct > 0 ? '<span style="background:#E8151B;color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:2px;margin-left:5px;">-' + pct + '%</span>' : ''}
-          </td>
-          <td>
-            ${pct > 0 ? `<span style="color:#BBB;text-decoration:line-through;font-size:12px;font-weight:400;margin-right:6px;">${php(bp * qty)}</span>` : ''}
-            ${php(up * qty)}
-          </td>
+          <td>${esc(d.mugType || 'Mug')} × ${qty} @ ${php(up)}/pc</td>
+          <td>${php(up * qty)}</td>
         </tr>
         ${rush > 0 ? `<tr><td>Rush Fee</td><td>${php(rush)}</td></tr>` : ''}
         ${desf > 0 ? `<tr><td>Design Fee</td><td>${php(desf)}</td></tr>` : ''}
@@ -483,10 +468,11 @@ function next() {
     }
   }
   if (step === 1) {
-    if (!d.mugType)                          { showToast('⚠ Please select a Mug Type.', 'error');                          return; }
-    if (!d.quantity || d.quantity < 1)       { showToast('⚠ Please enter a valid quantity.', 'error');                     return; }
-    if (!d.rushOrder)                        { showToast('⚠ Please indicate if this is a Rush Order.', 'error');           return; }
-    if (!d.designService)                    { showToast('⚠ Please indicate if Design Service is needed.', 'error');       return; }
+    if (!d.mugType)    { showToast('⚠ Please select a Mug Type.', 'error');                          return; }
+    const minQ = getMinQty();
+    if (!d.quantity || d.quantity < minQ) { showToast('⚠ Minimum order for ' + d.mugType + ' is ' + minQ + ' pcs.', 'error'); return; }
+    if (!d.rushOrder)  { showToast('⚠ Please indicate if this is a Rush Order.', 'error');           return; }
+    if (!d.designService) { showToast('⚠ Please indicate if Design Service is needed.', 'error');    return; }
   }
   if (step < STEPS.length - 1) { step++; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 }
@@ -513,6 +499,7 @@ function saveToSheet() {
   const btn = document.getElementById('saveBtn');
   btn.classList.add('loading'); btn.textContent = '⏳ SAVING...';
   const qty = parseInt(d.quantity) || 1;
+  const up = unitPrice();
   const payload = {
     clientName:    d.clientName,
     contact:       d.contact,
@@ -520,10 +507,10 @@ function saveToSheet() {
     dateNeeded:    d.dateNeeded,
     mugType:       d.mugType,
     quantity:      qty,
-    basePrice:     basePrice(),
-    discountPct:   discountPct(),
-    unitPrice:     unitPrice(),
-    baseAmount:    unitPrice() * qty,
+    basePrice:     up,
+    discountPct:   0,
+    unitPrice:     up,
+    baseAmount:    up * qty,
     rushOrder:     d.rushOrder,
     rushFee:       rushFeeAmt(),
     designService: d.designService,
