@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get a Quote — Ormoc Printshoppe</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: { brand: '#E8151B', 'brand-dark': '#B00E12' },
+      fontFamily: { display: ['Bebas Neue', 'sans-serif'], body: ['DM Sans', 'sans-serif'] },
+    }
+  }
+}
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #F5F5F5; color: #0A0A0A; min-height: 100vh; }
+.topbar { background: #0A0A0A; padding: 14px 20px; display: flex; align-items: center; gap: 10px; }
+.logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.05em; color: white; line-height: 1; }
+.logo-sub  { font-size: 11px; color: #888; letter-spacing: 0.12em; text-transform: uppercase; }
+.card { background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; animation: fadeUp 0.3s ease both; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+.card-bar { background: #E8151B; height: 4px; }
+.field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #666; display: block; margin-bottom: 6px; }
+.field-input { width: 100%; background: #fff; border: 1px solid #E0E0E0; border-radius: 4px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0A; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.field-input:focus { border-color: #E8151B; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
+.field-input::placeholder { color: #CCC; }
+textarea.field-input { min-height: 80px; resize: vertical; }
+.btn-primary { width: 100%; padding: 14px; background: #E8151B; border: none; border-radius: 4px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; color: white; cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase; transition: background 0.15s; }
+.btn-primary:hover { background: #B00E12; }
+.btn-primary:disabled { background: #CCC; cursor: not-allowed; }
+.btn-ghost { width: 100%; padding: 12px; background: transparent; border: 1px solid #E0E0E0; border-radius: 4px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: #666; cursor: pointer; transition: all 0.15s; }
+.btn-ghost:hover { border-color: #999; color: #333; }
+.prod-card { border: 2px solid #E5E5E5; border-radius: 6px; padding: 18px 12px; cursor: pointer; text-align: center; background: #FAFAFA; transition: all 0.15s; }
+.prod-card:hover  { border-color: #E8151B; background: #FFF8F8; }
+.prod-card.active { border-color: #E8151B; background: #FFF0F0; }
+.mug-card { border: 1px solid #E5E5E5; border-radius: 4px; padding: 12px 8px; cursor: pointer; text-align: center; background: #FAFAFA; transition: all 0.15s; }
+.mug-card:hover  { border-color: #E8151B; background: #FFF8F8; }
+.mug-card.active { border-color: #E8151B; background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,0.12); }
+.yn-btn { flex: 1; padding: 11px 0; border: 1px solid #E0E0E0; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; background: #FAFAFA; color: #888; transition: all 0.15s; }
+.yn-btn.yes.on { background: #E6FFF3; border-color: #1A6A3A; color: #1A6A3A; }
+.yn-btn.no.on  { background: #FFF5F5; border-color: #E8151B; color: #E8151B; }
+.step-dot { width: 8px; height: 8px; border-radius: 50%; background: #DDD; transition: background 0.2s; }
+.step-dot.done { background: #E8151B; }
+.opt-card { border: 1px solid #E0E0E0; border-radius: 4px; padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.15s; background: #FAFAFA; }
+.opt-card:hover  { border-color: #E8151B; background: #FFF8F8; }
+.opt-card.active { border-color: #E8151B; background: #FFF0F0; }
+.opt-card input[type=radio] { accent-color: #E8151B; flex-shrink: 0; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #0A0A0A; color: white; padding: 12px 22px; border-radius: 4px; font-size: 13px; opacity: 0; transition: all 0.3s; z-index: 999; white-space: nowrap; }
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast.error { background: #B00E12; }
+.toast.success { background: #0A4A1A; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="width:32px;height:32px;background:#E8151B;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"/></svg>
+  </div>
+  <div>
+    <div class="logo-text">Ormoc Printshoppe</div>
+    <div class="logo-sub">Quotation Request</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="max-w-lg mx-auto px-4 py-6 pb-16" id="app">
+  <div id="screen"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<input type="hidden" id="app-url" value="<?= appUrl ?>">
+
+<script>
+const APP_URL = (document.getElementById('app-url')||{}).value || '';
+
+// ── PRICING ──────────────────────────────────────────────────────
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, receipt: null, signage: null };
+let pricingLoaded = false;
+
+google.script.run
+  .withSuccessHandler(function(p) { if (p) PRICING = p; pricingLoaded = true; })
+  .withFailureHandler(function()  { pricingLoaded = true; })
+  .getPublicPricing();
+
+// ── STATE ────────────────────────────────────────────────────────
+let screen = 'products'; // products | form | success
+let selectedProduct = '';
+let formStep = 0; // 0=client info, 1=specs, 2=review
+
+const PRODUCTS = [
+  { id:'mug',      icon:'☕', label:'Mug',          sub:'Sublimation print'      },
+  { id:'tshirt',   icon:'👕', label:'T-Shirt',       sub:'DTF / Sublimation'     },
+  { id:'tarp',     icon:'🖨️', label:'Tarpaulin',     sub:'Banner / Streamer'     },
+  { id:'signage',  icon:'🪧', label:'Signage',       sub:'LED / Acrylic / Vinyl' },
+  { id:'receipt',  icon:'🧾', label:'Receipt',       sub:'Carbon Duplicate'      },
+  { id:'bookbind', icon:'📚', label:'Bookbinding',   sub:'Hardbound / Softbound' },
+  { id:'frame',    icon:'🖼️', label:'Photo Frame',   sub:'With / Without Matting'},
+];
+
+const d = {
+  // client info
+  name:'', contact:'', email:'', dateNeeded:'', notes:'',
+  // mug
+  mugType:'', mugQty:5, mugRush:'No', mugDesign:'No',
+  // tshirt
+  tshirtPrintType:'', tshirtLogoSize:'', tshirtGarmentType:'', tshirtOwnShirt:'No', tshirtShirtChoice:'',
+  tshirtSizes:{}, tshirtSizeOthersLabel:'', tshirtRush:'No', tshirtDesign:'No',
+  // tarp
+  tarpWidth:'', tarpHeight:'', tarpQty:1, tarpRush:'No', tarpDesign:'No',
+  // frame
+  frameWidth:'', frameHeight:'', frameMatting:'Yes', frameQty:1, frameRush:'No',
+  // bookbind
+  bindType:'', bindQty:1, bindRush:'No',
+  bindCoverColor:'', bindCoverColorOther:'', bindMaterialsReady:'Yes', bindPrintType:'',
+  // receipt
+  receiptPrintType:'', receiptCopies:'', receiptSizeDiv:'', receiptQty:1, receiptRush:'No',
+  // signage
+  signageType:'', signageWidth:'', signageHeight:'', signageQty:1, signageRush:'No',
+};
+
+const MUG_ICONS = {
+  'White Mug':'☕','Inner Color Mug':'🎨','Neon Color Mug':'💚','Enamel Mug':'🥛',
+  'Gold/Silver Glitter Mug':'✨','Clear/Frosted Mug':'🥤','Heart Handle Glitter Magic Mug':'💗','Clear/Frosted Beer Mug':'🍺',
+};
+
+function php(n) { return '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function v(id)  { return (document.getElementById(id)||{}).value||''; }
+
+// ── PRICING CALCULATIONS ──────────────────────────────────────────
+function calcMugTotal() {
+  if (!d.mugType || !d.mugQty) return 0;
+  const tiers = ((PRICING.mug||{}).mugs||{})[d.mugType] || [];
+  let active = null;
+  for (const t of tiers) { if (d.mugQty >= t.minQty) active = t; }
+  if (!active) return 0;
+  const p   = PRICING.mug || {};
+  const rush = d.mugRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.mugDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return (active.price * d.mugQty) + rush + des;
+}
+
+function calcTshirtTotal() {
+  const p    = PRICING.tshirt || {};
+  const qty  = tshirtTotalQty();
+  if (!qty || !d.tshirtPrintType) return 0;
+  let printPrice = 0;
+  if (d.tshirtPrintType === 'Full Sublimation') {
+    const fsMap = p.fullSub || {};
+    printPrice = fsMap[d.tshirtGarmentType] || Object.values(fsMap)[0] || 0;
+  } else {
+    const map = d.tshirtPrintType === 'Sublimation' ? (p.sublimation||{}) : (p.dtf||{});
+    printPrice = map[d.tshirtLogoSize] || Object.values(map)[0] || 0;
+  }
+  let shirtPrice = 0;
+  if (d.tshirtOwnShirt === 'No' && d.tshirtShirtChoice) {
+    shirtPrice = (p.shirts||{})[d.tshirtShirtChoice] || 0;
+  }
+  const rush = d.tshirtRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.tshirtDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return ((printPrice + shirtPrice) * qty) + rush + des;
+}
+
+function calcTarpTotal() {
+  const p = PRICING.tarp || {};
+  const w = parseFloat(d.tarpWidth)  || 0;
+  const h = parseFloat(d.tarpHeight) || 0;
+  const q = parseInt(d.tarpQty)      || 1;
+  if (!w || !h) return 0;
+  const sqft  = w * h;
+  const rate  = p.ratePerSqft || 50;
+  const rush  = d.tarpRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des   = d.tarpDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return (sqft * rate * q) + rush + des;
+}
+
+function calcFrameTotal() {
+  const p = PRICING.frame || {};
+  const w = parseFloat(d.frameWidth)  || 0;
+  const h = parseFloat(d.frameHeight) || 0;
+  const q = parseInt(d.frameQty)      || 1;
+  if (!w || !h) return 0;
+  const sqft = (w * h) / 144;
+  const rate = d.frameMatting === 'Yes' ? (p.withMatting || 600) : (p.withoutMatting || 550);
+  const rush = d.frameRush === 'Yes' ? (p.rushFee || 150) : 0;
+  return (rate * sqft * q) + rush;
+}
+
+function calcBookbindTotal() {
+  const p = PRICING.bookbind || {};
+  if (!d.bindType || !d.bindQty) return 0;
+  const price   = p[d.bindType] || 0;
+  const printFee= (d.bindMaterialsReady === 'No' && d.bindPrintType) ? (p[d.bindPrintType] || 0) : 0;
+  const rush    = d.bindRush === 'Yes' ? (p['Rush fee'] || 150) : 0;
+  return ((price + printFee) * d.bindQty) + rush;
+}
+
+function calcReceiptTotal() {
+  const rows = PRICING.receipt || [];
+  if (!rows.length || !d.receiptPrintType || !d.receiptCopies || !d.receiptSizeDiv) return 0;
+  const match = rows.find(r =>
+    String(r.printType).toLowerCase() === d.receiptPrintType.toLowerCase() &&
+    String(r.copies) === String(d.receiptCopies) &&
+    String(r.sizeDiv) === String(d.receiptSizeDiv)
+  );
+  if (!match) return 0;
+  const price = parseFloat(match.sellingPrice) || 0;
+  const rush  = d.receiptRush === 'Yes' ? 150 : 0;
+  return (price * d.receiptQty) + rush;
+}
+
+function calcSignageTotal() {
+  const p = PRICING.signage || {};
+  const products = p.products || [];
+  if (!d.signageType || !d.signageWidth || !d.signageHeight) return 0;
+  const prod = products.find(pp => pp.name === d.signageType);
+  if (!prod) return 0;
+  const w = parseFloat(d.signageWidth)  || 0;
+  const h = parseFloat(d.signageHeight) || 0;
+  const q = parseInt(d.signageQty)      || 1;
+  const rush = d.signageRush === 'Yes' ? 150 : 0;
+  return (prod.rate * w * h * q) + rush;
+}
+
+function calcTotal() {
+  if (selectedProduct === 'mug')      return calcMugTotal();
+  if (selectedProduct === 'tshirt')   return calcTshirtTotal();
+  if (selectedProduct === 'tarp')     return calcTarpTotal();
+  if (selectedProduct === 'frame')    return calcFrameTotal();
+  if (selectedProduct === 'bookbind') return calcBookbindTotal();
+  if (selectedProduct === 'receipt')  return calcReceiptTotal();
+  if (selectedProduct === 'signage')  return calcSignageTotal();
+  return 0;
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function render() {
+  if (screen === 'products') renderProducts();
+  else if (screen === 'form') renderForm();
+  else if (screen === 'success') renderSuccess();
+}
+
+function renderProducts() {
+  const cards = PRODUCTS.map(p => `
+    <div class="prod-card${selectedProduct===p.id?' active':''}" onclick="selectedProduct='${p.id}';render();">
+      <div style="font-size:36px;margin-bottom:8px;">${p.icon}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;">${p.label}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">${p.sub}</div>
+    </div>`).join('');
+
+  document.getElementById('screen').innerHTML = `
+    <div class="mb-6 text-center">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:0.05em;color:#0A0A0A;line-height:1;">GET A <span style="color:#E8151B;">QUOTE</span></div>
+      <p style="font-size:13px;color:#888;margin-top:6px;">Select a product to get started.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">${cards}</div>
+    <button class="btn-primary" onclick="startForm()" ${!selectedProduct?'disabled':''}>
+      CONTINUE →
+    </button>`;
+}
+
+function startForm() {
+  if (!selectedProduct) return;
+  screen = 'form'; formStep = 0; render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderForm() {
+  const steps  = ['Your Info', 'Specs', 'Review'];
+  const dots   = steps.map((s,i) => `<div class="step-dot${i<=formStep?' done':''}"></div>`).join('');
+  const pLabel = PRODUCTS.find(p=>p.id===selectedProduct);
+
+  let bodyHtml = '';
+  if (formStep === 0) bodyHtml = renderClientInfo();
+  else if (formStep === 1) bodyHtml = renderSpecs();
+  else if (formStep === 2) bodyHtml = renderReview();
+
+  const backBtn = formStep > 0
+    ? `<button class="btn-ghost" onclick="prevStep()" style="width:auto;padding:12px 20px;">← Back</button>`
+    : `<button class="btn-ghost" onclick="screen='products';render();" style="width:auto;padding:12px 20px;">← Products</button>`;
+  const nextLabel = formStep < 2 ? 'CONTINUE →' : 'SUBMIT REQUEST';
+
+  document.getElementById('screen').innerHTML = `
+    <div class="card">
+      <div class="card-bar"></div>
+      <div style="padding:16px 20px;border-bottom:1px solid #F0F0F0;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.04em;">${pLabel?pLabel.icon+' '+pLabel.label:'Quote'}</div>
+          <div style="font-size:11px;color:#888;margin-top:1px;">${steps[formStep]}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">${dots}</div>
+      </div>
+      <div style="padding:20px;">${bodyHtml}</div>
+      <div style="padding:14px 20px;border-top:1px solid #F0F0F0;display:flex;gap:10px;">
+        ${backBtn}
+        <button class="btn-primary" style="flex:1;" onclick="nextStep()">${nextLabel}</button>
+      </div>
+    </div>`;
+}
+
+function renderClientInfo() {
+  return `
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <label class="field-label">Full Name / Company *</label>
+        <input class="field-input" id="f_name" value="${esc(d.name)}" placeholder="Juan dela Cruz">
+      </div>
+      <div>
+        <label class="field-label">Contact Number *</label>
+        <input class="field-input" id="f_contact" value="${esc(d.contact)}" placeholder="09XX XXX XXXX" maxlength="13"
+          oninput="let dg=this.value.replace(/\\D/g,'').slice(0,11);let f=dg;if(dg.length>4&&dg.length<=7)f=dg.slice(0,4)+' '+dg.slice(4);else if(dg.length>7)f=dg.slice(0,4)+' '+dg.slice(4,7)+' '+dg.slice(7);this.value=f;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label">Email <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="f_email" value="${esc(d.email)}" placeholder="email@example.com" type="email" inputmode="email">
+      </div>
+      <div>
+        <label class="field-label">Target Pickup Date *</label>
+        <input class="field-input" id="f_date" type="date" value="${esc(d.dateNeeded)}" min="${new Date().toISOString().split('T')[0]}">
+      </div>
+      <div>
+        <label class="field-label">Special Instructions <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <textarea class="field-input" id="f_notes" placeholder="Design details, color preferences, etc.">${esc(d.notes)}</textarea>
+      </div>
+    </div>`;
+}
+
+function renderSpecs() {
+  if (selectedProduct === 'mug')      return renderMugSpecs();
+  if (selectedProduct === 'tshirt')   return renderTshirtSpecs();
+  if (selectedProduct === 'tarp')     return renderTarpSpecs();
+  if (selectedProduct === 'frame')    return renderFrameSpecs();
+  if (selectedProduct === 'bookbind') return renderBookbindSpecs();
+  if (selectedProduct === 'receipt')  return renderReceiptSpecs();
+  if (selectedProduct === 'signage')  return renderSignageSpecs();
+  return '<p style="color:#888;">Unknown product.</p>';
+}
+
+// ── MUG SPECS ────────────────────────────────────────────────────
+function renderMugSpecs() {
+  const mugData  = (PRICING.mug||{}).mugs || {};
+  const mugKeys  = Object.keys(mugData).length ? Object.keys(mugData) : Object.keys(MUG_ICONS);
+  const mugCards = mugKeys.map(k => {
+    const icon = MUG_ICONS[k] || '☕';
+    const tiers = mugData[k] || [];
+    const minT  = tiers[0];
+    return `<div class="mug-card${d.mugType===k?' active':''}" onclick="d.mugType='${k.replace(/'/g,"\\'")}';d.mugQty=Math.max(d.mugQty,${minT?minT.minQty:1});updateMugQty();renderForm();">
+      <div style="font-size:22px;margin-bottom:4px;">${icon}</div>
+      <div style="font-size:10px;font-weight:700;color:${d.mugType===k?'#E8151B':'#0A0A0A'};line-height:1.3;">${esc(k)}</div>
+      ${minT?`<div style="font-size:9px;color:#AAA;margin-top:3px;">Min. ${minT.minQty} pcs</div>`:''}
+    </div>`;
+  }).join('');
+
+  const minQ = d.mugType ? getMugMinQty() : 1;
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Mug Type *</label>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">${mugCards}</div>
+      </div>
+      <div>
+        <label class="field-label">Quantity (min. ${minQ} pcs)</label>
+        <input type="number" class="field-input" id="mug_qty" value="${d.mugQty}" min="${minQ}"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.mugQty=parseInt(this.value)||0;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.mugRush==='Yes'?' on':''}" onclick="d.mugRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.mugRush==='No'?' on':''}"  onclick="d.mugRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.mugDesign==='Yes'?' on':''}" onclick="d.mugDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.mugDesign==='No'?' on':''}"  onclick="d.mugDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function getMugMinQty() {
+  const tiers = ((PRICING.mug||{}).mugs||{})[d.mugType] || [];
+  return tiers.length ? tiers[0].minQty : 1;
+}
+
+function updateMugQty() { /* updated by renderForm re-render */ }
+
+// ── T-SHIRT SIZE HELPERS ──────────────────────────────────────────
+const TSHIRT_SIZES = ['XS','S','M','L','XL','Others'];
+
+function toggleTshirtSize(size) {
+  if (d.tshirtSizes[size] !== undefined) {
+    delete d.tshirtSizes[size];
+    if (size === 'Others') d.tshirtSizeOthersLabel = '';
+  } else {
+    d.tshirtSizes[size] = 1;
+  }
+  renderForm();
+}
+
+function setTshirtSizeQty(size, qty) {
+  const n = parseInt(qty) || 0;
+  if (n <= 0) delete d.tshirtSizes[size];
+  else d.tshirtSizes[size] = n;
+}
+
+function tshirtTotalQty() {
+  return Object.values(d.tshirtSizes).reduce((a, b) => a + (parseInt(b) || 0), 0);
+}
+
+function tshirtSizeBreakdown() {
+  return TSHIRT_SIZES
+    .filter(s => d.tshirtSizes[s] !== undefined)
+    .map(s => {
+      const label = s === 'Others' ? (d.tshirtSizeOthersLabel || 'Others') : s;
+      return label + ': ' + d.tshirtSizes[s];
+    })
+    .join(', ');
+}
+
+function renderTshirtSizePicker() {
+  const p = PRICING.tshirt || {};
+  const isFull = d.tshirtPrintType === 'Full Sublimation';
+  const minQ   = isFull ? (p.fullSubMinQty || 15) : 1;
+  const total  = tshirtTotalQty();
+  const sizeCards = TSHIRT_SIZES.map(size => {
+    const isActive = d.tshirtSizes[size] !== undefined;
+    const qty = d.tshirtSizes[size] || 1;
+    return `
+      <div style="border:2px solid ${isActive?'#E8151B':'#E0E0E0'};border-radius:6px;padding:10px 8px;text-align:center;background:${isActive?'#FFF0F0':'#FAFAFA'};cursor:pointer;transition:all .15s;" onclick="toggleTshirtSize('${size}')">
+        <div style="font-weight:700;font-size:14px;color:${isActive?'#E8151B':'#888'};">${size}</div>
+        ${isActive ? `
+          <input type="number" min="1" value="${qty}"
+            style="width:60px;border:1px solid #E0E0E0;border-radius:3px;padding:4px;text-align:center;font-size:13px;font-weight:700;margin-top:6px;"
+            oninput="event.stopPropagation();setTshirtSizeQty('${size}',this.value);"
+            onclick="event.stopPropagation();" inputmode="numeric">` :
+          `<div style="font-size:10px;color:#CCC;margin-top:4px;">tap to add</div>`}
+        ${isActive && size === 'Others' ? `
+          <input type="text" placeholder="e.g. 2XL" value="${esc(d.tshirtSizeOthersLabel||'')}"
+            style="width:100%;border:1px solid #E0E0E0;border-radius:3px;padding:4px;text-align:center;font-size:11px;margin-top:4px;"
+            oninput="event.stopPropagation();d.tshirtSizeOthersLabel=this.value;"
+            onclick="event.stopPropagation();">` : ''}
+      </div>`;
+  }).join('');
+  return `
+    <div>
+      <label class="field-label" style="margin-bottom:8px;">Sizes & Quantities${isFull?` (min. ${minQ} total pcs)`:' *'}</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">${sizeCards}</div>
+      <div style="padding:10px 14px;background:#F9F9F9;border:1px solid #E0E0E0;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:12px;color:#888;">Total Quantity:</span>
+        <span style="font-size:20px;font-weight:700;color:${total>0?'#E8151B':'#CCC'};">${total} pcs</span>
+      </div>
+    </div>`;
+}
+
+// ── T-SHIRT SPECS ─────────────────────────────────────────────────
+function renderTshirtSpecs() {
+  const p = PRICING.tshirt || {};
+  const printTypes = ['Sublimation', 'DTF', 'Full Sublimation'];
+  const logoSizes  = Object.keys(p.sublimation || { 'A4 Size':1, 'A3 Size':1, 'Letter Size':1 });
+  const fsTypes    = Object.keys(p.fullSub || { 'T-Shirt':1, 'Polo Shirt':1, 'Hoodie':1 });
+  const shirtOpts  = Object.keys(p.shirts || {});
+  const isFull = d.tshirtPrintType === 'Full Sublimation';
+  const minQ   = isFull ? (p.fullSubMinQty || 15) : 1;
+
+  const ptCards = printTypes.map(t => `
+    <div class="opt-card${d.tshirtPrintType===t?' active':''}" onclick="d.tshirtPrintType='${t}';renderForm();">
+      <input type="radio" ${d.tshirtPrintType===t?'checked':''} readonly>
+      <span style="font-size:13px;font-weight:600;">${t}</span>
+    </div>`).join('');
+
+  const lsCards = !isFull && logoSizes.length ? `
+    <div>
+      <label class="field-label" style="margin-bottom:8px;">Logo / Print Size *</label>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${logoSizes.map(ls=>`
+          <div class="opt-card${d.tshirtLogoSize===ls?' active':''}" onclick="d.tshirtLogoSize='${ls.replace(/'/g,"\\'")}';renderForm();">
+            <input type="radio" ${d.tshirtLogoSize===ls?'checked':''} readonly>
+            <span style="font-size:13px;">${esc(ls)}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const fsCard = isFull && fsTypes.length ? `
+    <div>
+      <label class="field-label" style="margin-bottom:8px;">Garment Type *</label>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${fsTypes.map(g=>`
+          <div class="opt-card${d.tshirtGarmentType===g?' active':''}" onclick="d.tshirtGarmentType='${g.replace(/'/g,"\\'")}';renderForm();">
+            <input type="radio" ${d.tshirtGarmentType===g?'checked':''} readonly>
+            <span style="font-size:13px;">${esc(g)}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const ownShirtCards = `
+    <div>
+      <label class="field-label" style="margin-bottom:8px;">Do you have your own shirt?</label>
+      <div style="display:flex;gap:8px;">
+        <button class="yn-btn yes${d.tshirtOwnShirt==='Yes'?' on':''}" onclick="d.tshirtOwnShirt='Yes';d.tshirtShirtChoice='';renderForm();">Yes</button>
+        <button class="yn-btn no${d.tshirtOwnShirt==='No'?' on':''}"  onclick="d.tshirtOwnShirt='No';renderForm();">No</button>
+      </div>
+    </div>`;
+
+  const shirtChoiceCards = d.tshirtOwnShirt === 'No' && shirtOpts.length ? `
+    <div>
+      <label class="field-label" style="margin-bottom:8px;">Shirt Type *</label>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${shirtOpts.map(s=>`
+          <div class="opt-card${d.tshirtShirtChoice===s?' active':''}" onclick="d.tshirtShirtChoice='${s.replace(/'/g,"\\'")}';renderForm();">
+            <input type="radio" ${d.tshirtShirtChoice===s?'checked':''} readonly>
+            <span style="font-size:13px;">${esc(s)}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Print Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${ptCards}</div>
+      </div>
+      ${lsCards}
+      ${fsCard}
+      ${ownShirtCards}
+      ${shirtChoiceCards}
+      ${renderTshirtSizePicker()}
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.tshirtRush==='Yes'?' on':''}" onclick="d.tshirtRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.tshirtRush==='No'?' on':''}"  onclick="d.tshirtRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.tshirtDesign==='Yes'?' on':''}" onclick="d.tshirtDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.tshirtDesign==='No'?' on':''}"  onclick="d.tshirtDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── TARPAULIN SPECS ───────────────────────────────────────────────
+function renderTarpSpecs() {
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label">Size (in feet) *</label>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:2px;">
+          <input type="number" class="field-input" id="tp_w" value="${d.tarpWidth}" placeholder="Width" min="0.5" step="0.5"
+            oninput="d.tarpWidth=this.value;" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
+          <input type="number" class="field-input" id="tp_h" value="${d.tarpHeight}" placeholder="Height" min="0.5" step="0.5"
+            oninput="d.tarpHeight=this.value;" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:13px;">ft</span>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="tp_qty" value="${d.tarpQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.tarpQty=parseInt(this.value)||1;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.tarpRush==='Yes'?' on':''}" onclick="d.tarpRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.tarpRush==='No'?' on':''}"  onclick="d.tarpRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.tarpDesign==='Yes'?' on':''}" onclick="d.tarpDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.tarpDesign==='No'?' on':''}"  onclick="d.tarpDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── FRAME SPECS ───────────────────────────────────────────────────
+function renderFrameSpecs() {
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label">Frame Size (inches) *</label>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:2px;">
+          <input type="number" class="field-input" id="fr_w" value="${d.frameWidth}" placeholder="Width" min="1" step="0.5"
+            oninput="d.frameWidth=this.value;" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
+          <input type="number" class="field-input" id="fr_h" value="${d.frameHeight}" placeholder="Height" min="1" step="0.5"
+            oninput="d.frameHeight=this.value;" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:13px;">in</span>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">With Matting?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.frameMatting==='Yes'?' on':''}" onclick="d.frameMatting='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.frameMatting==='No'?' on':''}"  onclick="d.frameMatting='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="fr_qty" value="${d.frameQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.frameQty=parseInt(this.value)||1;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.frameRush==='Yes'?' on':''}" onclick="d.frameRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.frameRush==='No'?' on':''}"  onclick="d.frameRush='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── BOOKBINDING SPECS ─────────────────────────────────────────────
+function renderBookbindSpecs() {
+  const p = PRICING.bookbind || {};
+  const isBinding = k => !k.toLowerCase().startsWith('printing') && k !== 'Rush fee';
+  const bindKeys = Object.keys(p).filter(isBinding).length
+    ? Object.keys(p).filter(isBinding)
+    : ['Hardbound', 'Softbound with lettering', 'Softbound without lettering', 'Ring bind'];
+  const printKeys = Object.keys(p).filter(k => k.toLowerCase().startsWith('printing'));
+
+  const bindCards = bindKeys.map(t => `
+    <div class="opt-card${d.bindType===t?' active':''}" onclick="d.bindType='${t.replace(/'/g,"\\'")}';renderForm();">
+      <input type="radio" ${d.bindType===t?'checked':''} readonly>
+      <span style="font-size:13px;font-weight:600;">${esc(t)}</span>
+    </div>`).join('');
+
+  const coverColors = [['Blue','#1A3A7A','#D0DBF5'],['Green','#1A5A2A','#D0F0D8'],['Maroon','#7A1A1A','#F5D0D0']];
+  const colorBtns = coverColors.map(([c,fg,bg]) => `
+    <button onclick="d.bindCoverColor='${c}';d.bindCoverColorOther='';renderForm();"
+      style="flex:1;padding:10px 0;border:2px solid ${d.bindCoverColor===c?fg:'#E0E0E0'};border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;background:${d.bindCoverColor===c?bg:'#FAFAFA'};color:${d.bindCoverColor===c?fg:'#888'};transition:all .15s;">
+      ${c}
+    </button>`).join('') + `
+    <button onclick="d.bindCoverColor='Other';renderForm();"
+      style="flex:1;padding:10px 0;border:2px solid ${d.bindCoverColor==='Other'?'#888':'#E0E0E0'};border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;background:${d.bindCoverColor==='Other'?'#F5F5F5':'#FAFAFA'};color:${d.bindCoverColor==='Other'?'#333':'#888'};transition:all .15s;">
+      Other
+    </button>`;
+
+  const printSection = d.bindMaterialsReady === 'No' ? `
+    <div>
+      <label class="field-label" style="margin-bottom:8px;">Printing Type *</label>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${printKeys.length ? printKeys.map(pt => `
+          <div class="opt-card${d.bindPrintType===pt?' active':''}" onclick="d.bindPrintType='${pt.replace(/'/g,"\\'")}';renderForm();">
+            <input type="radio" ${d.bindPrintType===pt?'checked':''} readonly>
+            <span style="font-size:13px;font-weight:600;">${esc(pt)}</span>
+          </div>`).join('') : '<div style="font-size:13px;color:#AAA;">Loading…</div>'}
+      </div>
+    </div>` : '';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Binding Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${bindCards}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Cover Color *</label>
+        <div style="display:flex;gap:8px;">${colorBtns}</div>
+        ${d.bindCoverColor==='Other'?`<input class="field-input" id="bb_color_other" value="${esc(d.bindCoverColorOther||'')}" placeholder="e.g. Black, Navy Blue, Red…" oninput="d.bindCoverColorOther=this.value;" style="margin-top:8px;">`:''}
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Printed Materials Ready?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.bindMaterialsReady==='Yes'?' on':''}" onclick="d.bindMaterialsReady='Yes';d.bindPrintType='';renderForm();">Yes</button>
+          <button class="yn-btn no${d.bindMaterialsReady==='No'?' on':''}"  onclick="d.bindMaterialsReady='No';renderForm();">No</button>
+        </div>
+      </div>
+      ${printSection}
+      <div>
+        <label class="field-label">Number of Volumes / Books</label>
+        <input type="number" class="field-input" id="bb_qty" value="${d.bindQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.bindQty=parseInt(this.value)||1;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.bindRush==='Yes'?' on':''}" onclick="d.bindRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.bindRush==='No'?' on':''}"  onclick="d.bindRush='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── RECEIPT SPECS ─────────────────────────────────────────────────
+function renderReceiptSpecs() {
+  const rows = PRICING.receipt || [];
+  const SIZE_LABELS = {'1':'Full Page','2':'Half Page','3':'Third Page','4':'Quarter Page','6':'Sixth Page','8':'Eighth Page'};
+  const printTypes = rows.length
+    ? [...new Set(rows.map(r => String(r.printType)).filter(Boolean))]
+    : ['Carbonless', 'Newsprint'];
+  const filteredByCopy = rows.filter(r => !d.receiptPrintType || r.printType === d.receiptPrintType);
+  const copiesOptions = filteredByCopy.length
+    ? [...new Set(filteredByCopy.map(r => String(r.copies)).filter(Boolean))].sort()
+    : ['2', '3', '4'];
+  const filteredBySize = rows.filter(r =>
+    (!d.receiptPrintType || r.printType === d.receiptPrintType) &&
+    (!d.receiptCopies || String(r.copies) === d.receiptCopies)
+  );
+  const sizeDivOptions = filteredBySize.length
+    ? [...new Set(filteredBySize.map(r => String(r.sizeDiv)).filter(Boolean))].sort((a,b)=>Number(a)-Number(b))
+    : ['2','4'];
+
+  const ptCards = printTypes.map(t => `
+    <div class="opt-card${d.receiptPrintType===t?' active':''}" onclick="d.receiptPrintType='${t}';d.receiptCopies='';d.receiptSizeDiv='';renderForm();">
+      <input type="radio" ${d.receiptPrintType===t?'checked':''} readonly>
+      <span style="font-size:13px;font-weight:600;">${esc(t)}</span>
+    </div>`).join('');
+  const cpCards = d.receiptPrintType ? copiesOptions.map(c => `
+    <div class="opt-card${d.receiptCopies===c?' active':''}" onclick="d.receiptCopies='${c}';d.receiptSizeDiv='';renderForm();">
+      <input type="radio" ${d.receiptCopies===c?'checked':''} readonly>
+      <span style="font-size:13px;font-weight:600;">${c}-Part Copy</span>
+    </div>`).join('') : '';
+  const sdCards = (d.receiptPrintType && d.receiptCopies) ? sizeDivOptions.map(s => `
+    <div class="opt-card${d.receiptSizeDiv===s?' active':''}" onclick="d.receiptSizeDiv='${s}';renderForm();">
+      <input type="radio" ${d.receiptSizeDiv===s?'checked':''} readonly>
+      <span style="font-size:13px;font-weight:600;">${SIZE_LABELS[s]||('1/'+s+' Page')}</span>
+    </div>`).join('') : '';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Paper Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${ptCards}</div>
+      </div>
+      ${d.receiptPrintType ? `
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Number of Copies *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${cpCards}</div>
+      </div>` : ''}
+      ${d.receiptPrintType && d.receiptCopies ? `
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Booklet Size *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${sdCards}</div>
+      </div>` : ''}
+      <div>
+        <label class="field-label">Number of Booklets</label>
+        <input type="number" class="field-input" id="rc_qty" value="${d.receiptQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.receiptQty=parseInt(this.value)||1;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.receiptRush==='Yes'?' on':''}" onclick="d.receiptRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.receiptRush==='No'?' on':''}"  onclick="d.receiptRush='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── SIGNAGE SPECS ─────────────────────────────────────────────────
+function renderSignageSpecs() {
+  const p = PRICING.signage || {};
+  const prodList = (p.products || []).filter(pp => pp.section !== '3D Build Up Signage').map(pp => pp.name).filter(Boolean);
+  const fallback = ['Lighted Box (Frontlit)','Lighted Box (Backlit)','Acrylic Cut-Out Letters','Vinyl Sticker','One-Way Vision','Car Sticker','LED Neon Sign'];
+  const sigTypes = prodList.length ? prodList : fallback;
+
+  const typeCards = sigTypes.map(t => `
+    <div class="opt-card${d.signageType===t?' active':''}" onclick="d.signageType='${t.replace(/'/g,"\\'")}';renderForm();">
+      <input type="radio" ${d.signageType===t?'checked':''} readonly>
+      <span style="font-size:12px;font-weight:600;">${esc(t)}</span>
+    </div>`).join('');
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Signage Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${typeCards}</div>
+      </div>
+      <div>
+        <label class="field-label">Size (feet) *</label>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:2px;">
+          <input type="number" class="field-input" id="sg_w" value="${d.signageWidth}" placeholder="Width" min="0.1" step="0.1"
+            oninput="d.signageWidth=this.value;" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
+          <input type="number" class="field-input" id="sg_h" value="${d.signageHeight}" placeholder="Height" min="0.1" step="0.1"
+            oninput="d.signageHeight=this.value;" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:13px;">ft</span>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="sg_qty" value="${d.signageQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.signageQty=parseInt(this.value)||1;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.signageRush==='Yes'?' on':''}" onclick="d.signageRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.signageRush==='No'?' on':''}"  onclick="d.signageRush='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── REVIEW ────────────────────────────────────────────────────────
+function renderReview() {
+  const total   = calcTotal();
+  const dp      = total * 0.5;
+  const prodLabel = PRODUCTS.find(p=>p.id===selectedProduct);
+
+  let specSummary = '';
+  if (selectedProduct === 'mug') {
+    specSummary = `${esc(d.mugType)||'—'} × ${d.mugQty} pc(s)`;
+    if (d.mugRush   === 'Yes') specSummary += ' · Rush';
+    if (d.mugDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'tshirt') {
+    const tqty = tshirtTotalQty();
+    const sbd  = tshirtSizeBreakdown();
+    specSummary = `${d.tshirtPrintType||'—'} × ${tqty} pc(s)${sbd?' ('+esc(sbd)+')':''}`;
+    if (d.tshirtOwnShirt === 'No' && d.tshirtShirtChoice) specSummary += ' · ' + esc(d.tshirtShirtChoice);
+    if (d.tshirtRush   === 'Yes') specSummary += ' · Rush';
+    if (d.tshirtDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'tarp') {
+    specSummary = `${d.tarpWidth||'?'} × ${d.tarpHeight||'?'} ft × ${d.tarpQty} pc(s)`;
+    if (d.tarpRush   === 'Yes') specSummary += ' · Rush';
+    if (d.tarpDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'frame') {
+    specSummary = `${d.frameWidth||'?'} × ${d.frameHeight||'?'} in${d.frameMatting==='Yes'?' · With Matting':' · No Matting'} × ${d.frameQty} pc(s)`;
+    if (d.frameRush === 'Yes') specSummary += ' · Rush';
+  } else if (selectedProduct === 'bookbind') {
+    const resolvedColor = d.bindCoverColor === 'Other' ? (d.bindCoverColorOther || 'Other') : d.bindCoverColor;
+    specSummary = `${esc(d.bindType)||'—'}${resolvedColor?' · '+esc(resolvedColor):''} × ${d.bindQty} volume(s)`;
+    if (d.bindMaterialsReady === 'No' && d.bindPrintType) specSummary += ' · Print: ' + esc(d.bindPrintType);
+    if (d.bindRush === 'Yes') specSummary += ' · Rush';
+  } else if (selectedProduct === 'receipt') {
+    const sdLbl = {'1':'Full Page','2':'Half Page','3':'Third Page','4':'Quarter Page','6':'Sixth Page','8':'Eighth Page'};
+    specSummary = `${d.receiptPrintType||'—'} · ${d.receiptCopies?d.receiptCopies+'-Part':''} · ${sdLbl[d.receiptSizeDiv]||d.receiptSizeDiv||'—'} × ${d.receiptQty} booklet(s)`;
+    if (d.receiptRush === 'Yes') specSummary += ' · Rush';
+  } else if (selectedProduct === 'signage') {
+    specSummary = `${esc(d.signageType)||'—'} · ${d.signageWidth||'?'} × ${d.signageHeight||'?'} ft × ${d.signageQty} pc(s)`;
+    if (d.signageRush === 'Yes') specSummary += ' · Rush';
+  }
+
+  const dateLabel = d.dateNeeded
+    ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})
+    : '—';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div style="background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;border-radius:4px;padding:14px 16px;">
+        <div style="font-weight:700;font-size:15px;">${esc(d.name)||'—'}</div>
+        <div style="font-size:12px;color:#888;margin-top:3px;">${esc(d.contact)||''} ${d.email?'· '+esc(d.email):''}</div>
+        ${d.dateNeeded?`<div style="font-size:12px;color:#E8151B;margin-top:4px;font-weight:600;">📅 Pickup: ${dateLabel}</div>`:''}
+      </div>
+
+      <div style="border:1px solid #E5E5E5;border-radius:4px;padding:14px 16px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:8px;">${prodLabel?prodLabel.icon+' '+prodLabel.label:''} — Order Summary</div>
+        <div style="font-size:13px;color:#555;">${specSummary}</div>
+        ${d.notes?`<div style="font-size:12px;color:#999;margin-top:6px;font-style:italic;">"${esc(d.notes)}"</div>`:''}
+      </div>
+
+      <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:4px;padding:18px 16px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Total</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;color:#E8151B;letter-spacing:0.05em;line-height:1;">${total > 0 ? php(total) : '—'}</div>
+        ${total > 0 ? `<div style="font-size:12px;color:#999;margin-top:6px;">Downpayment (50%): ${php(dp)}</div>` : `<div style="font-size:12px;color:#AAA;margin-top:6px;">Final price confirmed by our team</div>`}
+      </div>
+
+      <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:12px 14px;font-size:12px;color:#7A5500;">
+        ℹ️ This is an <strong>estimate</strong>. Our team will confirm the final price and contact you at <strong>${esc(d.contact)}</strong>.
+      </div>
+    </div>`;
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────
+function prevStep() {
+  if (formStep > 0) { formStep--; renderForm(); window.scrollTo({top:0,behavior:'smooth'}); }
+}
+
+function nextStep() {
+  // Save any live inputs
+  if (formStep === 0) {
+    d.name        = v('f_name');
+    d.contact     = v('f_contact');
+    d.email       = v('f_email');
+    d.dateNeeded  = v('f_date');
+    d.notes       = v('f_notes');
+    // Validate
+    if (!d.name.trim())    { toast('Please enter your name.','error'); return; }
+    if (!d.contact.trim()) { toast('Please enter your contact number.','error'); return; }
+    if (d.contact.replace(/\D/g,'').length !== 11) { toast('Contact number must be 11 digits.','error'); return; }
+    if (!d.dateNeeded)     { toast('Please choose a pickup date.','error'); return; }
+  }
+  if (formStep === 1) {
+    // Read qty inputs
+    if (selectedProduct === 'mug') {
+      d.mugQty = parseInt(v('mug_qty')) || d.mugQty;
+      if (!d.mugType)              { toast('Please select a mug type.','error'); return; }
+      const minQ = getMugMinQty();
+      if (d.mugQty < minQ)         { toast('Minimum order is '+minQ+' pcs.','error'); return; }
+      if (!d.mugRush)              { toast('Please answer: Rush Order?','error'); return; }
+      if (!d.mugDesign)            { toast('Please answer: Need design?','error'); return; }
+    }
+    if (selectedProduct === 'tshirt') {
+      const p    = PRICING.tshirt || {};
+      const minQ = d.tshirtPrintType === 'Full Sublimation' ? (p.fullSubMinQty||15) : 1;
+      if (!d.tshirtPrintType)      { toast('Please select a print type.','error'); return; }
+      if (d.tshirtPrintType !== 'Full Sublimation' && !d.tshirtLogoSize) { toast('Please select a logo size.','error'); return; }
+      if (d.tshirtPrintType === 'Full Sublimation' && !d.tshirtGarmentType) { toast('Please select a garment type.','error'); return; }
+      if (d.tshirtOwnShirt === 'No' && !d.tshirtShirtChoice) { toast('Please select a shirt type.','error'); return; }
+      if (tshirtTotalQty() === 0)  { toast('Please select at least one size.','error'); return; }
+      if (tshirtTotalQty() < minQ) { toast('Minimum order is '+minQ+' pcs.','error'); return; }
+    }
+    if (selectedProduct === 'tarp') {
+      d.tarpWidth  = v('tp_w')   || d.tarpWidth;
+      d.tarpHeight = v('tp_h')   || d.tarpHeight;
+      d.tarpQty    = parseInt(v('tp_qty')) || d.tarpQty;
+      if (!d.tarpWidth || !d.tarpHeight)  { toast('Please enter the size (width × height).','error'); return; }
+    }
+    if (selectedProduct === 'frame') {
+      d.frameWidth  = v('fr_w')  || d.frameWidth;
+      d.frameHeight = v('fr_h')  || d.frameHeight;
+      d.frameQty    = parseInt(v('fr_qty')) || d.frameQty;
+      if (!d.frameWidth || !d.frameHeight) { toast('Please enter the frame size.','error'); return; }
+    }
+    if (selectedProduct === 'bookbind') {
+      d.bindQty = parseInt(v('bb_qty')) || d.bindQty;
+      if (!d.bindType)                                          { toast('Please select a binding type.','error'); return; }
+      if (!d.bindCoverColor)                                    { toast('Please select a cover color.','error'); return; }
+      if (d.bindCoverColor === 'Other') d.bindCoverColorOther = v('bb_color_other') || d.bindCoverColorOther;
+      if (d.bindCoverColor === 'Other' && !d.bindCoverColorOther.trim()) { toast('Please specify your cover color.','error'); return; }
+      if (!d.bindMaterialsReady)                                { toast('Please answer: Printed Materials Ready?','error'); return; }
+      if (d.bindMaterialsReady === 'No' && !d.bindPrintType)   { toast('Please select a printing type.','error'); return; }
+    }
+    if (selectedProduct === 'receipt') {
+      d.receiptQty = parseInt(v('rc_qty')) || d.receiptQty;
+      if (!d.receiptPrintType) { toast('Please select a paper type.','error'); return; }
+      if (!d.receiptCopies)    { toast('Please select number of copies.','error'); return; }
+      if (!d.receiptSizeDiv)   { toast('Please select a booklet size.','error'); return; }
+    }
+    if (selectedProduct === 'signage') {
+      d.signageWidth  = v('sg_w')  || d.signageWidth;
+      d.signageHeight = v('sg_h')  || d.signageHeight;
+      d.signageQty    = parseInt(v('sg_qty')) || d.signageQty;
+      if (!d.signageType)                  { toast('Please select a signage type.','error'); return; }
+      if (!d.signageWidth || !d.signageHeight) { toast('Please enter the size (width × height).','error'); return; }
+    }
+  }
+  if (formStep === 2) { submitRequest(); return; }
+  formStep++;
+  renderForm();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── SUBMIT ────────────────────────────────────────────────────────
+function submitRequest() {
+  const btn = document.querySelector('.btn-primary[onclick="nextStep()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ SUBMITTING...'; }
+
+  const total = calcTotal();
+  const dp    = total * 0.5;
+  const bal   = total - dp;
+
+  let payload = {
+    productType:   selectedProduct,
+    clientName:    d.name,
+    contact:       d.contact,
+    email:         d.email,
+    dateNeeded:    d.dateNeeded,
+    notes:         d.notes,
+    totalAmount:   total,
+    taxType:       'non-vat',
+    taxAmount:     0,
+  };
+
+  if (selectedProduct === 'mug') {
+    const p      = PRICING.mug || {};
+    const tiers  = ((p.mugs||{})[d.mugType]) || [];
+    let active   = null;
+    for (const t of tiers) { if (d.mugQty >= t.minQty) active = t; }
+    const up     = active ? active.price : 0;
+    const base   = up * d.mugQty;
+    const rush   = d.mugRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des    = d.mugDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      mugType: d.mugType, quantity: d.mugQty,
+      basePrice: up, discountPct: 0, unitPrice: up,
+      baseAmount: base, rushOrder: d.mugRush, rushFee: rush,
+      designService: d.mugDesign, designFee: des,
+      totalAmount: base + rush + des,
+    });
+  }
+
+  if (selectedProduct === 'tshirt') {
+    const p   = PRICING.tshirt || {};
+    const qty = tshirtTotalQty();
+    let pp = 0;
+    if (d.tshirtPrintType === 'Full Sublimation') {
+      pp = (p.fullSub||{})[d.tshirtGarmentType] || Object.values(p.fullSub||{['']: 0})[0] || 0;
+    } else {
+      const map = d.tshirtPrintType === 'Sublimation' ? (p.sublimation||{}) : (p.dtf||{});
+      pp = map[d.tshirtLogoSize] || Object.values(map)[0] || 0;
+    }
+    const sp   = d.tshirtOwnShirt === 'No' ? ((p.shirts||{})[d.tshirtShirtChoice]||0) : 0;
+    const up   = pp + sp;
+    const base = up * qty;
+    const rush = d.tshirtRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des  = d.tshirtDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      printType: d.tshirtPrintType, logoSize: d.tshirtLogoSize,
+      garmentType: d.tshirtGarmentType, hasOwnShirt: d.tshirtOwnShirt,
+      shirtChoice: d.tshirtShirtChoice, quantity: qty,
+      printPrice: pp, shirtPrice: sp, unitPrice: up,
+      baseAmount: base, rushOrder: d.tshirtRush, rushFee: rush,
+      designService: d.tshirtDesign, designFee: des,
+      totalAmount: base + rush + des,
+      downpayment: (base+rush+des)*0.5, balance: (base+rush+des)*0.5,
+      sizeBreakdown: tshirtSizeBreakdown(), shirtColor: '',
+    });
+  }
+
+  if (selectedProduct === 'tarp') {
+    const p     = PRICING.tarp || {};
+    const sqft  = (parseFloat(d.tarpWidth)||0) * (parseFloat(d.tarpHeight)||0);
+    const rate  = p.ratePerSqft || 50;
+    const base  = sqft * rate * d.tarpQty;
+    const rush  = d.tarpRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des   = d.tarpDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      width: parseFloat(d.tarpWidth)||0, height: parseFloat(d.tarpHeight)||0,
+      sqft: sqft, quantity: d.tarpQty,
+      ratePerSqft: rate, baseAmount: base,
+      rushOrder: d.tarpRush, rushFee: rush,
+      designCharge: d.tarpDesign, designFee: des,
+      totalAmount: base + rush + des,
+      items: JSON.stringify([{
+        width: d.tarpWidth, height: d.tarpHeight, quantity: d.tarpQty,
+        sqft: sqft, rush: d.tarpRush, designCharge: d.tarpDesign,
+        itemTotal: base + rush + des,
+      }]),
+    });
+  }
+
+  if (selectedProduct === 'frame') {
+    const p    = PRICING.frame || {};
+    const w    = parseFloat(d.frameWidth)  || 0;
+    const h    = parseFloat(d.frameHeight) || 0;
+    const sqft = (w * h) / 144;
+    const rate = d.frameMatting === 'Yes' ? (p.withMatting||600) : (p.withoutMatting||550);
+    const base = rate * sqft * d.frameQty;
+    const rush = d.frameRush === 'Yes' ? (p.rushFee||150) : 0;
+    Object.assign(payload, {
+      frameWidth: w, frameHeight: h, hasMatting: d.frameMatting,
+      quantity: d.frameQty, ratePerSqft: rate, sqft: sqft,
+      baseAmount: base, rushOrder: d.frameRush, rushFee: rush,
+      totalAmount: base + rush,
+    });
+  }
+
+  if (selectedProduct === 'bookbind') {
+    const p         = PRICING.bookbind || {};
+    const price     = p[d.bindType] || 0;
+    const printFee  = (d.bindMaterialsReady === 'No' && d.bindPrintType) ? (p[d.bindPrintType] || 0) : 0;
+    const rush      = d.bindRush === 'Yes' ? (p['Rush fee'] || 150) : 0;
+    const base      = (price + printFee) * d.bindQty;
+    Object.assign(payload, {
+      bindingType: d.bindType, coverColor: d.bindCoverColor === 'Other' ? (d.bindCoverColorOther || 'Other') : d.bindCoverColor,
+      printedMaterialsReady: d.bindMaterialsReady, printingType: d.bindPrintType,
+      quantity: d.bindQty,
+      pricePerVol: price, printingFee: printFee * d.bindQty,
+      baseAmount: base, rushOrder: d.bindRush, rushFee: rush,
+      totalAmount: base + rush,
+    });
+  }
+
+  if (selectedProduct === 'receipt') {
+    const rows  = PRICING.receipt || [];
+    const match = rows.find(r =>
+      String(r.printType).toLowerCase() === d.receiptPrintType.toLowerCase() &&
+      String(r.copies) === String(d.receiptCopies) &&
+      String(r.sizeDiv) === String(d.receiptSizeDiv)
+    );
+    const price = match ? (parseFloat(match.sellingPrice)||0) : 0;
+    const rush  = d.receiptRush === 'Yes' ? 150 : 0;
+    const base  = price * d.receiptQty;
+    Object.assign(payload, {
+      paperType: d.receiptPrintType, copies: d.receiptCopies,
+      sizeDiv: d.receiptSizeDiv, quantity: d.receiptQty,
+      pricePerBooklet: price, baseAmount: base,
+      rushOrder: d.receiptRush, rushFee: rush,
+      totalAmount: base + rush,
+    });
+  }
+
+  if (selectedProduct === 'signage') {
+    const total = calcSignageTotal();
+    Object.assign(payload, {
+      signageType: d.signageType,
+      width: parseFloat(d.signageWidth)||0, height: parseFloat(d.signageHeight)||0,
+      quantity: d.signageQty,
+      rushOrder: d.signageRush, rushFee: d.signageRush === 'Yes' ? 150 : 0,
+      totalAmount: total,
+    });
+  }
+
+  google.script.run
+    .withSuccessHandler(function(qn) {
+      screen = 'success';
+      renderSuccess(qn);
+    })
+    .withFailureHandler(function(err) {
+      toast('Submit failed: ' + (err.message||'Unknown error'), 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'SUBMIT REQUEST'; }
+    })
+    .submitCustomerRequest(payload);
+}
+
+// ── SUCCESS ───────────────────────────────────────────────────────
+function buildMessengerText(qn) {
+  const total = calcTotal();
+  const dp    = total * 0.5;
+  const prodLabel = PRODUCTS.find(p => p.id === selectedProduct);
+  const dateLabel = d.dateNeeded
+    ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})
+    : '—';
+
+  let specsLine = '';
+  if (selectedProduct === 'mug') {
+    specsLine = d.mugType + ' × ' + d.mugQty + ' pcs';
+    if (d.mugRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.mugDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'tshirt') {
+    specsLine = d.tshirtPrintType + (d.tshirtLogoSize ? ' – ' + d.tshirtLogoSize : '') + ' × ' + tshirtTotalQty() + ' pcs';
+    const sbd = tshirtSizeBreakdown();
+    if (sbd) specsLine += '\nSizes: ' + sbd;
+    if (d.tshirtOwnShirt === 'No' && d.tshirtShirtChoice) specsLine += '\nShirt: ' + d.tshirtShirtChoice;
+    if (d.tshirtRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.tshirtDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'tarp') {
+    specsLine = d.tarpWidth + ' × ' + d.tarpHeight + ' ft × ' + d.tarpQty + ' pc(s)';
+    if (d.tarpRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.tarpDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'frame') {
+    specsLine = d.frameWidth + ' × ' + d.frameHeight + ' in' + (d.frameMatting==='Yes'?' w/ Matting':' w/o Matting') + ' × ' + d.frameQty + ' pc(s)';
+    if (d.frameRush === 'Yes') specsLine += '\nRush Order: Yes';
+  } else if (selectedProduct === 'bookbind') {
+    specsLine = d.bindType + ' × ' + d.bindQty + ' volume(s)';
+    if (d.bindRush === 'Yes') specsLine += '\nRush Order: Yes';
+  } else if (selectedProduct === 'receipt') {
+    const sdL = {'1':'Full Page','2':'Half Page','3':'Third Page','4':'Quarter Page','6':'Sixth Page','8':'Eighth Page'};
+    specsLine = d.receiptPrintType + ' · ' + d.receiptCopies + '-Part · ' + (sdL[d.receiptSizeDiv]||d.receiptSizeDiv) + ' × ' + d.receiptQty + ' booklet(s)';
+    if (d.receiptRush === 'Yes') specsLine += '\nRush Order: Yes';
+  } else if (selectedProduct === 'signage') {
+    specsLine = d.signageType + ' · ' + d.signageWidth + ' × ' + d.signageHeight + ' ft × ' + d.signageQty + ' pc(s)';
+    if (d.signageRush === 'Yes') specsLine += '\nRush Order: Yes';
+  }
+
+  return [
+    '📋 QUOTATION REQUEST',
+    'Ormoc Printshoppe',
+    '─────────────────────',
+    'Ref #: ' + (qn || '—'),
+    'Product: ' + (prodLabel ? prodLabel.label : selectedProduct),
+    'Specs: ' + specsLine,
+    '─────────────────────',
+    'TOTAL: ' + php(total),
+    'Downpayment (50%): ' + php(dp),
+    '─────────────────────',
+    'Name: ' + d.name,
+    'Contact: ' + d.contact,
+    'Pickup Date: ' + dateLabel,
+    (d.notes ? 'Notes: ' + d.notes : ''),
+    '─────────────────────',
+    'Status: Pending confirmation',
+    'Our team will contact you shortly. 😊',
+  ].filter(Boolean).join('\n');
+}
+
+function renderSuccess(qn) {
+  document.getElementById('screen').innerHTML = `
+    <div class="card" style="overflow:hidden;">
+      <div class="card-bar"></div>
+      <div style="padding:40px 24px 32px;text-align:center;">
+        <div style="font-size:56px;margin-bottom:14px;">✅</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;color:#0A0A0A;line-height:1;">Quote Submitted!</div>
+        ${qn ? `<div style="font-size:12px;color:#888;background:#F5F5F5;display:inline-block;padding:4px 16px;border-radius:20px;margin-top:10px;">Reference: <strong>${esc(qn)}</strong></div>` : ''}
+        <p style="font-size:14px;color:#555;margin-top:16px;line-height:1.7;">
+          Thank you! We received your quotation request.<br>
+          Our team will contact you at <strong>${esc(d.contact)}</strong> to confirm your order.
+        </p>
+        <div style="margin-top:20px;background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:12px 14px;font-size:12px;color:#7A5500;text-align:left;">
+          ℹ️ Expect a call or message from us within business hours. Please keep your phone accessible.
+        </div>
+      </div>
+      <div style="padding:0 24px 24px;">
+        <button class="btn-ghost" onclick="resetAll()">Start New Quote</button>
+      </div>
+    </div>`;
+}
+
+function copyMsg() {
+  const ta  = document.getElementById('messengerMsg');
+  const btn = document.getElementById('copyMsgBtn');
+  ta.select();
+  try {
+    navigator.clipboard.writeText(ta.value).then(function() {
+      btn.textContent = '✓ COPIED!';
+      btn.style.background = '#1A6A3A';
+      setTimeout(function() { btn.textContent = '📋 COPY MESSAGE'; btn.style.background = '#0A0A0A'; }, 2500);
+    });
+  } catch(e) {
+    document.execCommand('copy');
+    btn.textContent = '✓ COPIED!'; btn.style.background = '#1A6A3A';
+    setTimeout(function() { btn.textContent = '📋 COPY MESSAGE'; btn.style.background = '#0A0A0A'; }, 2500);
+  }
+}
+
+function resetAll() {
+  screen = 'products'; selectedProduct = ''; formStep = 0;
+  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty'];
+  Object.keys(d).forEach(k => {
+    if (typeof d[k] === 'string') d[k] = '';
+    else if (typeof d[k] === 'number') d[k] = k==='mugQty'?5:qty1.includes(k)?1:0;
+  });
+  d.tshirtSizes = {};
+  d.mugRush='No'; d.mugDesign='No'; d.tshirtRush='No'; d.tshirtDesign='No';
+  d.tshirtOwnShirt='No'; d.tarpRush='No'; d.tarpDesign='No';
+  d.frameMatting='Yes'; d.frameRush='No';
+  d.bindRush='No'; d.bindMaterialsReady='Yes';
+  d.receiptRush='No'; d.signageRush='No';
+  render();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast show ' + type;
+  setTimeout(() => { el.className = 'toast ' + type; }, 3500);
+}
+
+render();
+</script>
+</body>
+</html>

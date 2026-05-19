@@ -13,6 +13,8 @@ const BOOKBIND_SHEET          = 'Bookbind Quotations';
 const FRAME_SHEET             = 'Frame Quotations';
 const TSHIRT_SHEET            = 'Tshirt Quotations';
 const MUG_SHEET               = 'Mug Quotations';
+const CUSTOMER_SHEET          = 'Customer Quotations';
+const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
 
 function setupMainSSId() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -26,6 +28,10 @@ function getMainSS_() {
   return SpreadsheetApp.getActiveSpreadsheet();
 }
 
+function getCustomerSS_() {
+  return SpreadsheetApp.openById(CUSTOMER_SS_ID);
+}
+
 // ══════════════════════════════════════════════════════════════════
 //  doGet
 // ══════════════════════════════════════════════════════════════════
@@ -33,6 +39,16 @@ function doGet(e) {
   const token  = String(e?.parameter?.token || '').trim();
   const page   = String(e?.parameter?.page  || '').trim().toLowerCase();
   const appUrl = ScriptApp.getService().getUrl();
+
+  // ── PUBLIC CUSTOMER PAGE (no auth required) ──
+  if (page === 'customer') {
+    const tpl  = HtmlService.createTemplateFromFile('Customer');
+    tpl.appUrl = appUrl;
+    return tpl.evaluate()
+      .setTitle('Get a Quote — Ormoc Printshoppe')
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
 
   if (!token) return serveLogin_(appUrl);
 
@@ -263,6 +279,41 @@ function googleLogin() {
     }
 
     return { success: false, message: 'Account "' + email + '" not authorized. Contact your administrator.' };
+  } catch(err) {
+    return { success: false, message: 'Server error: ' + err.message };
+  }
+}
+
+function loginByEmail(email) {
+  try {
+    const inputEmail = String(email || '').toLowerCase().trim();
+    if (!inputEmail) return { success: false, message: 'Please enter your email.' };
+
+    const ss    = getMainSS_();
+    const sheet = ss.getSheetByName(ACCOUNTS_SHEET_NAME);
+    if (!sheet) return { success: false, message: 'Accounts sheet not found.' };
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const row     = data[i];
+      const rawRole = String(row[0] || '').trim();
+      const emails  = String(row[1] || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+
+      if (!rawRole || emails.length === 0) continue;
+      if (!emails.includes(inputEmail)) continue;
+
+      let role = 'sales';
+      if (/tech/i.test(rawRole))            role = 'tech_support';
+      else if (/admin/i.test(rawRole))       role = 'admin';
+      else if (/sales|staff/i.test(rawRole)) role = 'sales';
+
+      const name  = inputEmail.split('@')[0];
+      const token = createSession_(inputEmail, role, name);
+      logLogin_(inputEmail, role);
+      return { success: true, username: inputEmail, role, name, token };
+    }
+
+    return { success: false, message: 'Email "' + inputEmail + '" is not authorized. Contact your administrator.' };
   } catch(err) {
     return { success: false, message: 'Server error: ' + err.message };
   }
@@ -645,8 +696,56 @@ function getDashboardData(token) {
       });
     }
 
+    // ── MUG QUOTES ──────────────────────────────────────────────
+    let mugQuotes = [];
+    const mugSheet = ss.getSheetByName(MUG_SHEET);
+    if (mugSheet) {
+      const mdata  = mugSheet.getDataRange().getValues();
+      const mStart = mdata.length > 0 && String(mdata[0][0]).startsWith('MUG-') ? 0 : 1;
+      mugQuotes = mdata.slice(mStart).filter(r => r[0] && String(r[0]).startsWith('MUG-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[23] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          mugType:          String(row[6]  || ''),
+          quantity:         row[7]  || 0,
+          unitPrice:        parseFloat(row[10]) || 0,
+          baseAmount:       parseFloat(row[11]) || 0,
+          rushOrder:        String(row[12] || ''),
+          rushFee:          parseFloat(row[13]) || 0,
+          designService:    String(row[14] || ''),
+          designFee:        parseFloat(row[15]) || 0,
+          totalAmount:      parseFloat(row[16]) || 0,
+          downpayment:      parseFloat(row[17]) || 0,
+          balance:          parseFloat(row[18]) || 0,
+          notes:            String(row[19] || ''),
+          salesStaff:       String(row[20] || ''),
+          status:           String(row[21] || 'Pending'),
+          approvedBy:       String(row[22] || ''),
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          taxType:          String(row[24] || 'non-vat'),
+          taxAmount:        parseFloat(row[25]) || 0,
+          quoteType:        'mug',
+          signageType:      'Mug — ' + String(row[6] || ''),
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[14] || ''), addonDesignFee: parseFloat(row[15]) || 0,
+          addonRush:   String(row[12] || ''), addonRushFee:   parseFloat(row[13]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -789,8 +888,8 @@ function getQuoteForPDF(token, quoteNum) {
         bindingSide:           String(r[12] || ''),
         coverColor:            String(r[13] || ''),
         printedMaterialsReady: String(r[14] || ''),
-        printingNeeded:        String(r[15] || ''),
-        fileFinal:             String(r[16] || ''),
+        printingType:          String(r[15] || ''),
+        printingFee:           parseFloat(r[16]) || 0,
         rushOrder:             String(r[17] || ''),
         bindingPrice:          parseFloat(r[18]) || 0,
         rushFee:               parseFloat(r[19]) || 0,
@@ -1355,7 +1454,7 @@ function saveTarpQuotation(data) {
     parseFloat(totalAmt.toFixed(2)),   // U  col 21 - TOTAL AMOUNT (grand total)
     parseFloat(bal.toFixed(2)),        // V  col 22 - Balance
     data.dateNeeded  || '',            // W  col 23 - Date Needed
-    'Pending',                         // X  col 24 - Status
+    data.status || 'Pending',          // X  col 24 - Status
     '',                                // Y  col 25 - Approved By
     staffName,                         // Z  col 26 - Sales Staff
     '',                                // AA col 27 - Payment Term (set by savePaymentTerm)
@@ -1702,7 +1801,7 @@ function saveTshirtOrder(data) {
     parseFloat(bal.toFixed(2)),                // Y  col 25 - Balance
     data.notes            || '',               // Z  col 26 - Special Instructions
     staffName,                                 // AA col 27 - Sales Staff
-    'Pending',                                 // AB col 28 - Status
+    data.status || 'Pending',                 // AB col 28 - Status
     '',                                        // AC col 29 - Approved By
     '',                                        // AD col 30 - Payment Term
     data.taxType          || 'non-vat',        // AE col 31 - Tax Type
@@ -1711,6 +1810,99 @@ function saveTshirtOrder(data) {
 
   sheet.getRange(sheet.getLastRow(), 15, 1, 11).setNumberFormat('₱#,##0.00');
   return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PUBLIC CUSTOMER FUNCTIONS
+// ══════════════════════════════════════════════════════════════════
+function getPublicPricing() {
+  return {
+    mug:      getMugPricing(),
+    tshirt:   getTshirtPricing(),
+    tarp:     getTarpPricing(),
+    frame:    getFramePricing(),
+    bookbind: getBookbindPricing(),
+    receipt:  (function(){ try{ return getReceiptPricing(); }catch(e){ return null; } })(),
+    signage:  (function(){ try{ return getPricing(); }      catch(e){ return null; } })(),
+  };
+}
+
+function submitCustomerRequest(data) {
+  try {
+    const ss    = getCustomerSS_();
+    let   sheet = ss.getSheetByName(CUSTOMER_SHEET);
+    if (!sheet) sheet = ss.insertSheet(CUSTOMER_SHEET);
+
+    const headers = [
+      'Request #', 'Date Submitted', 'Client Name', 'Contact', 'Email',
+      'Product Type', 'Specs Summary', 'Quantity',
+      'Rush Order', 'Design Service',
+      'Total Amount', 'Downpayment (50%)', 'Balance',
+      'Date Needed', 'Notes', 'Status', 'Assigned To',
+    ];
+
+    const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1,1).getValue()) : '';
+    if (sheet.getLastRow() === 0 || firstCell.startsWith('CUST-')) {
+      if (firstCell.startsWith('CUST-')) sheet.insertRowBefore(1);
+      sheet.getRange(1,1,1,headers.length).setValues([headers])
+        .setBackground('#E8151B').setFontColor('#fff')
+        .setFontWeight('bold').setFontSize(11);
+      sheet.setFrozenRows(1);
+    }
+
+    const lastRow  = sheet.getLastRow();
+    const reqNum   = 'CUST-' + String(lastRow).padStart(4, '0');
+    const type     = String(data.productType || '').toUpperCase();
+    const total    = parseFloat(data.totalAmount) || 0;
+    const dp       = total * 0.5;
+    const bal      = total - dp;
+
+    // Build a human-readable specs summary
+    let specs = '';
+    if (data.productType === 'mug') {
+      specs = (data.mugType || '') + ' × ' + (data.quantity || 0) + ' pcs';
+    } else if (data.productType === 'tshirt') {
+      specs = (data.printType || '') + (data.logoSize ? ' ' + data.logoSize : '') + ' × ' + (data.quantity || 0) + ' pcs';
+      if (data.hasOwnShirt === 'No' && data.shirtChoice) specs += ' | Shirt: ' + data.shirtChoice;
+    } else if (data.productType === 'tarp') {
+      specs = (data.width || '?') + ' × ' + (data.height || '?') + ' ft × ' + (data.quantity || 1) + ' pc(s)';
+    } else if (data.productType === 'frame') {
+      specs = (data.width || '?') + ' × ' + (data.height || '?') + ' in | ' + (data.matting || '—') + ' × ' + (data.quantity || 1) + ' pc(s)';
+    } else if (data.productType === 'bookbind') {
+      specs = (data.bookType || '—') + ' × ' + (data.quantity || 0) + ' pcs';
+    } else if (data.productType === 'receipt') {
+      specs = (data.copies || '—') + ' · ' + (data.size || '—') + ' · ' + (data.quantity || 0) + ' booklets';
+      if (data.numbering === 'Yes') specs += ' · Numbered';
+      if (data.perforation === 'Yes') specs += ' · Perforated';
+    } else if (data.productType === 'signage') {
+      specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ft';
+    }
+
+    sheet.appendRow([
+      reqNum,                          // A - Request #
+      new Date(),                      // B - Date Submitted
+      data.clientName    || '',        // C - Client Name
+      data.contact       || '',        // D - Contact
+      data.email         || '',        // E - Email
+      type,                            // F - Product Type
+      specs,                           // G - Specs Summary
+      data.quantity      || '',        // H - Quantity
+      data.rushOrder     || 'No',      // I - Rush Order
+      data.designService || data.mugDesign || data.tshirtDesign || data.tarpDesign || 'No', // J - Design
+      parseFloat(total.toFixed(2)),    // K - Total Amount
+      parseFloat(dp.toFixed(2)),       // L - Downpayment
+      parseFloat(bal.toFixed(2)),      // M - Balance
+      data.dateNeeded    || '',        // N - Date Needed
+      data.notes         || '',        // O - Notes
+      'Quote Request',                 // P - Status
+      '',                              // Q - Assigned To
+    ]);
+
+    sheet.getRange(sheet.getLastRow(), 11, 1, 3).setNumberFormat('₱#,##0.00');
+    return reqNum;
+  } catch(e) {
+    throw new Error('Submit failed: ' + e.message);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1839,7 +2031,7 @@ function saveMugOrder(data) {
     parseFloat(bal.toFixed(2)),             // S  - Balance
     data.notes         || '',               // T  - Special Instructions
     staffName,                              // U  - Sales Staff
-    'Pending',                              // V  - Status
+    data.status || 'Pending',              // V  - Status
     '',                                     // W  - Approved By
     '',                                     // X  - Payment Term
     data.taxType       || 'non-vat',        // Y  - Tax Type
@@ -2298,7 +2490,7 @@ function getBookbindPricing() {
     'Softbound with lettering':    150,
     'Softbound without lettering': 100,
     'Ring bind':                   100,
-    'Rush fee':                    100,
+    'Rush fee':                    150,
   };
   try {
     const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
@@ -2372,8 +2564,8 @@ function saveBookbindOrder(data) {
     data.bindingSide          || '',           // M  col 13 - Binding Side
     data.coverColor           || '',           // N  col 14 - Cover Color
     data.printedMaterialsReady|| '',           // O  col 15 - Printed Materials Ready
-    data.printingNeeded       || '',           // P  col 16 - Printing Needed
-    data.fileFinal            || '',           // Q  col 17 - File Final for Printing
+    data.printingType         || '',           // P  col 16 - Printing Type
+    parseFloat(data.printingFee)||0,           // Q  col 17 - Printing Fee
     data.rushOrder            || '',           // R  col 18 - Rush Order
     parseFloat(data.bindingPrice) || 0,        // S  col 19 - Binding Price/Unit
     parseFloat(data.rushFee)      || 0,        // T  col 20 - Rush Fee

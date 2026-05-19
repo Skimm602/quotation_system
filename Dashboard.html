@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quotation System — Dashboard</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -84,7 +85,12 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
     <div style="font-size:10px;color:#555;margin-top:2px;text-transform:uppercase;letter-spacing:0.06em;" id="sidebarRole">—</div>
   </div>
   <nav id="sidebarNav"></nav>
-  <div style="margin-top:auto;padding:16px 20px;border-top:1px solid #1A1A1A;">
+  <div style="margin-top:auto;padding:16px 20px;border-top:1px solid #1A1A1A;display:flex;flex-direction:column;gap:8px;">
+    <button onclick="openCustomerPortal()" style="width:100%;padding:9px;background:#E8151B;border:none;border-radius:3px;color:white;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:all 0.15s;"
+      onmouseover="this.style.background='#B00E12';"
+      onmouseout="this.style.background='#E8151B';">
+      🔗 Customer Portal
+    </button>
     <button onclick="doLogout()" style="width:100%;padding:9px;background:transparent;border:1px solid #2A2A2A;border-radius:3px;color:#555;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:all 0.15s;"
       onmouseover="this.style.borderColor='#E8151B';this.style.color='#E8151B';"
       onmouseout="this.style.borderColor='#2A2A2A';this.style.color='#555';">
@@ -293,6 +299,35 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
   <div class="modal" style="width:600px;">
     <div class="modal-header"></div>
     <div style="padding:24px;" id="quoteDetailContent"></div>
+  </div>
+</div>
+
+<!-- CUSTOMER PORTAL MODAL -->
+<div class="modal-bg" id="customerPortalModal">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #F0F0F0;">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.05em;">Customer Portal</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">Share this link / QR with customers</div>
+      </div>
+      <button onclick="closeModal('customerPortalModal')" style="background:none;border:none;font-size:20px;color:#CCC;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:16px;">
+      <div style="text-align:center;background:#F9F9F9;border:1px solid #E5E5E5;border-radius:4px;padding:20px;">
+        <div id="portalQR" style="display:inline-block;"></div>
+        <div style="font-size:10px;color:#AAA;margin-top:8px;text-transform:uppercase;letter-spacing:0.08em;">Scan to open quotation form</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#666;margin-bottom:6px;">Link</div>
+        <div style="display:flex;gap:8px;">
+          <input id="portalLink" readonly style="flex:1;background:#F5F5F5;border:1px solid #E0E0E0;border-radius:4px;padding:9px 12px;font-size:12px;color:#444;font-family:'DM Sans',sans-serif;outline:none;">
+          <button onclick="copyPortalLink()" id="copyBtn" style="padding:9px 14px;background:#0A0A0A;border:none;border-radius:4px;color:white;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:0.06em;text-transform:uppercase;">Copy</button>
+        </div>
+      </div>
+      <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:10px 14px;font-size:11px;color:#7A5500;">
+        ☕ Customers fill this form themselves — they only see the total, not per-unit pricing.
+      </div>
+    </div>
   </div>
 </div>
 
@@ -595,7 +630,7 @@ function renderAllQuotes() {
     const date=q.date?new Date(q.date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
     let actions=`<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button>`;
     if (canApprove&&q.status==='Pending') actions+=` <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓</button> <button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕</button>`;
-    const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : (q.signageType||'—');
+    const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : String(q.quoteNum).startsWith('MUG-') ? ('Mug — '+(q.mugType||'')) : (q.signageType||'—');
     html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${qTypeLabel}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
   });
   html+='</tbody></table>';
@@ -633,6 +668,121 @@ function openQuotationPDF(quoteNum) {
       );
     })
     .getAppUrl();
+}
+
+function buildQuoteMessage(q) {
+  const fmt = n => '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
+  const dpAmt   = q.paymentTermValue !== undefined ? q.totalAmount * q.paymentTermValue : (q.downpayment || q.totalAmount * 0.5);
+  const balAmt  = q.totalAmount - dpAmt;
+  const dpLabel = q.paymentTermLabel || '50% Downpayment';
+  const qn = String(q.quoteNum);
+
+  let specs = [];
+  if (qn.startsWith('BQ-')) {
+    specs = [
+      'Service: ' + (q.signageType || 'Bookbinding'),
+      q.quantity ? 'Quantity: ' + q.quantity + ' book(s)' : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+    ];
+  } else if (qn.startsWith('RQ-')) {
+    specs = [
+      'Paper Type: ' + (q.paperType || '—'),
+      'Copies: ' + ((q.signageType||'').replace('Receipt — ','') || '—'),
+      'Size: ' + (q.size || '—'),
+      q.quantity ? 'Quantity: ' + q.quantity + ' booklets' : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+    ];
+  } else if (qn.startsWith('TQ-')) {
+    specs = ['Type: Tarpaulin'];
+    (q.items||[]).forEach(function(it, i) {
+      specs.push('Item '+(i+1)+': '+(it.width||'?')+' × '+(it.height||'?')+' ft × '+(it.quantity||1)+' pc(s) = '+(it.sqft||0).toFixed(2)+' sqft');
+      if (it.rush === 'Yes') specs.push('  Rush: Yes');
+    });
+  } else if (qn.startsWith('MUG-')) {
+    specs = [
+      'Mug Type: ' + (q.mugType || (q.signageType||'').replace('Mug — ','') || '—'),
+      'Quantity: ' + (q.quantity||0) + ' pc(s)',
+      'Unit Price: ' + fmt(q.unitPrice) + '/pc',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+      q.designService === 'Yes' ? 'Design Service: Yes' : '',
+    ];
+  } else if (qn.startsWith('SH-')) {
+    specs = [
+      'Print Type: ' + (q.printType || '—'),
+      q.logoSize ? 'Logo / Print Size: ' + q.logoSize : '',
+      q.garmentType ? 'Garment: ' + q.garmentType : '',
+      q.hasOwnShirt === 'Yes' ? 'Own Shirt: Yes' : (q.shirtChoice ? 'Shirt: ' + q.shirtChoice : ''),
+      'Quantity: ' + (q.quantity||0) + ' pc(s)',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+      q.designService === 'Yes' ? 'Design Service: Yes' : '',
+    ];
+  } else if (qn.startsWith('FQ-')) {
+    specs = [
+      'Frame Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' in',
+      q.matting ? 'Matting: ' + q.matting : '',
+      'Quantity: ' + (q.quantity||1) + ' pc(s)',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+    ];
+  } else {
+    specs = [
+      'Type: ' + (q.signageType || '—'),
+      'Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ft',
+      q.mounting ? 'Mounting: ' + q.mounting : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+    ];
+  }
+
+  return [
+    '📋 QUOTATION SUMMARY',
+    'Ormoc Printshoppe',
+    '─────────────────────',
+    'Quote #: ' + q.quoteNum,
+    'Date: '    + fmtDate(q.date),
+    '─────────────────────',
+    'Client: '  + (q.clientName || '—'),
+    q.contact   ? 'Contact: ' + q.contact : '',
+    q.email     ? 'Email: '   + q.email   : '',
+    q.dateNeeded ? 'Pickup: ' + fmtDate(q.dateNeeded) : '',
+    '─────────────────────',
+    ...specs.filter(Boolean),
+    '─────────────────────',
+    'TOTAL: '   + fmt(q.totalAmount),
+    dpLabel + ': ' + fmt(dpAmt),
+    'Balance: ' + fmt(balAmt),
+    '─────────────────────',
+    'Status: '  + (q.status || 'Pending'),
+    'Ormoc Printshoppe — Thank you! 😊',
+  ].filter(Boolean).join('\n');
+}
+
+function copyQuoteToMessenger(quoteNum) {
+  const q = allQuotes.find(function(x){ return x.quoteNum === quoteNum; });
+  if (!q) return;
+  const text = buildQuoteMessage(q);
+  const btn  = document.getElementById('copyMsgBtn');
+  function markCopied() {
+    if (!btn) return;
+    btn.textContent = '✓ COPIED!';
+    btn.style.borderColor = '#1A6A3A'; btn.style.color = '#1A6A3A';
+    setTimeout(function() {
+      btn.textContent = '📋 COPY TO MESSENGER';
+      btn.style.borderColor = ''; btn.style.color = '';
+    }, 2500);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(markCopied).catch(function() {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta); markCopied();
+    });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); markCopied();
+  }
 }
 
 function viewQuote(quoteNum) {
@@ -685,6 +835,38 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
     ${it.designCharge === 'Yes' ? row('Design Charge', '✓ Yes') : ''}
     ${row('Item Total', '<strong>'+php(it.itemTotal)+'</strong>')}
   `).join('')}
+` : String(q.quoteNum).startsWith('MUG-') ? `
+  ${row('Mug Type', '<span style="font-weight:600;">'+(q.mugType || (q.signageType||'').replace('Mug — ','') || '—')+'</span>')}
+  ${row('Quantity', (q.quantity||0)+' pc(s)')}
+  ${row('Unit Price', php(q.unitPrice)+' / pc')}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+  ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
+  ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+  ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
+` : String(q.quoteNum).startsWith('SH-') ? `
+  ${row('Print Type', '<span style="font-weight:600;">'+(q.printType||'—')+'</span>')}
+  ${q.logoSize?row('Logo / Print Size', q.logoSize):''}
+  ${q.garmentType?row('Garment Type', q.garmentType):''}
+  ${q.hasOwnShirt==='Yes'?row('Own Shirt','✓ Yes'):(q.shirtChoice?row('Shirt Choice', q.shirtChoice):'')}
+  ${q.sizeBreakdown?row('Sizes', q.sizeBreakdown):''}
+  ${row('Quantity', (q.quantity||0)+' pc(s)')}
+  ${q.printPrice>0?row('Print Price',php(q.printPrice)+' / pc'):''}
+  ${q.shirtPrice>0?row('Shirt Price',php(q.shirtPrice)+' / pc'):''}
+  ${row('Unit Price', php(q.unitPrice)+' / pc')}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+  ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
+  ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+  ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
+` : String(q.quoteNum).startsWith('FQ-') ? `
+  ${row('Frame Size', (q.width||'?')+' × '+(q.height||'?')+' in')}
+  ${row('Quantity', (q.quantity||1)+' pc(s)')}
+  ${q.matting?row('Matting', q.matting):''}
+  ${row('Rate', php(q.rate)+' / sqft')}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+  ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
 ` : `
   ${row('Signage Type', '<span style="font-weight:500;">'+(q.signageType||'—')+'</span>')}
   ${row('Dimensions', (q.width||'?')+' × '+(q.height||'?')+' ft = '+(q.sqft||'?')+' sqft')}
@@ -724,6 +906,7 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
     <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved');closeModal('quoteDetailModal')">✓ APPROVE</button>
     <button class="btn-reject"  onclick="updateStatus('${q.quoteNum}','Rejected');closeModal('quoteDetailModal')">✕ REJECT</button>
   ` : ''}
+  <button id="copyMsgBtn" class="btn-sm" onclick="copyQuoteToMessenger('${q.quoteNum}')" style="font-weight:700;">📋 COPY TO MESSENGER</button>
   <button class="btn-sm" onclick="openQuotationPDF('${q.quoteNum}')" style="border-color:#E8151B;color:#E8151B;font-weight:700;">📄 VIEW PDF</button>
   <button class="btn-sm" onclick="closeModal('quoteDetailModal')">Close</button>
 </div>`;
@@ -773,6 +956,34 @@ function deleteUser(username) {
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function openCustomerPortal() {
+  const link = APP_URL ? APP_URL + '?page=customer' : '';
+  document.getElementById('portalLink').value = link;
+  const qrEl = document.getElementById('portalQR');
+  qrEl.innerHTML = '';
+  if (link) {
+    new QRCode(qrEl, {
+      text:         link,
+      width:        180,
+      height:       180,
+      colorDark:    '#0A0A0A',
+      colorLight:   '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  }
+  document.getElementById('customerPortalModal').classList.add('show');
+}
+
+function copyPortalLink() {
+  const link = document.getElementById('portalLink').value;
+  if (!link) return;
+  navigator.clipboard.writeText(link).then(function() {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied!'; btn.style.background = '#1A6A3A';
+    setTimeout(function() { btn.textContent = 'Copy'; btn.style.background = '#0A0A0A'; }, 2000);
+  });
+}
 document.querySelectorAll('.modal-bg').forEach(m => { m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('show'); }); });
 
 function showToast(msg,type='') {

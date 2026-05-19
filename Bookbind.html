@@ -158,12 +158,12 @@ const d = {
   orientation: 'Portrait',
   bindingSide: 'Left',
   coverColor: '',
+  coverColorOther: '',
   textColor: '',
   fontStyle: '',
   // Step 2 — Printing & Options
   printedMaterialsReady: '',
-  printingNeeded: '',
-  fileFinal: '',
+  printingType: '',
   rushOrder: '',
   // Step 3 — Notes & Summary
   notes: '',
@@ -186,11 +186,16 @@ function bindingUnitPrice() {
 }
 
 function rushFeeAmt() {
-  return d.rushOrder === 'Yes' ? (PRICES['Rush fee'] || 100) : 0;
+  return d.rushOrder === 'Yes' ? (PRICES['Rush fee'] || 150) : 0;
+}
+
+function printingFeeAmt() {
+  if (d.printedMaterialsReady !== 'No' || !d.printingType) return 0;
+  return (PRICES[d.printingType] || 0) * (parseInt(d.quantity) || 1);
 }
 
 const VAT = 0.12;
-function subtotal()   { return bindingUnitPrice() * (parseInt(d.quantity)||1) + rushFeeAmt(); }
+function subtotal()   { return bindingUnitPrice() * (parseInt(d.quantity)||1) + rushFeeAmt() + printingFeeAmt(); }
 function taxAmt()     { const s=subtotal(); return d.taxType==='vat-exclusive'?s*VAT:d.taxType==='vat-inclusive'?s-s/(1+VAT):0; }
 function grandTotal() { return d.taxType==='vat-exclusive'?subtotal()*(1+VAT):subtotal(); }
 function dp()         { return grandTotal()*0.5; }
@@ -352,9 +357,20 @@ function renderBody() {
             <label class="field-label">Binding Side</label>
             <select class="field-input" id="f_side" onchange="d.bindingSide=this.value;">${sideOpts}</select>
           </div>
-          <div class="flex flex-col gap-1">
-            <label class="field-label">Cover Color <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
-            <input class="field-input" id="f_covcolor" value="${esc(d.coverColor||'')}" placeholder="e.g. Navy Blue, Black">
+          <div class="flex flex-col gap-1" style="grid-column:1/-1;">
+            <label class="field-label">Cover Color</label>
+            <div style="display:flex;gap:8px;">
+              ${[['Blue','#1A3A7A','#D0DBF5'],['Green','#1A5A2A','#D0F0D8'],['Maroon','#7A1A1A','#F5D0D0']].map(([c,fg,bg])=>`
+                <button onclick="d.coverColor='${c}';d.coverColorOther='';renderBody();"
+                  style="flex:1;padding:10px 0;border:2px solid ${d.coverColor===c?fg:'#E0E0E0'};border-radius:3px;font-size:13px;font-weight:700;cursor:pointer;background:${d.coverColor===c?bg:'#FAFAFA'};color:${d.coverColor===c?fg:'#888'};transition:all .15s;letter-spacing:0.04em;">
+                  ${c}
+                </button>`).join('')}
+              <button onclick="d.coverColor='Other';renderBody();"
+                style="flex:1;padding:10px 0;border:2px solid ${d.coverColor==='Other'?'#888':'#E0E0E0'};border-radius:3px;font-size:13px;font-weight:700;cursor:pointer;background:${d.coverColor==='Other'?'#F5F5F5':'#FAFAFA'};color:${d.coverColor==='Other'?'#333':'#888'};transition:all .15s;letter-spacing:0.04em;">
+                Other
+              </button>
+            </div>
+            ${d.coverColor==='Other'?`<input class="field-input" id="f_covcolor_other" value="${esc(d.coverColorOther||'')}" placeholder="e.g. Black, Navy Blue, Red…" oninput="d.coverColorOther=this.value;" style="margin-top:8px;">`:``}
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Text Color <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
@@ -377,11 +393,24 @@ function renderBody() {
         <span>Rush fee of <strong>${php(PRICES['Rush fee']||100)}</strong> will be added to the total.</span>
       </div>` : '';
 
+    const printingOpts = Object.keys(PRICES).filter(function(k){ return k.toLowerCase().startsWith('printing'); });
+    const printingSection = d.printedMaterialsReady === 'No' ? `
+      <div class="flex flex-col gap-2">
+        <label class="field-label" style="margin-bottom:2px;">Printing Type <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(select one)</span></label>
+        ${printingOpts.length ? printingOpts.map(function(pt){
+          const sel = d.printingType === pt;
+          return '<label class="opt-card '+(sel?'selected':'')+'" onclick="d.printingType=\''+pt.replace(/'/g,"\\'")+'\'  ;renderBody();">'
+            +'<input type="radio" name="printType" '+(sel?'checked':'')+'>'
+            +'<div style="flex:1;font-size:13px;font-weight:600;color:#0A0A0A;">'+pt+'</div>'
+            +'<div class="price-badge">'+php(PRICES[pt]||0)+'/book</div>'
+            +'</label>';
+        }).join('') : '<div style="font-size:13px;color:#999;">Loading options…</div>'}
+      </div>` : '';
+
     el.innerHTML = `
       <div class="flex flex-col gap-5">
-        ${ynRow('Printed Materials Ready?','printedMaterialsReady','Are the materials already printed and ready?')}
-        ${ynRow('Printing Needed?','printingNeeded','Does the client need us to print the materials?')}
-        ${d.printingNeeded==='Yes'?ynRow('File Final for Printing?','fileFinal','Is the file ready and finalized for printing?'):''}
+        ${ynRow('Printed Materials Ready?','printedMaterialsReady','Are the materials already printed and ready to bind?')}
+        ${printingSection}
         ${ynRow('Rush Order?','rushOrder','3-day rush production fee applies')}
         ${rushPreview}
         <div class="flex flex-col gap-1">
@@ -423,18 +452,18 @@ function renderBody() {
         <tr><td>Paper Size</td><td>${esc(d.paperSize)}</td></tr>
         <tr><td>Orientation</td><td>${esc(d.orientation)}</td></tr>
         <tr><td>Binding Side</td><td>${esc(d.bindingSide)}</td></tr>
-        ${d.coverColor?`<tr><td>Cover Color</td><td>${esc(d.coverColor)}</td></tr>`:''}
+        ${d.coverColor?`<tr><td>Cover Color</td><td>${esc(d.coverColor==='Other'?(d.coverColorOther||'Other'):d.coverColor)}</td></tr>`:''}
         ${d.textColor?`<tr><td>Text Color</td><td>${esc(d.textColor)}</td></tr>`:''}
         ${d.fontStyle?`<tr><td>Font Style</td><td>${esc(d.fontStyle)}</td></tr>`:''}
 
         <tr><td colspan="2" class="sec-label">PRINTING & OPTIONS</td></tr>
         <tr><td>Printed Materials Ready</td><td>${d.printedMaterialsReady||'—'}</td></tr>
-        <tr><td>Printing Needed</td><td>${d.printingNeeded||'—'}</td></tr>
-        ${d.printingNeeded==='Yes'?`<tr><td>File Final for Printing</td><td>${d.fileFinal||'—'}</td></tr>`:''}
+        ${d.printedMaterialsReady==='No'?`<tr><td>Printing Type</td><td>${esc(d.printingType)||'—'}</td></tr>`:''}
         <tr><td>Rush Order</td><td>${d.rushOrder||'—'}</td></tr>
 
         <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
         <tr><td>${esc(bindLabel)} × ${qty}</td><td>${php(unitPr*qty)}</td></tr>
+        ${printingFeeAmt()>0?`<tr><td>${esc(d.printingType)} × ${qty}</td><td>${php(printingFeeAmt())}</td></tr>`:''}
         ${rush>0?`<tr><td>Rush Fee</td><td>${php(rush)}</td></tr>`:''}
 
         <tr><td colspan="2" style="height:8px;"></td></tr>
@@ -533,8 +562,8 @@ function resetForm() {
   if (!confirm('Start a new quotation? Current data will be cleared.')) return;
   d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
   d.bindType=''; d.withLettering=''; d.quantity=1; d.pages='';
-  d.paperSize='A4'; d.orientation='Portrait'; d.bindingSide='Left'; d.coverColor=''; d.textColor=''; d.fontStyle='';
-  d.printedMaterialsReady=''; d.printingNeeded=''; d.fileFinal=''; d.rushOrder='';
+  d.paperSize='A4'; d.orientation='Portrait'; d.bindingSide='Left'; d.coverColor=''; d.coverColorOther=''; d.textColor=''; d.fontStyle='';
+  d.printedMaterialsReady=''; d.printingType=''; d.rushOrder='';
   d.notes=''; d.taxType='non-vat';
   step=0; render();
 }
@@ -554,12 +583,12 @@ function saveToSheet() {
     paperSize:             d.paperSize,
     orientation:           d.orientation,
     bindingSide:           d.bindingSide,
-    coverColor:            d.coverColor,
+    coverColor:            d.coverColor === 'Other' ? (d.coverColorOther || 'Other') : d.coverColor,
     textColor:             d.textColor,
     fontStyle:             d.fontStyle,
     printedMaterialsReady: d.printedMaterialsReady,
-    printingNeeded:        d.printingNeeded,
-    fileFinal:             d.fileFinal,
+    printingType:          d.printingType,
+    printingFee:           printingFeeAmt(),
     rushOrder:             d.rushOrder,
     bindingPrice:          bindingUnitPrice(),
     rushFee:               rushFeeAmt(),

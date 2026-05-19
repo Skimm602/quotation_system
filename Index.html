@@ -231,7 +231,6 @@
   const GROUP_ORDER = [
     'Single Face Signage (Metal Frame)',
     'Double Face Signage (Metal Frame)',
-    '3D Build Up Signage',
     'Other',
   ];
 
@@ -1144,7 +1143,7 @@
   function loadPricing() {
     google.script.run
       .withSuccessHandler(function(pricing) {
-        PRODUCTS           = pricing.products             || [];
+        PRODUCTS           = (pricing.products || []).filter(p => p.section !== '3D Build Up Signage');
         RATES              = pricing.rates                || {};
         MIN_CHARGE         = pricing.minCharge            || {};
         MIN_AREA           = pricing.minArea              || {};
