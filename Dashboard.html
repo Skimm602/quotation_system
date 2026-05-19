@@ -260,6 +260,37 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
     </div>
     <!-- END USER MANAGEMENT -->
 
+    <!-- CUSTOMER QUOTES SECTION -->
+    <div class="page-section" id="sec-customer-quotes">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;">CUSTOMER <span style="color:#E8151B;">QUOTES</span></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select id="cq-filter-status" onchange="filterCustomerQuotes()" style="border:1px solid #E0E0E0;border-radius:3px;padding:7px 12px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:#0A0A0A;">
+            <option value="">All Status</option>
+            <option value="Quote Request">Quote Request</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Attended">Attended</option>
+            <option value="Completed">Completed</option>
+          </select>
+          <select id="cq-filter-product" onchange="filterCustomerQuotes()" style="border:1px solid #E0E0E0;border-radius:3px;padding:7px 12px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:#0A0A0A;">
+            <option value="">All Products</option>
+            <option value="TARP">Tarpaulin</option>
+            <option value="TSHIRT">T-Shirt</option>
+            <option value="MUG">Mug</option>
+            <option value="RECEIPT">Receipt</option>
+            <option value="SIGNAGE">Signage</option>
+            <option value="BOOKBIND">Bookbinding</option>
+            <option value="FRAME">Photo Frame</option>
+          </select>
+          <button class="btn-primary" onclick="loadCustomerQuotes()" style="padding:7px 14px;">↻ Refresh</button>
+        </div>
+      </div>
+      <div style="background:white;border:1px solid #E5E5E5;border-radius:4px;overflow:hidden;">
+        <div id="customerQuotesTable"><div style="padding:40px;text-align:center;color:#CCC;">Loading...</div></div>
+      </div>
+    </div>
+    <!-- END CUSTOMER QUOTES SECTION -->
+
   </div>
   <!-- END PAGE CONTENT -->
 
@@ -294,36 +325,6 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
   </div>
 </div>
 
-<!-- CUSTOMER QUOTES SECTION -->
-<div class="page-section" id="sec-customer-quotes">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;">CUSTOMER <span style="color:#E8151B;">QUOTES</span></div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <select id="cq-filter-status" onchange="filterCustomerQuotes()" style="border:1px solid #E0E0E0;border-radius:3px;padding:7px 12px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:#0A0A0A;">
-        <option value="">All Status</option>
-        <option value="Quote Request">Quote Request</option>
-        <option value="In Progress">In Progress</option>
-        <option value="Attended">Attended</option>
-        <option value="Completed">Completed</option>
-      </select>
-      <select id="cq-filter-product" onchange="filterCustomerQuotes()" style="border:1px solid #E0E0E0;border-radius:3px;padding:7px 12px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:#0A0A0A;">
-        <option value="">All Products</option>
-        <option value="TARP">Tarpaulin</option>
-        <option value="TSHIRT">T-Shirt</option>
-        <option value="MUG">Mug</option>
-        <option value="RECEIPT">Receipt</option>
-        <option value="SIGNAGE">Signage</option>
-        <option value="BOOKBIND">Bookbinding</option>
-        <option value="FRAME">Photo Frame</option>
-      </select>
-      <button class="btn-primary" onclick="loadCustomerQuotes()" style="padding:7px 14px;">↻ Refresh</button>
-    </div>
-  </div>
-  <div style="background:white;border:1px solid #E5E5E5;border-radius:4px;overflow:hidden;">
-    <div id="customerQuotesTable"><div style="padding:40px;text-align:center;color:#CCC;">Loading...</div></div>
-  </div>
-</div>
-<!-- END CUSTOMER QUOTES SECTION -->
 
 <!-- QUOTE DETAIL MODAL -->
 <div class="modal-bg" id="quoteDetailModal">
