@@ -373,8 +373,8 @@ let TOKEN       = '';
 let APP_URL     = '';
 
 function init() {
-  TOKEN   = (document.getElementById('server-token') || {}).value || '';
-  APP_URL = (document.getElementById('app-url') || {}).value || '';
+  TOKEN   = document.getElementById('server-token')?.value || '';
+  APP_URL = document.getElementById('app-url')?.value || '';
   if (!TOKEN) { showSessionExpired(); return; }
 
   document.getElementById('recentTable').innerHTML = '<div style="padding:40px;text-align:center;color:#CCC;font-size:13px;">Loading data...</div>';
@@ -382,33 +382,18 @@ function init() {
   function tryLoad(attempt) {
     google.script.run
       .withSuccessHandler(function(data) {
-        if (!data || !data.role) {
-          // null return = session not found on server
-          if (attempt < 3) {
-            document.getElementById('recentTable').innerHTML =
-              '<div style="padding:40px;text-align:center;color:#CCC;font-size:13px;">Retrying... (' + attempt + '/3)</div>';
-            setTimeout(() => tryLoad(attempt + 1), 3000);
-          } else {
-            showSessionExpired();
-          }
+        if (!data || !data.name) {
+          if (attempt < 5) { setTimeout(() => tryLoad(attempt + 1), 8000); }
+          else { showSessionExpired(); }
           return;
         }
-        currentUser = { name: data.name || data.username || 'User', username: data.username, role: data.role, token: TOKEN };
+        currentUser = { name:data.name, username:data.username, role:data.role, token:TOKEN };
         allQuotes = data.quotes || [];
         setupDashboard(); renderStats(); renderRecentTable(); renderAllQuotes(); renderApprovals();
       })
       .withFailureHandler(function(err) {
-        if (attempt < 3) {
-          document.getElementById('recentTable').innerHTML =
-            '<div style="padding:40px;text-align:center;color:#CCC;font-size:13px;">Retrying... (' + attempt + '/3)</div>';
-          setTimeout(() => tryLoad(attempt + 1), 3000);
-        } else {
-          document.getElementById('recentTable').innerHTML =
-            '<div style="padding:40px;text-align:center;">' +
-            '<div style="font-size:13px;color:#CC1015;margin-bottom:16px;">Failed to load dashboard data.</div>' +
-            '<button onclick="init()" style="padding:10px 24px;background:#E8151B;color:white;border:none;border-radius:3px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.06em;">RETRY</button>' +
-            '</div>';
-        }
+        if (attempt < 3) { setTimeout(() => tryLoad(attempt + 1), 2000); }
+        else { showSessionExpired(); }
       })
       .getDashboardData(TOKEN);
   }
@@ -461,8 +446,7 @@ function toggleNewQuoteMenu(e) {
   document.getElementById('nqDropdown').classList.toggle('open');
 }
 document.addEventListener('click', function() {
-  var _nqEl = document.getElementById('nqDropdown');
-  if (_nqEl) _nqEl.classList.remove('open');
+  document.getElementById('nqDropdown')?.classList.remove('open');
 });
 
 function newQuote() {
@@ -562,14 +546,14 @@ function setupDashboard() {
     html += `<a class="nav-item" onclick="showSection('${item.id}')" id="nav-${item.id}"><span style="font-size:14px;">${item.icon}</span><span>${item.label}</span></a>`;
   });
   document.getElementById('sidebarNav').innerHTML = html;
-  setTimeout(function() { var _n=document.getElementById('nav-sec-overview'); if(_n) _n.classList.add('active'); }, 0);
+  setTimeout(() => { document.getElementById('nav-sec-overview')?.classList.add('active'); }, 0);
 }
 
 function showSection(id) {
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  var _sec=document.getElementById(id); if(_sec) _sec.classList.add('active');
-  var _nav=document.getElementById('nav-'+id); if(_nav) _nav.classList.add('active');
+  document.getElementById(id)?.classList.add('active');
+  document.getElementById('nav-'+id)?.classList.add('active');
   const titles = { 'sec-overview':'DASHBOARD','sec-quotes':'ALL QUOTATIONS','sec-approvals':'APPROVALS','sec-users':'USER MANAGEMENT','sec-customer-quotes':'CUSTOMER QUOTES' };
   document.getElementById('topbarTitle').textContent = titles[id] || 'DASHBOARD';
   if (id === 'sec-users')           loadUsers();
@@ -670,10 +654,10 @@ function badgeHtml(status) {
 }
 
 function renderAllQuotes() {
-  const search=((document.getElementById('searchInput')||{}).value||'').toLowerCase();
+  const search=(document.getElementById('searchInput')?.value||'').toLowerCase();
   const filtered=allQuotes.filter(q=>!search||(q.quoteNum||'').toLowerCase().includes(search)||(q.clientName||'').toLowerCase().includes(search)||(q.signageType||'').toLowerCase().includes(search)).reverse();
   if (!filtered.length) { document.getElementById('allQuotesTable').innerHTML='<div style="padding:32px;text-align:center;color:#CCC;">No quotations found.</div>'; return; }
-  const role=((currentUser && currentUser.role)||'').toLowerCase(), canApprove=role==='admin'||role==='tech_support';
+  const role=(currentUser?.role||'').toLowerCase(), canApprove=role==='admin'||role==='tech_support';
   let html=`<table class="data-table"><thead><tr><th>Quote #</th><th>Date</th><th>Client</th><th>Contact</th><th>Type</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
   filtered.forEach(q => {
     const date=q.date?new Date(q.date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
@@ -838,7 +822,7 @@ function viewQuote(quoteNum) {
   const q = allQuotes.find(x => x.quoteNum === quoteNum);
   if (!q) return;
   const date = q.date ? new Date(q.date).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
-  const role = ((currentUser && currentUser.role)||'').toLowerCase();
+  const role = (currentUser?.role||'').toLowerCase();
   const canAct = (role==='admin'||role==='tech_support') && (q.status||'Pending')==='Pending';
   const row = (label, val) => `<tr style="border-bottom:1px solid #F0F0F0;"><td style="padding:8px 0;color:#888;">${label}</td><td style="text-align:right;">${val}</td></tr>`;
   const isReceipt = String(q.quoteNum).startsWith('RQ-');
@@ -1041,8 +1025,7 @@ function selectPortalProduct(id) {
   renderPortalProductGrid();
   const prod = PORTAL_PRODUCTS.find(p => p.id === id);
   if (!prod) return;
-  const SHORT_LINKS = { tarp: 'http://bit.ly/4nBSfQh' };
-  const link = SHORT_LINKS[id] || (APP_URL ? APP_URL + '?page=' + prod.page : '');
+  const link = APP_URL ? APP_URL + '?page=' + prod.page : '';
   document.getElementById('portalLink').value = link;
   const qrEl = document.getElementById('portalQR');
   qrEl.innerHTML = '';
@@ -1097,8 +1080,8 @@ function loadCustomerQuotes() {
 }
 
 function filterCustomerQuotes() {
-  const statusF  = ((document.getElementById('cq-filter-status') || {}).value  || '').toLowerCase();
-  const productF = ((document.getElementById('cq-filter-product') || {}).value || '').toLowerCase();
+  const statusF  = (document.getElementById('cq-filter-status')?.value  || '').toLowerCase();
+  const productF = (document.getElementById('cq-filter-product')?.value || '').toLowerCase();
   const filtered = allCustomerQuotes.filter(r => {
     if (statusF  && r.status.toLowerCase()      !== statusF)  return false;
     if (productF && r.productType.toLowerCase()  !== productF) return false;
