@@ -759,7 +759,7 @@ function getDashboardData(token) {
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
       : allQuotes;
 
-    return { name: session.name, username: session.username, role: session.role, quotes: filtered };
+    return { name: session.name || session.username || 'User', username: session.username, role: session.role || 'sales', quotes: filtered };
 
   } catch(err) {
     Logger.log('getDashboardData error: ' + err.message);
