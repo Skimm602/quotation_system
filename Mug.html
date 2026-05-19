@@ -460,6 +460,7 @@ function renderFooter() {
         <button class="btn-primary" onclick="next()">CONTINUE →</button>
       </div>`
     : `<div class="flex items-center gap-3">
+        <button class="btn-ghost" onclick="copyForMessenger()">📋 COPY</button>
         <button class="btn-ghost" onclick="window.print()">🖨 PRINT</button>
         <button class="btn-save" id="saveBtn" onclick="saveToSheet()">💾 SAVE QUOTATION</button>
       </div>`;
@@ -531,6 +532,52 @@ function resetForm() {
   d.rushOrder = ''; d.designService = '';
   d.notes = ''; d.taxType = 'non-vat';
   step = 0; render();
+}
+
+function buildMessengerText() {
+  const qty  = parseInt(d.quantity) || 1;
+  const up   = unitPrice();
+  const dateStr = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
+  const lines = [
+    '📋 QUOTATION — Ormoc Printshoppe',
+    '━━━━━━━━━━━━━━━━━━━━━━━━',
+    '👤 Client: ' + (d.clientName || '—'),
+    '📞 Contact: ' + (d.contact || '—'),
+    '📅 Date Needed: ' + dateStr,
+    '',
+    '☕ MUG PRINTING',
+    '• Mug Type: ' + (d.mugType || '—'),
+    '• Qty: ' + qty + ' pc(s) @ ' + php(up) + '/pc',
+    '• Rush: ' + (d.rushOrder || 'No'),
+    '• Design: ' + (d.designService || 'No'),
+    '',
+    '💰 TOTAL: ' + php(grandTotal()),
+    '   Downpayment (50%): ' + php(dp()),
+    '   Balance: ' + php(bal()),
+    '',
+    '📍 Ormoc Printshoppe',
+  ];
+  return lines.join('\n');
+}
+function copyForMessenger() {
+  const text = buildMessengerText();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() { showCopyToast(); }).catch(function() { fallbackCopy(text); });
+  } else { fallbackCopy(text); }
+}
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+  showCopyToast();
+}
+function showCopyToast() {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = '📋 Copied! Paste it in Messenger.';
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 3000);
 }
 
 function saveToSheet() {

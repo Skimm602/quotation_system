@@ -799,6 +799,7 @@
           <button class="btn-primary" onclick="next()">CONTINUE →</button>
         </div>`
       : `<div class="flex items-center gap-3">
+          <button class="btn-ghost" onclick="copyForMessenger()">📋 COPY</button>
           <button class="btn-ghost" onclick="printQuote()">🖨 PRINT</button>
           <button class="btn-save" id="saveBtn" onclick="saveToSheet()">💾 SAVE QUOTATION</button>
         </div>`;
@@ -1063,6 +1064,60 @@
     addons.selectedElec=[]; addons.elecFeeAmt=0; addons.transport=''; addons.transportFeeAmt=0;
     addons.transportLocation=''; addons.wiringMeters=0;
     step=0; render();
+  }
+
+  function buildMessengerText() {
+    const sf   = billableSqft();
+    const t    = total();
+    const dpv  = dp();
+    const balv = bal();
+    const dateStr = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
+    const addOnLines = [];
+    if (addons.rushOption)     addOnLines.push('• Rush: ' + addons.rushOption);
+    if (addons.transport)      addOnLines.push('• Transport: ' + addons.transport + (addons.transportLocation ? ' ('+addons.transportLocation+')' : ''));
+    if (addons.designService)  addOnLines.push('• Design: ' + addons.designService);
+    const lines = [
+      '📋 QUOTATION — Ormoc Printshoppe',
+      '━━━━━━━━━━━━━━━━━━━━━━━━',
+      '👤 Client: ' + (d.clientName || '—'),
+      '📞 Contact: ' + (d.contact || '—') + (d.delivery ? ' · ' + d.delivery : ''),
+      '📅 Date Needed: ' + dateStr,
+      '',
+      '🪧 SIGNAGE',
+      '• Type: ' + (d.signageType || '—'),
+      '• Lighting: ' + (d.lighting || '—'),
+      '• Material: ' + (d.material || '—'),
+      '• Size: ' + (d.rawWidth||d.width||'?') + ' × ' + (d.rawHeight||d.height||'?') + ' ' + (d.unit||'ft') + ' (' + sf.toFixed(2) + ' sq ft)',
+      '• Mounting: ' + (d.mounting || '—'),
+    ].concat(addOnLines).concat([
+      '',
+      '💰 TOTAL: ' + php(t),
+      '   Downpayment (50%): ' + php(dpv),
+      '   Balance: ' + php(balv),
+      '',
+      '📍 Ormoc Printshoppe',
+    ]);
+    return lines.join('\n');
+  }
+  function copyForMessenger() {
+    const text = buildMessengerText();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() { showCopyToast(); }).catch(function() { fallbackCopy(text); });
+    } else { fallbackCopy(text); }
+  }
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    showCopyToast();
+  }
+  function showCopyToast() {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = '📋 Copied! Paste it in Messenger.';
+    el.classList.add('show');
+    setTimeout(function() { el.classList.remove('show'); }, 3000);
   }
 
   function saveToSheet() {

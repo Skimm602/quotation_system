@@ -638,6 +638,7 @@ function renderFooter() {
         <button class="btn-primary" onclick="next()">CONTINUE →</button>
       </div>`
     : `<div class="flex items-center gap-3">
+        <button class="btn-ghost" onclick="copyForMessenger()">📋 COPY</button>
         <button class="btn-save" id="saveBtn" onclick="saveQuotation()">💾 SAVE QUOTATION</button>
       </div>`;
   el.innerHTML = back + next;
@@ -790,6 +791,74 @@ function render() {
   requestAnimationFrame(() => { fc.style.animation = ''; });
 }
 
+// ─── COPY FOR MESSENGER ───────────────────────────────────────────────────
+function buildTarpMessengerText() {
+  const allItems = [...items, currentItemSnap()];
+  const gt  = grandTotalFinal();
+  const gdp = grandDp();
+  const gbal = grandBal();
+  const dateStr = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
+
+  let lines = [
+    '📋 QUOTATION — Ormoc Printshoppe',
+    '━━━━━━━━━━━━━━━━━━━━━━━━',
+    '👤 Client: ' + (d.clientName || '—'),
+    '📞 Contact: ' + (d.contact || '—'),
+    '📅 Date Needed: ' + dateStr,
+    '',
+    '🖨️ TARPAULIN / BANNER PRINT',
+  ];
+
+  if (allItems.length > 1) {
+    allItems.forEach(function(it, i) {
+      lines.push('');
+      lines.push('  Item ' + (i+1) + ':');
+      lines.push('  • Size: ' + it.width.toFixed(2) + ' × ' + it.height.toFixed(2) + ' ft (' + it.sqft.toFixed(2) + ' sqft)');
+      lines.push('  • Qty: ' + it.quantity + ' pc(s)');
+      lines.push('  • Eyelet: ' + it.eyelet);
+      if (it.rush)         lines.push('  • Rush: Yes');
+      if (it.designCharge) lines.push('  • Design: Yes');
+      lines.push('  • Subtotal: ' + php(it.itemTotal));
+    });
+  } else {
+    const it = allItems[0];
+    lines.push('• Size: ' + (it.width||0).toFixed(2) + ' × ' + (it.height||0).toFixed(2) + ' ft (' + ((it.sqft||0)).toFixed(2) + ' sqft)');
+    lines.push('• Qty: ' + (it.quantity||1) + ' pc(s)');
+    lines.push('• Eyelet: ' + (it.eyelet||'—'));
+    lines.push('• Rush Order: ' + (it.rush ? 'Yes' : 'No'));
+    lines.push('• Design: ' + (it.designCharge ? 'Yes' : 'No'));
+  }
+
+  lines.push('');
+  lines.push('💰 TOTAL: ' + php(gt));
+  lines.push('   Downpayment (50%): ' + php(gdp));
+  lines.push('   Balance: ' + php(gbal));
+  lines.push('');
+  lines.push('📍 Ormoc Printshoppe');
+  return lines.join('\n');
+}
+
+function copyForMessenger() {
+  const text = buildTarpMessengerText();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() { showCopyToast(); }).catch(function() { fallbackCopy(text); });
+  } else { fallbackCopy(text); }
+}
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+  showCopyToast();
+}
+function showCopyToast() {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = '📋 Copied! Paste it in Messenger.';
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 3000);
+}
+
 // ─── SAVE QUOTATION ───────────────────────────────────────────────────────
 function saveQuotation() {
   const btn = document.getElementById('saveBtn');
@@ -826,12 +895,20 @@ function saveQuotation() {
   google.script.run
     .withSuccessHandler(function(quoteNum) {
       document.getElementById('loadingOverlay').style.display = 'none';
-      showToast('✓ Saved — ' + quoteNum, 'success');
-      btn.classList.remove('loading');
-      btn.textContent = '✓ SAVED';
-      btn.style.background = '#0A2A1A';
-      btn.style.borderColor = '#1A6A3A';
-      btn.style.color = '#4AE89A';
+      document.getElementById('stepper-wrap').style.display = 'none';
+      document.getElementById('formCard').innerHTML = `
+        <div style="padding:60px 40px;text-align:center;">
+          <div style="font-size:56px;margin-bottom:16px;">✅</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;color:#0A0A0A;margin-bottom:8px;">QUOTATION SAVED!</div>
+          <div style="background:#F5F5F5;display:inline-block;padding:6px 22px;border-radius:20px;font-size:13px;color:#888;margin-bottom:20px;border:1px solid #E5E5E5;">
+            Reference: <strong style="color:#0A0A0A;">${quoteNum}</strong>
+          </div>
+          <p style="font-size:14px;color:#666;margin-bottom:32px;line-height:1.7;">Tarpaulin quotation has been saved successfully.</p>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="startNewOrder()" class="btn-save">+ NEW ORDER</button>
+            <button onclick="goToDashboard()" class="btn-ghost">← DASHBOARD</button>
+          </div>
+        </div>`;
     })
     .withFailureHandler(function(err) {
       document.getElementById('loadingOverlay').style.display = 'none';
@@ -839,6 +916,20 @@ function saveQuotation() {
       showToast('⚠ ' + (err.message || 'Could not save.'), 'error');
     })
     .saveTarpQuotation(payload);
+}
+
+function startNewOrder() {
+  d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
+  d.width=''; d.height=''; d.quantity=1;
+  d.eyelet='No Eyelet'; d.printLayout='Upload'; d.designCharge=false; d.rush=false;
+  d.taxType='non-vat'; currentUnit='ft'; items=[]; step=0;
+  document.getElementById('stepper-wrap').style.display='';
+  const fc = document.getElementById('formCard');
+  fc.innerHTML = `<div class="card-header-bar"></div>
+    <div class="px-7 py-5 border-b border-gray-100 flex items-center gap-4" id="cardHeader"></div>
+    <div class="px-7 py-7" id="cardBody"></div>
+    <div class="px-7 py-5 border-t border-gray-100 flex justify-between items-center bg-gray-50" id="cardFooter"></div>`;
+  render();
 }
 
 // ─── RESET ────────────────────────────────────────────────────────────────

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tarpaulin Quote — Ormoc Printshoppe</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #F5F5F5; color: #0A0A0A; min-height: 100vh; }
+.topbar { background: #0A0A0A; padding: 14px 20px; display: flex; align-items: center; gap: 10px; }
+.logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.05em; color: white; line-height: 1; }
+.logo-sub  { font-size: 11px; color: #888; letter-spacing: 0.12em; text-transform: uppercase; }
+.card { background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; animation: fadeUp 0.3s ease both; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+.card-bar { background: #E8151B; height: 4px; }
+.field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #666; display: block; margin-bottom: 6px; }
+.field-input { width: 100%; background: #fff; border: 1px solid #E0E0E0; border-radius: 4px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0A; outline: none; transition: border-color 0.15s; }
+.field-input:focus { border-color: #E8151B; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
+.field-input::placeholder { color: #CCC; }
+textarea.field-input { min-height: 80px; resize: vertical; }
+.btn-primary { width: 100%; padding: 14px; background: #E8151B; border: none; border-radius: 4px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; color: white; cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase; transition: background 0.15s; }
+.btn-primary:hover { background: #B00E12; }
+.btn-primary:disabled { background: #CCC; cursor: not-allowed; }
+.btn-ghost { width: 100%; padding: 12px; background: transparent; border: 1px solid #E0E0E0; border-radius: 4px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: #666; cursor: pointer; transition: all 0.15s; }
+.btn-ghost:hover { border-color: #999; color: #333; }
+.opt-card { border: 1px solid #E0E0E0; border-radius: 4px; padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.15s; background: #FAFAFA; }
+.opt-card:hover  { border-color: #E8151B; background: #FFF8F8; }
+.opt-card.active { border-color: #E8151B; background: #FFF0F0; }
+.opt-card input[type=radio] { accent-color: #E8151B; flex-shrink: 0; }
+.yn-btn { flex: 1; padding: 11px 0; border: 1px solid #E0E0E0; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; background: #FAFAFA; color: #888; transition: all 0.15s; }
+.yn-btn.yes.on { background: #E6FFF3; border-color: #1A6A3A; color: #1A6A3A; }
+.yn-btn.no.on  { background: #FFF5F5; border-color: #E8151B; color: #E8151B; }
+.step-dot { width: 8px; height: 8px; border-radius: 50%; background: #DDD; transition: background 0.2s; }
+.step-dot.done { background: #E8151B; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #0A0A0A; color: white; padding: 12px 22px; border-radius: 4px; font-size: 13px; opacity: 0; transition: all 0.3s; z-index: 999; }
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast.error { background: #B00E12; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="width:32px;height:32px;background:#E8151B;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"/></svg>
+  </div>
+  <div>
+    <div class="logo-text">Ormoc Printshoppe</div>
+    <div class="logo-sub">Tarpaulin Quote Request</div>
+  </div>
+</div>
+
+<div style="max-width:520px;margin:0 auto;padding:24px 16px 64px;">
+  <div id="screen"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="hidden" id="app-url" value="<?= appUrl ?>">
+
+<script>
+const APP_URL = (document.getElementById('app-url')||{}).value || '';
+
+let PRICING = {};
+let pricingLoaded = false;
+google.script.run
+  .withSuccessHandler(function(p) { if(p && p.tarp) PRICING = p.tarp; pricingLoaded=true; render(); })
+  .withFailureHandler(function()  { pricingLoaded=true; render(); })
+  .getPublicPricing();
+
+let formStep = 0; // 0=client, 1=dimensions, 2=eyelet, 3=options, 4=review
+
+const d = {
+  name:'', contact:'', email:'', dateNeeded:'', notes:'',
+  width:'', height:'', quantity:1, unit:'ft',
+  eyelet:'No Eyelet',
+  rush:false, designCharge:false,
+};
+
+const UNIT_TO_FT = { ft:1, m:3.28084, cm:0.0328084, in:0.0833333 };
+function toFt(v, u) { return (parseFloat(v)||0) * (UNIT_TO_FT[u]||1); }
+
+function widthFt()  { return toFt(d.width,  d.unit); }
+function heightFt() { return toFt(d.height, d.unit); }
+function sqft()     { return widthFt() * heightFt() * (parseInt(d.quantity)||1); }
+function calcTotal() {
+  const p    = PRICING || {};
+  const rate = p.ratePerSqft || 50;
+  const rush = d.rush         ? (p.rushFee   || 150) : 0;
+  const des  = d.designCharge ? (p.designFee || 250) : 0;
+  return (sqft() * rate) + rush + des;
+}
+function php(n) { return '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function v(id)  { return (document.getElementById(id)||{}).value||''; }
+
+const STEPS = ['Your Info','Dimensions','Eyelet','Options','Review'];
+
+function render() {
+  renderForm();
+}
+
+function renderForm() {
+  const dots = STEPS.map((_,i) => `<div class="step-dot${i<=formStep?' done':''}"></div>`).join('');
+  let body = '';
+  if (formStep === 0) body = renderStep0();
+  else if (formStep === 1) body = renderStep1();
+  else if (formStep === 2) body = renderStep2();
+  else if (formStep === 3) body = renderStep3();
+  else if (formStep === 4) body = renderStep4();
+
+  const back = formStep > 0
+    ? `<button class="btn-ghost" onclick="prevStep()" style="width:auto;padding:12px 20px;">← Back</button>`
+    : '';
+  const nextLabel = formStep < 4 ? 'CONTINUE →' : 'SUBMIT REQUEST';
+
+  document.getElementById('screen').innerHTML = `
+    <div class="card">
+      <div class="card-bar"></div>
+      <div style="padding:16px 20px;border-bottom:1px solid #F0F0F0;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.04em;">🖨️ Tarpaulin Quote</div>
+          <div style="font-size:11px;color:#888;margin-top:1px;">${STEPS[formStep]}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">${dots}</div>
+      </div>
+      <div style="padding:20px;">${body}</div>
+      <div style="padding:14px 20px;border-top:1px solid #F0F0F0;display:flex;gap:10px;">
+        ${back}
+        <button class="btn-primary" style="flex:1;" id="nextBtn" onclick="nextStep()">${nextLabel}</button>
+      </div>
+    </div>`;
+}
+
+function renderStep0() {
+  return `
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <label class="field-label">Full Name / Company *</label>
+        <input class="field-input" id="f_name" value="${esc(d.name)}" placeholder="Juan dela Cruz">
+      </div>
+      <div>
+        <label class="field-label">Contact Number *</label>
+        <input class="field-input" id="f_contact" value="${esc(d.contact)}" placeholder="09XX XXX XXXX" maxlength="13"
+          oninput="let dg=this.value.replace(/\\D/g,'').slice(0,11);let f=dg;if(dg.length>4&&dg.length<=7)f=dg.slice(0,4)+' '+dg.slice(4);else if(dg.length>7)f=dg.slice(0,4)+' '+dg.slice(4,7)+' '+dg.slice(7);this.value=f;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label">Email <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="f_email" value="${esc(d.email)}" placeholder="email@example.com" type="email">
+      </div>
+      <div>
+        <label class="field-label">Target Pickup Date *</label>
+        <input class="field-input" id="f_date" type="date" value="${esc(d.dateNeeded)}" min="${new Date().toISOString().split('T')[0]}">
+      </div>
+      <div>
+        <label class="field-label">Special Instructions <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <textarea class="field-input" id="f_notes" placeholder="Color preferences, design details, etc.">${esc(d.notes)}</textarea>
+      </div>
+    </div>`;
+}
+
+function renderStep1() {
+  const units = ['ft','m','cm','in'];
+  const unitBtns = units.map(u => `
+    <button onclick="d.unit='${u}';render();" style="flex:1;padding:9px 0;border:1px solid ${d.unit===u?'#E8151B':'#E0E0E0'};border-radius:3px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;background:${d.unit===u?'#E8151B':'#FAFAFA'};color:${d.unit===u?'white':'#888'};cursor:pointer;transition:all .15s;">${u.toUpperCase()}</button>`).join('');
+  const wFt = widthFt(), hFt = heightFt(), qty = parseInt(d.quantity)||1;
+  const totalSqft = wFt * hFt * qty;
+  return `
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <label class="field-label">Unit</label>
+        <div style="display:flex;gap:6px;">${unitBtns}</div>
+      </div>
+      <div>
+        <label class="field-label">Size (${d.unit}) *</label>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="number" class="field-input" id="f_w" value="${d.width}" placeholder="Width" min="0" step="any"
+            oninput="d.width=this.value;" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
+          <input type="number" class="field-input" id="f_h" value="${d.height}" placeholder="Height" min="0" step="any"
+            oninput="d.height=this.value;" inputmode="decimal" style="text-align:center;">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="f_qty" value="${d.quantity}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.quantity=parseInt(this.value)||1;" inputmode="numeric">
+      </div>
+      ${totalSqft > 0 ? `
+        <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:4px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:12px;color:#888;">${wFt.toFixed(3)} × ${hFt.toFixed(3)} ft × ${qty} pc</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#E8151B;">${totalSqft.toFixed(2)} sqft</div>
+        </div>` : ''}
+      ${totalSqft > 0 && (PRICING.ratePerSqft||0) > 0 ? `
+        <div style="background:#F9F9F9;border:1px solid #E0E0E0;border-radius:4px;padding:10px 14px;font-size:13px;color:#666;">
+          At <strong style="color:#E8151B;">${php(PRICING.ratePerSqft||50)}/sqft</strong> = <strong style="color:#0A0A0A;">${php((totalSqft)*(PRICING.ratePerSqft||50))}</strong>
+        </div>` : ''}
+    </div>`;
+}
+
+function renderStep2() {
+  const opts = [
+    { v:'No Eyelet',    desc:'Flat banner, no holes' },
+    { v:'Top Only',     desc:'Holes along the top edge' },
+    { v:'Top & Bottom', desc:'Holes top and bottom' },
+    { v:'All Sides',    desc:'Holes on all four sides' },
+  ];
+  return `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <label class="field-label" style="margin-bottom:4px;">Eyelet Position *</label>
+      ${opts.map(o => `
+        <div class="opt-card${d.eyelet===o.v?' active':''}" onclick="d.eyelet='${o.v}';render();">
+          <input type="radio" ${d.eyelet===o.v?'checked':''} readonly>
+          <div>
+            <div style="font-size:13px;font-weight:600;">${o.v}</div>
+            <div style="font-size:11px;color:#888;margin-top:1px;">${o.desc}</div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderStep3() {
+  const p = PRICING || {};
+  const total = calcTotal();
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.rush?' on':''}" onclick="d.rush=true;render();">Yes</button>
+          <button class="yn-btn no${!d.rush?' on':''}" onclick="d.rush=false;render();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.designCharge?' on':''}" onclick="d.designCharge=true;render();">Yes</button>
+          <button class="yn-btn no${!d.designCharge?' on':''}" onclick="d.designCharge=false;render();">No</button>
+        </div>
+      </div>
+      ${total > 0 ? `
+        <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:4px;padding:16px;text-align:center;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#888;margin-bottom:4px;">Estimated Total</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:#E8151B;">${php(total)}</div>
+          <div style="font-size:12px;color:#999;margin-top:4px;">Downpayment (50%): ${php(total*0.5)}</div>
+        </div>` : ''}
+    </div>`;
+}
+
+function renderStep4() {
+  const total = calcTotal();
+  const wFt = widthFt(), hFt = heightFt(), qty = parseInt(d.quantity)||1;
+  const dateLabel = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
+  return `
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="background:#F9F9F9;border:1px solid #E5E5E5;border-left:3px solid #E8151B;border-radius:4px;padding:14px 16px;">
+        <div style="font-weight:700;font-size:15px;">${esc(d.name)||'—'}</div>
+        <div style="font-size:12px;color:#888;margin-top:3px;">${esc(d.contact)} ${d.email?'· '+esc(d.email):''}</div>
+        ${d.dateNeeded?`<div style="font-size:12px;color:#E8151B;margin-top:4px;font-weight:600;">📅 Pickup: ${dateLabel}</div>`:''}
+      </div>
+      <div style="border:1px solid #E5E5E5;border-radius:4px;padding:14px 16px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:10px;">🖨️ Tarpaulin — Order Details</div>
+        <div style="display:flex;flex-direction:column;gap:5px;font-size:13px;color:#555;">
+          <div>Size: <strong style="color:#0A0A0A;">${wFt.toFixed(3)} × ${hFt.toFixed(3)} ft (${(wFt*hFt*qty).toFixed(2)} sqft)</strong></div>
+          <div>Quantity: <strong style="color:#0A0A0A;">${qty} pc(s)</strong></div>
+          <div>Eyelet: <strong style="color:#0A0A0A;">${esc(d.eyelet)}</strong></div>
+          <div>Rush Order: <strong style="color:#0A0A0A;">${d.rush?'Yes':'No'}</strong></div>
+          <div>Design Needed: <strong style="color:#0A0A0A;">${d.designCharge?'Yes':'No'}</strong></div>
+          ${d.notes?`<div style="font-size:12px;color:#999;font-style:italic;margin-top:4px;">"${esc(d.notes)}"</div>`:''}
+        </div>
+      </div>
+      <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:4px;padding:16px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Total</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;color:#E8151B;">${total > 0 ? php(total) : '—'}</div>
+        ${total > 0 ? `<div style="font-size:12px;color:#999;margin-top:6px;">Downpayment (50%): ${php(total*0.5)}</div>` : `<div style="font-size:12px;color:#AAA;margin-top:6px;">Our team will confirm the final price</div>`}
+      </div>
+      <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:12px 14px;font-size:12px;color:#7A5500;">
+        ℹ️ This is an <strong>estimate</strong>. Our team will contact you at <strong>${esc(d.contact)}</strong> to confirm.
+      </div>
+    </div>`;
+}
+
+
+function prevStep() {
+  if (formStep > 0) { formStep--; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+}
+
+function nextStep() {
+  if (formStep === 0) {
+    d.name     = v('f_name');
+    d.contact  = v('f_contact');
+    d.email    = v('f_email');
+    d.dateNeeded = v('f_date');
+    d.notes    = v('f_notes');
+    if (!d.name.trim())    { toast('Please enter your name.'); return; }
+    if (!d.contact.trim()) { toast('Please enter your contact number.'); return; }
+    if (d.contact.replace(/\D/g,'').length !== 11) { toast('Contact number must be 11 digits.'); return; }
+    if (!d.dateNeeded)     { toast('Please choose a pickup date.'); return; }
+  }
+  if (formStep === 1) {
+    d.width    = v('f_w')   || d.width;
+    d.height   = v('f_h')   || d.height;
+    d.quantity = parseInt(v('f_qty'))||1;
+    if (!widthFt() || !heightFt()) { toast('Please enter width and height.'); return; }
+  }
+  if (formStep === 4) { submitRequest(); return; }
+  formStep++;
+  render();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function submitRequest() {
+  const btn = document.getElementById('nextBtn');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ SUBMITTING...'; }
+
+  const total = calcTotal();
+  const wFt = widthFt(), hFt = heightFt(), qty = parseInt(d.quantity)||1;
+  const p   = PRICING || {};
+
+  google.script.run
+    .withSuccessHandler(function(qn) {
+      // reset all state
+      formStep = 0;
+      d.name=''; d.contact=''; d.email=''; d.dateNeeded=''; d.notes='';
+      d.width=''; d.height=''; d.quantity=1; d.unit='ft';
+      d.eyelet='No Eyelet'; d.rush=false; d.designCharge=false;
+      render();
+      window.scrollTo({top:0,behavior:'smooth'});
+      toastSuccess('Quote submitted!' + (qn ? ' Ref: ' + qn : ''));
+    })
+    .withFailureHandler(function(err) {
+      toast('Submit failed: ' + (err.message||'Unknown error'));
+      if (btn) { btn.disabled=false; btn.textContent='SUBMIT REQUEST'; }
+    })
+    .submitCustomerRequest({
+      productType:   'tarp',
+      clientName:    d.name,
+      contact:       d.contact,
+      email:         d.email,
+      dateNeeded:    d.dateNeeded,
+      notes:         d.notes,
+      width:         wFt,
+      height:        hFt,
+      quantity:      qty,
+      eyelet:        d.eyelet,
+      rushOrder:     d.rush ? 'Yes' : 'No',
+      designService: d.designCharge ? 'Yes' : 'No',
+      ratePerSqft:   p.ratePerSqft || 50,
+      totalAmount:   total,
+    });
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast show error';
+  setTimeout(() => { el.className = 'toast'; }, 3500);
+}
+function toastSuccess(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast show';
+  setTimeout(() => { el.className = 'toast'; }, 4000);
+}
+
+render();
+</script>
+</body>
+</html>

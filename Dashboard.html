@@ -294,6 +294,37 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
   </div>
 </div>
 
+<!-- CUSTOMER QUOTES SECTION -->
+<div class="page-section" id="sec-customer-quotes">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;">CUSTOMER <span style="color:#E8151B;">QUOTES</span></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <select id="cq-filter-status" onchange="filterCustomerQuotes()" style="border:1px solid #E0E0E0;border-radius:3px;padding:7px 12px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:#0A0A0A;">
+        <option value="">All Status</option>
+        <option value="Quote Request">Quote Request</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Attended">Attended</option>
+        <option value="Completed">Completed</option>
+      </select>
+      <select id="cq-filter-product" onchange="filterCustomerQuotes()" style="border:1px solid #E0E0E0;border-radius:3px;padding:7px 12px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:#0A0A0A;">
+        <option value="">All Products</option>
+        <option value="TARP">Tarpaulin</option>
+        <option value="TSHIRT">T-Shirt</option>
+        <option value="MUG">Mug</option>
+        <option value="RECEIPT">Receipt</option>
+        <option value="SIGNAGE">Signage</option>
+        <option value="BOOKBIND">Bookbinding</option>
+        <option value="FRAME">Photo Frame</option>
+      </select>
+      <button class="btn-primary" onclick="loadCustomerQuotes()" style="padding:7px 14px;">↻ Refresh</button>
+    </div>
+  </div>
+  <div style="background:white;border:1px solid #E5E5E5;border-radius:4px;overflow:hidden;">
+    <div id="customerQuotesTable"><div style="padding:40px;text-align:center;color:#CCC;">Loading...</div></div>
+  </div>
+</div>
+<!-- END CUSTOMER QUOTES SECTION -->
+
 <!-- QUOTE DETAIL MODAL -->
 <div class="modal-bg" id="quoteDetailModal">
   <div class="modal" style="width:600px;">
@@ -304,28 +335,28 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
 
 <!-- CUSTOMER PORTAL MODAL -->
 <div class="modal-bg" id="customerPortalModal">
-  <div class="modal" style="width:480px;">
+  <div class="modal" style="width:520px;">
     <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #F0F0F0;">
       <div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.05em;">Customer Portal</div>
-        <div style="font-size:11px;color:#888;margin-top:1px;">Share this link / QR with customers</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">Select a product to share with customers</div>
       </div>
       <button onclick="closeModal('customerPortalModal')" style="background:none;border:none;font-size:20px;color:#CCC;cursor:pointer;line-height:1;">✕</button>
     </div>
-    <div style="padding:24px;display:flex;flex-direction:column;gap:16px;">
-      <div style="text-align:center;background:#F9F9F9;border:1px solid #E5E5E5;border-radius:4px;padding:20px;">
-        <div id="portalQR" style="display:inline-block;"></div>
-        <div style="font-size:10px;color:#AAA;margin-top:8px;text-transform:uppercase;letter-spacing:0.08em;">Scan to open quotation form</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#666;margin-bottom:6px;">Link</div>
-        <div style="display:flex;gap:8px;">
-          <input id="portalLink" readonly style="flex:1;background:#F5F5F5;border:1px solid #E0E0E0;border-radius:4px;padding:9px 12px;font-size:12px;color:#444;font-family:'DM Sans',sans-serif;outline:none;">
-          <button onclick="copyPortalLink()" id="copyBtn" style="padding:9px 14px;background:#0A0A0A;border:none;border-radius:4px;color:white;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:0.06em;text-transform:uppercase;">Copy</button>
+    <div style="padding:20px 24px 24px;">
+      <div id="portalProductGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;"></div>
+      <div id="portalLinkSection" style="display:none;">
+        <div style="text-align:center;background:#F9F9F9;border:1px solid #E5E5E5;border-radius:4px;padding:20px;margin-bottom:12px;">
+          <div id="portalQR" style="display:inline-block;"></div>
+          <div style="font-size:10px;color:#AAA;margin-top:8px;text-transform:uppercase;letter-spacing:0.08em;">Scan to open quotation form</div>
         </div>
-      </div>
-      <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:10px 14px;font-size:11px;color:#7A5500;">
-        ☕ Customers fill this form themselves — they only see the total, not per-unit pricing.
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#666;margin-bottom:6px;">Customer Link</div>
+          <div style="display:flex;gap:8px;">
+            <input id="portalLink" readonly style="flex:1;background:#F5F5F5;border:1px solid #E0E0E0;border-radius:4px;padding:9px 12px;font-size:12px;color:#444;font-family:'DM Sans',sans-serif;outline:none;">
+            <button onclick="copyPortalLink()" id="copyBtn" style="padding:9px 14px;background:#0A0A0A;border:none;border-radius:4px;color:white;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:0.06em;text-transform:uppercase;">Copy</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -502,10 +533,11 @@ function setupDashboard() {
   document.getElementById('topbarUser').textContent  = u.name;
 
   const items = [
-    { id:'sec-overview',  label:'Overview',   icon:'▣', roles:['admin','tech_support','sales','staff'] },
-    { id:'sec-quotes',    label:'All Quotes', icon:'≡', roles:['admin','tech_support','sales','staff'] },
-    { id:'sec-approvals', label:'Approvals',  icon:'✓', roles:['admin','tech_support']                 },
-    { id:'sec-users',     label:'Users',      icon:'◉', roles:['tech_support']                         },
+    { id:'sec-overview',        label:'Overview',        icon:'▣', roles:['admin','tech_support','sales','staff'] },
+    { id:'sec-quotes',          label:'All Quotes',      icon:'≡', roles:['admin','tech_support','sales','staff'] },
+    { id:'sec-approvals',       label:'Approvals',       icon:'✓', roles:['admin','tech_support']                 },
+    { id:'sec-customer-quotes', label:'Customer Quotes', icon:'👥', roles:['admin','tech_support','sales','staff'] },
+    { id:'sec-users',           label:'Users',           icon:'◉', roles:['tech_support']                         },
   ];
 
   let html = `<div class="nav-section">Main Menu</div>`;
@@ -522,11 +554,12 @@ function showSection(id) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(id)?.classList.add('active');
   document.getElementById('nav-'+id)?.classList.add('active');
-  const titles = { 'sec-overview':'DASHBOARD','sec-quotes':'ALL QUOTATIONS','sec-approvals':'APPROVALS','sec-users':'USER MANAGEMENT' };
+  const titles = { 'sec-overview':'DASHBOARD','sec-quotes':'ALL QUOTATIONS','sec-approvals':'APPROVALS','sec-users':'USER MANAGEMENT','sec-customer-quotes':'CUSTOMER QUOTES' };
   document.getElementById('topbarTitle').textContent = titles[id] || 'DASHBOARD';
-  if (id === 'sec-users')     loadUsers();
-  if (id === 'sec-approvals') renderApprovals();
-  if (id === 'sec-quotes')    renderAllQuotes();
+  if (id === 'sec-users')           loadUsers();
+  if (id === 'sec-approvals')       renderApprovals();
+  if (id === 'sec-quotes')          renderAllQuotes();
+  if (id === 'sec-customer-quotes') loadCustomerQuotes();
 }
 
 function loadDashboardData() {
@@ -957,22 +990,49 @@ function deleteUser(username) {
 
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
+const PORTAL_PRODUCTS = [
+  { id:'tarp',     icon:'🖨️', label:'Tarpaulin',   active:true,  page:'customer-tarp'     },
+  { id:'mug',      icon:'☕', label:'Mug',           active:false, page:'customer-mug'      },
+  { id:'tshirt',   icon:'👕', label:'T-Shirt',       active:false, page:'customer-tshirt'   },
+  { id:'receipt',  icon:'🧾', label:'Receipt',       active:false, page:'customer-receipt'  },
+  { id:'signage',  icon:'🪧', label:'Signage',       active:false, page:'customer-signage'  },
+  { id:'bookbind', icon:'📚', label:'Bookbinding',   active:false, page:'customer-bookbind' },
+  { id:'frame',    icon:'🖼️', label:'Photo Frame',   active:false, page:'customer-frame'    },
+];
+let selectedPortalProduct = null;
+
 function openCustomerPortal() {
-  const link = APP_URL ? APP_URL + '?page=customer' : '';
+  selectedPortalProduct = null;
+  document.getElementById('portalLinkSection').style.display = 'none';
+  renderPortalProductGrid();
+  document.getElementById('customerPortalModal').classList.add('show');
+}
+
+function renderPortalProductGrid() {
+  document.getElementById('portalProductGrid').innerHTML = PORTAL_PRODUCTS.map(p => `
+    <div onclick="${p.active ? "selectPortalProduct('"+p.id+"')" : ''}"
+      style="border:2px solid ${selectedPortalProduct===p.id?'#E8151B':'#E0E0E0'};border-radius:6px;padding:14px 8px;text-align:center;
+        background:${selectedPortalProduct===p.id?'#FFF0F0':p.active?'#FAFAFA':'#F5F5F5'};
+        cursor:${p.active?'pointer':'not-allowed'};opacity:${p.active?'1':'0.5'};transition:all .15s;">
+      <div style="font-size:24px;">${p.icon}</div>
+      <div style="font-size:11px;font-weight:700;color:${selectedPortalProduct===p.id?'#E8151B':'#0A0A0A'};margin-top:5px;">${p.label}</div>
+      ${!p.active?'<div style="font-size:9px;color:#AAA;margin-top:2px;letter-spacing:0.06em;">COMING SOON</div>':''}
+    </div>`).join('');
+}
+
+function selectPortalProduct(id) {
+  selectedPortalProduct = id;
+  renderPortalProductGrid();
+  const prod = PORTAL_PRODUCTS.find(p => p.id === id);
+  if (!prod) return;
+  const link = APP_URL ? APP_URL + '?page=' + prod.page : '';
   document.getElementById('portalLink').value = link;
   const qrEl = document.getElementById('portalQR');
   qrEl.innerHTML = '';
   if (link) {
-    new QRCode(qrEl, {
-      text:         link,
-      width:        180,
-      height:       180,
-      colorDark:    '#0A0A0A',
-      colorLight:   '#FFFFFF',
-      correctLevel: QRCode.CorrectLevel.M,
-    });
+    new QRCode(qrEl, { text: link, width: 160, height: 160, colorDark: '#0A0A0A', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
   }
-  document.getElementById('customerPortalModal').classList.add('show');
+  document.getElementById('portalLinkSection').style.display = 'block';
 }
 
 function copyPortalLink() {
@@ -982,7 +1042,109 @@ function copyPortalLink() {
     const btn = document.getElementById('copyBtn');
     btn.textContent = '✓ Copied!'; btn.style.background = '#1A6A3A';
     setTimeout(function() { btn.textContent = 'Copy'; btn.style.background = '#0A0A0A'; }, 2000);
+  }).catch(function() {
+    const ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied!'; btn.style.background = '#1A6A3A';
+    setTimeout(function() { btn.textContent = 'Copy'; btn.style.background = '#0A0A0A'; }, 2000);
   });
+}
+
+// ── CUSTOMER QUOTES ───────────────────────────────────────────────────────
+let allCustomerQuotes = [];
+
+const CQ_STATUS_COLORS = {
+  'Quote Request': { bg:'#FFF8E6', color:'#B8860B', border:'#F0D060' },
+  'In Progress':   { bg:'#E6F0FF', color:'#1A4A9A', border:'#90B0F0' },
+  'Attended':      { bg:'#E6FFF3', color:'#0A7A45', border:'#60D090' },
+  'Completed':     { bg:'#F0F0F0', color:'#555555', border:'#C0C0C0' },
+};
+
+function loadCustomerQuotes() {
+  document.getElementById('customerQuotesTable').innerHTML = '<div style="padding:40px;text-align:center;color:#CCC;">Loading...</div>';
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        document.getElementById('customerQuotesTable').innerHTML = '<div style="padding:40px;text-align:center;color:#E8151B;">Error loading quotes.</div>';
+        return;
+      }
+      allCustomerQuotes = res.rows || [];
+      filterCustomerQuotes();
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('customerQuotesTable').innerHTML = '<div style="padding:40px;text-align:center;color:#E8151B;">Failed: ' + (err.message||'Unknown error') + '</div>';
+    })
+    .getCustomerDashboardData(TOKEN);
+}
+
+function filterCustomerQuotes() {
+  const statusF  = (document.getElementById('cq-filter-status')?.value  || '').toLowerCase();
+  const productF = (document.getElementById('cq-filter-product')?.value || '').toLowerCase();
+  const filtered = allCustomerQuotes.filter(r => {
+    if (statusF  && r.status.toLowerCase()      !== statusF)  return false;
+    if (productF && r.productType.toLowerCase()  !== productF) return false;
+    return true;
+  });
+  renderCustomerQuotesTable(filtered);
+}
+
+function renderCustomerQuotesTable(rows) {
+  const el = document.getElementById('customerQuotesTable');
+  if (!rows.length) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:#CCC;">No customer quotes found.</div>';
+    return;
+  }
+  const php = n => '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+  el.innerHTML = `
+    <table class="data-table">
+      <thead><tr>
+        <th>Ref #</th><th>Date</th><th>Client</th><th>Product</th>
+        <th>Specs</th><th>Total</th><th>Pickup</th><th>Status</th><th>Action</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r => {
+          const sc = CQ_STATUS_COLORS[r.status] || CQ_STATUS_COLORS['Quote Request'];
+          const nextStatus = r.status === 'Quote Request' ? 'In Progress'
+            : r.status === 'In Progress' ? 'Attended'
+            : r.status === 'Attended'    ? 'Completed'
+            : 'Quote Request';
+          return `<tr>
+            <td style="font-weight:700;color:#E8151B;font-size:11px;">${r.reqNum}</td>
+            <td style="font-size:12px;color:#888;">${r.dateSubmitted}</td>
+            <td>
+              <div style="font-weight:600;font-size:13px;">${r.clientName}</div>
+              <div style="font-size:11px;color:#888;">${r.contact}</div>
+            </td>
+            <td><span style="font-size:11px;font-weight:700;background:#F5F5F5;padding:2px 8px;border-radius:2px;">${r.productType}</span></td>
+            <td style="font-size:12px;color:#555;max-width:180px;">${r.specs}</td>
+            <td style="font-weight:700;color:#0A0A0A;">${php(r.totalAmount)}</td>
+            <td style="font-size:12px;color:#888;">${r.dateNeeded||'—'}</td>
+            <td>
+              <span class="badge" style="background:${sc.bg};color:${sc.color};border:1px solid ${sc.border};">${r.status}</span>
+              ${r.notes ? `<div style="font-size:10px;color:#AAA;margin-top:3px;font-style:italic;">"${r.notes.slice(0,40)}${r.notes.length>40?'…':''}"</div>` : ''}
+            </td>
+            <td>
+              <button class="btn-sm" onclick="updateCustStatus(${r.rowNum},'${nextStatus}',this)" style="font-size:10px;padding:4px 10px;">
+                → ${nextStatus}
+              </button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function updateCustStatus(rowNum, status, btn) {
+  btn.disabled = true; btn.textContent = '⏳';
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res && res.success) { loadCustomerQuotes(); }
+      else { btn.disabled=false; btn.textContent='Error'; showToast('Could not update status.','error'); }
+    })
+    .withFailureHandler(function() { btn.disabled=false; showToast('Failed to update.','error'); })
+    .updateCustomerQuoteStatus(TOKEN, rowNum, status);
 }
 document.querySelectorAll('.modal-bg').forEach(m => { m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('show'); }); });
 

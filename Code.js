@@ -40,12 +40,20 @@ function doGet(e) {
   const page   = String(e?.parameter?.page  || '').trim().toLowerCase();
   const appUrl = ScriptApp.getService().getUrl();
 
-  // ── PUBLIC CUSTOMER PAGE (no auth required) ──
+  // ── PUBLIC CUSTOMER PAGES (no auth required) ──
   if (page === 'customer') {
     const tpl  = HtmlService.createTemplateFromFile('Customer');
     tpl.appUrl = appUrl;
     return tpl.evaluate()
       .setTitle('Get a Quote — Ormoc Printshoppe')
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  if (page === 'customer-tarp') {
+    const tpl  = HtmlService.createTemplateFromFile('CustomerTarp');
+    tpl.appUrl = appUrl;
+    return tpl.evaluate()
+      .setTitle('Tarpaulin Quote — Ormoc Printshoppe')
       .setSandboxMode(HtmlService.SandboxMode.IFRAME)
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -1902,6 +1910,60 @@ function submitCustomerRequest(data) {
     return reqNum;
   } catch(e) {
     throw new Error('Submit failed: ' + e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CUSTOMER DASHBOARD DATA
+// ══════════════════════════════════════════════════════════════════
+function getCustomerDashboardData(token) {
+  try {
+    if (!getSessionData_(token)) return { success: false, message: 'Not authorized.' };
+    const ss    = getCustomerSS_();
+    const sheet = ss.getSheetByName(CUSTOMER_SHEET);
+    if (!sheet) return { success: true, rows: [] };
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return { success: true, rows: [] };
+    const rows = [];
+    for (let i = 1; i < data.length; i++) {
+      const r = data[i];
+      if (!r[0]) continue;
+      rows.push({
+        rowNum:       i + 1,
+        reqNum:       String(r[0]  || ''),
+        dateSubmitted:r[1] ? new Date(r[1]).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'}) : '',
+        clientName:   String(r[2]  || ''),
+        contact:      String(r[3]  || ''),
+        email:        String(r[4]  || ''),
+        productType:  String(r[5]  || ''),
+        specs:        String(r[6]  || ''),
+        quantity:     r[7] || '',
+        rushOrder:    String(r[8]  || ''),
+        totalAmount:  parseFloat(r[10]) || 0,
+        downpayment:  parseFloat(r[11]) || 0,
+        dateNeeded:   r[13] ? new Date(r[13]).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'}) : '',
+        notes:        String(r[14] || ''),
+        status:       String(r[15] || 'Quote Request'),
+        assignedTo:   String(r[16] || ''),
+      });
+    }
+    rows.reverse();
+    return { success: true, rows: rows };
+  } catch(e) {
+    return { success: false, message: e.message };
+  }
+}
+
+function updateCustomerQuoteStatus(token, rowNum, status) {
+  try {
+    if (!getSessionData_(token)) return { success: false, message: 'Not authorized.' };
+    const ss    = getCustomerSS_();
+    const sheet = ss.getSheetByName(CUSTOMER_SHEET);
+    if (!sheet) return { success: false, message: 'Sheet not found.' };
+    sheet.getRange(rowNum, 16).setValue(status);
+    return { success: true };
+  } catch(e) {
+    return { success: false, message: e.message };
   }
 }
 
