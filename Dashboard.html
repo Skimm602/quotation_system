@@ -1067,12 +1067,12 @@ function deleteUser(username) {
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
 const PORTAL_PRODUCTS = [
-  { id:'tarp',     icon:'🖨️', label:'Tarpaulin',   active:true,  page:'customer-tarp'     },
+  { id:'tarp',     icon:'🖨️', label:'Tarpaulin',   active:true,  page:'customer-tarp',     shortUrl:'https://tinyurl.com/53ampkt4' },
   { id:'mug',      icon:'☕', label:'Mug',           active:false, page:'customer-mug'      },
   { id:'tshirt',   icon:'👕', label:'T-Shirt',       active:false, page:'customer-tshirt'   },
-  { id:'receipt',  icon:'🧾', label:'Receipt',       active:true,  page:'customer-receipt'  },
+  { id:'receipt',  icon:'🧾', label:'Receipt',       active:true,  page:'customer-receipt',  shortUrl:'https://tinyurl.com/56v9ytx4' },
   { id:'signage',  icon:'🪧', label:'Signage',       active:false, page:'customer-signage'  },
-  { id:'bookbind', icon:'📚', label:'Bookbinding',   active:true,  page:'customer-bookbind' },
+  { id:'bookbind', icon:'📚', label:'Bookbinding',   active:true,  page:'customer-bookbind', shortUrl:'https://tinyurl.com/bddsed6j' },
   { id:'frame',    icon:'🖼️', label:'Photo Frame',   active:false, page:'customer-frame'    },
 ];
 let selectedPortalProduct = null;
@@ -1101,7 +1101,8 @@ function selectPortalProduct(id) {
   renderPortalProductGrid();
   const prod = PORTAL_PRODUCTS.find(p => p.id === id);
   if (!prod) return;
-  const link = APP_URL ? APP_URL + '?page=' + prod.page : '';
+  // Use the short (tinyurl) link if set; otherwise fall back to the raw Apps Script link
+  const link = prod.shortUrl || (APP_URL ? APP_URL + '?page=' + prod.page : '');
   document.getElementById('portalLink').value = link;
   const qrEl = document.getElementById('portalQR');
   qrEl.innerHTML = '';
