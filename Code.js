@@ -44,6 +44,7 @@ function doGet(e) {
   if (page === 'customer') {
     const tpl  = HtmlService.createTemplateFromFile('Customer');
     tpl.appUrl = appUrl;
+    tpl.injectedProduct = String(e?.parameter?.product || '').trim().toLowerCase();
     return tpl.evaluate()
       .setTitle('Get a Quote — Ormoc Printshoppe')
       .setSandboxMode(HtmlService.SandboxMode.IFRAME)

@@ -77,6 +77,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 <div class="toast" id="toast"></div>
 
 <input type="hidden" id="app-url" value="<?= appUrl ?>">
+<input type="hidden" id="inj-product" value="<?= injectedProduct ?>">
 
 <script>
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
@@ -1376,6 +1377,15 @@ function toast(msg, type='') {
   setTimeout(() => { el.className = 'toast ' + type; }, 3500);
 }
 
+// If launched from a product-specific portal link (?product=bookbind), pre-select it
+(function preselectProduct() {
+  var ip = ((document.getElementById('inj-product')||{}).value || '').trim().toLowerCase();
+  if (ip && PRODUCTS.some(function(p){ return p.id === ip; })) {
+    selectedProduct = ip;
+    screen   = 'form';
+    formStep = 0;
+  }
+})();
 render();
 </script>
 </body>
