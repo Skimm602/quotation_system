@@ -58,6 +58,16 @@ function doGet(e) {
       .setSandboxMode(HtmlService.SandboxMode.IFRAME)
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
+  // Product-specific customer portal links: customer-bookbind, customer-receipt, etc.
+  if (page.indexOf('customer-') === 0) {
+    const tpl  = HtmlService.createTemplateFromFile('Customer');
+    tpl.appUrl = appUrl;
+    tpl.injectedProduct = page.slice(9);   // 'customer-bookbind' -> 'bookbind'
+    return tpl.evaluate()
+      .setTitle('Get a Quote — Ormoc Printshoppe')
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
 
   if (!token) return serveLogin_(appUrl);
 
