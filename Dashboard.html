@@ -1112,7 +1112,7 @@ function selectPortalProduct(id) {
 }
 
 function copyPortalLink() {
-  const link = "https://tinyurl.com/3bh2tyae";
+  const link = document.getElementById('portalLink').value;
   if (!link) return;
   navigator.clipboard.writeText(link).then(function() {
     const btn = document.getElementById('copyBtn');
