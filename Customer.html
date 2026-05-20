@@ -118,10 +118,13 @@ const d = {
   // frame
   frameWidth:'', frameHeight:'', frameMatting:'Yes', frameQty:1, frameRush:'No',
   // bookbind
-  bindType:'', bindQty:1, bindRush:'No',
-  bindCoverColor:'', bindCoverColorOther:'', bindMaterialsReady:'Yes', bindPrintType:'',
+  bindType:'', bindQty:1, bindRush:'No', bindPages:'',
+  bindPaperSize:'A4', bindOrientation:'Portrait', bindBindingSide:'Left',
+  bindCoverColor:'', bindCoverColorOther:'', bindTextColor:'', bindFontStyle:'',
+  bindMaterialsReady:'Yes', bindPrintType:'',
   // receipt
   receiptPrintType:'', receiptCopies:'', receiptSizeDiv:'', receiptQty:1, receiptRush:'No',
+  receiptColors:['White'], receiptPerforation:'Yes', receiptNumbering:'Yes', receiptStartNo:'',
   // signage
   signageType:'', signageWidth:'', signageHeight:'', signageQty:1, signageRush:'No',
 };
@@ -668,16 +671,61 @@ function renderBookbindSpecs() {
       </div>
     </div>` : '';
 
+  const sizeOpts = ['A4','A5','Short (8.5×11)','Long (8.5×13)','Custom']
+    .map(s => `<option ${d.bindPaperSize===s?'selected':''}>${s}</option>`).join('');
+  const orientOpts = ['Portrait','Landscape']
+    .map(o => `<option ${d.bindOrientation===o?'selected':''}>${o}</option>`).join('');
+  const sideOpts = ['Left','Right','Top','Bottom']
+    .map(s => `<option ${d.bindBindingSide===s?'selected':''}>${s}</option>`).join('');
+
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
       <div>
         <label class="field-label" style="margin-bottom:8px;">Binding Type *</label>
         <div style="display:flex;flex-direction:column;gap:6px;">${bindCards}</div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label class="field-label">Number of Volumes / Books</label>
+          <input type="number" class="field-input" id="bb_qty" value="${d.bindQty}" min="1"
+            oninput="d.bindQty=parseInt(this.value)||1;" inputmode="numeric">
+        </div>
+        <div>
+          <label class="field-label">Number of Pages</label>
+          <input type="number" class="field-input" id="bb_pages" value="${esc(d.bindPages||'')}" min="1"
+            placeholder="e.g. 100" oninput="d.bindPages=this.value;" inputmode="numeric">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label class="field-label">Paper Size</label>
+          <select class="field-input" id="bb_size" onchange="d.bindPaperSize=this.value;">${sizeOpts}</select>
+        </div>
+        <div>
+          <label class="field-label">Orientation</label>
+          <select class="field-input" id="bb_orient" onchange="d.bindOrientation=this.value;">${orientOpts}</select>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Binding Side</label>
+        <select class="field-input" id="bb_side" onchange="d.bindBindingSide=this.value;">${sideOpts}</select>
+      </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Cover Color *</label>
         <div style="display:flex;gap:8px;">${colorBtns}</div>
         ${d.bindCoverColor==='Other'?`<input class="field-input" id="bb_color_other" value="${esc(d.bindCoverColorOther||'')}" placeholder="e.g. Black, Navy Blue, Red…" oninput="d.bindCoverColorOther=this.value;" style="margin-top:8px;">`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label class="field-label">Text Color <span style="color:#BBB;font-weight:400;">(optional)</span></label>
+          <input class="field-input" id="bb_textcolor" value="${esc(d.bindTextColor||'')}"
+            placeholder="e.g. Gold, White, Black" oninput="d.bindTextColor=this.value;">
+        </div>
+        <div>
+          <label class="field-label">Font Style <span style="color:#BBB;font-weight:400;">(optional)</span></label>
+          <input class="field-input" id="bb_fontstyle" value="${esc(d.bindFontStyle||'')}"
+            placeholder="e.g. Arial, Times New Roman" oninput="d.bindFontStyle=this.value;">
+        </div>
       </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Printed Materials Ready?</label>
@@ -687,12 +735,6 @@ function renderBookbindSpecs() {
         </div>
       </div>
       ${printSection}
-      <div>
-        <label class="field-label">Number of Volumes / Books</label>
-        <input type="number" class="field-input" id="bb_qty" value="${d.bindQty}" min="1"
-          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
-          oninput="d.bindQty=parseInt(this.value)||1;" inputmode="numeric">
-      </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
         <div style="display:flex;gap:8px;">
@@ -728,7 +770,7 @@ function renderReceiptSpecs() {
       <span style="font-size:13px;font-weight:600;">${esc(t)}</span>
     </div>`).join('');
   const cpCards = d.receiptPrintType ? copiesOptions.map(c => `
-    <div class="opt-card${d.receiptCopies===c?' active':''}" onclick="d.receiptCopies='${c}';d.receiptSizeDiv='';renderForm();">
+    <div class="opt-card${d.receiptCopies===c?' active':''}" onclick="d.receiptCopies='${c}';d.receiptSizeDiv='';d.receiptColors=['White'];renderForm();">
       <input type="radio" ${d.receiptCopies===c?'checked':''} readonly>
       <span style="font-size:13px;font-weight:600;">${c}-Part Copy</span>
     </div>`).join('') : '';
@@ -737,6 +779,18 @@ function renderReceiptSpecs() {
       <input type="radio" ${d.receiptSizeDiv===s?'checked':''} readonly>
       <span style="font-size:13px;font-weight:600;">${SIZE_LABELS[s]||('1/'+s+' Page')}</span>
     </div>`).join('') : '';
+
+  // Paper colors — White is always included; extra colors limited by copy count
+  const RC_COLORS = [['White','#FFFFFF',true],['Yellow','#F5D020',false],['Pink','#F48FB1',false],['Green','#81C784',false],['Blue','#64B5F6',false]];
+  const clrLimit  = Math.max(1, (parseInt(d.receiptCopies)||2) - 1);
+  const clrSwatches = RC_COLORS.map(([name,hex,locked]) => {
+    const on = (d.receiptColors||['White']).indexOf(name) >= 0;
+    return `<button onclick="toggleReceiptColor('${name}')" ${locked?'disabled':''}
+      style="flex:1;min-width:54px;padding:8px 4px;border:2px solid ${on?'#E8151B':'#E0E0E0'};border-radius:6px;cursor:${locked?'default':'pointer'};background:${on?'#FFF0F0':'#FAFAFA'};display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <span style="width:22px;height:22px;border-radius:50%;background:${hex};border:1px solid #CCC;"></span>
+      <span style="font-size:11px;font-weight:700;color:${on?'#E8151B':'#888'};">${name}</span>
+    </button>`;
+  }).join('');
 
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
@@ -754,6 +808,33 @@ function renderReceiptSpecs() {
         <label class="field-label" style="margin-bottom:8px;">Booklet Size *</label>
         <div style="display:flex;flex-direction:column;gap:6px;">${sdCards}</div>
       </div>` : ''}
+      ${d.receiptPrintType && d.receiptCopies ? `
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Paper Colors <span style="color:#BBB;font-weight:400;">(White always 1st · max ${clrLimit} more)</span></label>
+        <div style="display:flex;gap:6px;">${clrSwatches}</div>
+      </div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label class="field-label" style="margin-bottom:8px;">Perforation</label>
+          <div style="display:flex;gap:8px;">
+            <button class="yn-btn yes${d.receiptPerforation==='Yes'?' on':''}" onclick="d.receiptPerforation='Yes';renderForm();">Yes</button>
+            <button class="yn-btn no${d.receiptPerforation==='No'?' on':''}"  onclick="d.receiptPerforation='No';renderForm();">No</button>
+          </div>
+        </div>
+        <div>
+          <label class="field-label" style="margin-bottom:8px;">Numbering</label>
+          <div style="display:flex;gap:8px;">
+            <button class="yn-btn yes${d.receiptNumbering==='Yes'?' on':''}" onclick="d.receiptNumbering='Yes';renderForm();">Yes</button>
+            <button class="yn-btn no${d.receiptNumbering==='No'?' on':''}"  onclick="d.receiptNumbering='No';renderForm();">No</button>
+          </div>
+        </div>
+      </div>
+      ${d.receiptNumbering==='Yes' ? `
+      <div>
+        <label class="field-label">Starting Number *</label>
+        <input class="field-input" id="rc_startno" value="${esc(d.receiptStartNo||'')}"
+          placeholder="e.g. 0001" oninput="d.receiptStartNo=this.value;">
+      </div>` : ''}
       <div>
         <label class="field-label">Number of Booklets</label>
         <input type="number" class="field-input" id="rc_qty" value="${d.receiptQty}" min="1"
@@ -768,6 +849,21 @@ function renderReceiptSpecs() {
         </div>
       </div>
     </div>`;
+}
+
+function toggleReceiptColor(color) {
+  if (color === 'White') return;                       // White is always included
+  if (!Array.isArray(d.receiptColors)) d.receiptColors = ['White'];
+  const limit = Math.max(1, (parseInt(d.receiptCopies)||2) - 1);
+  const idx   = d.receiptColors.indexOf(color);
+  if (idx >= 0) {
+    d.receiptColors.splice(idx, 1);
+  } else {
+    const chosen = d.receiptColors.filter(c => c !== 'White').length;
+    if (chosen >= limit) { toast('Max ' + limit + ' extra color' + (limit>1?'s':'') + ' for ' + d.receiptCopies + '-part.', 'error'); return; }
+    d.receiptColors.push(color);
+  }
+  renderForm();
 }
 
 // ── SIGNAGE SPECS ─────────────────────────────────────────────────
@@ -843,12 +939,20 @@ function renderReview() {
     if (d.frameRush === 'Yes') specSummary += ' · Rush';
   } else if (selectedProduct === 'bookbind') {
     const resolvedColor = d.bindCoverColor === 'Other' ? (d.bindCoverColorOther || 'Other') : d.bindCoverColor;
-    specSummary = `${esc(d.bindType)||'—'}${resolvedColor?' · '+esc(resolvedColor):''} × ${d.bindQty} volume(s)`;
+    specSummary = `${esc(d.bindType)||'—'} × ${d.bindQty} volume(s)`;
+    if (d.bindPages)     specSummary += ` · ${esc(d.bindPages)} pages`;
+    specSummary += ` · ${esc(d.bindPaperSize)} ${esc(d.bindOrientation)} · ${esc(d.bindBindingSide)} bind`;
+    if (resolvedColor)   specSummary += ` · ${esc(resolvedColor)} cover`;
+    if (d.bindTextColor) specSummary += ` · ${esc(d.bindTextColor)} text`;
+    if (d.bindFontStyle) specSummary += ` · ${esc(d.bindFontStyle)}`;
     if (d.bindMaterialsReady === 'No' && d.bindPrintType) specSummary += ' · Print: ' + esc(d.bindPrintType);
     if (d.bindRush === 'Yes') specSummary += ' · Rush';
   } else if (selectedProduct === 'receipt') {
     const sdLbl = {'1':'Full Page','2':'Half Page','3':'Third Page','4':'Quarter Page','6':'Sixth Page','8':'Eighth Page'};
     specSummary = `${d.receiptPrintType||'—'} · ${d.receiptCopies?d.receiptCopies+'-Part':''} · ${sdLbl[d.receiptSizeDiv]||d.receiptSizeDiv||'—'} × ${d.receiptQty} booklet(s)`;
+    specSummary += ` · Colors: ${(d.receiptColors||['White']).join('/')}`;
+    specSummary += ` · Perf: ${d.receiptPerforation} · Numbering: ${d.receiptNumbering}`;
+    if (d.receiptNumbering === 'Yes' && d.receiptStartNo) specSummary += ` (from ${esc(d.receiptStartNo)})`;
     if (d.receiptRush === 'Yes') specSummary += ' · Rush';
   } else if (selectedProduct === 'signage') {
     specSummary = `${esc(d.signageType)||'—'} · ${d.signageWidth||'?'} × ${d.signageHeight||'?'} ft × ${d.signageQty} pc(s)`;
@@ -937,7 +1041,8 @@ function nextStep() {
       if (!d.frameWidth || !d.frameHeight) { toast('Please enter the frame size.','error'); return; }
     }
     if (selectedProduct === 'bookbind') {
-      d.bindQty = parseInt(v('bb_qty')) || d.bindQty;
+      d.bindQty   = parseInt(v('bb_qty')) || d.bindQty;
+      d.bindPages = v('bb_pages') || d.bindPages;
       if (!d.bindType)                                          { toast('Please select a binding type.','error'); return; }
       if (!d.bindCoverColor)                                    { toast('Please select a cover color.','error'); return; }
       if (d.bindCoverColor === 'Other') d.bindCoverColorOther = v('bb_color_other') || d.bindCoverColorOther;
@@ -946,10 +1051,12 @@ function nextStep() {
       if (d.bindMaterialsReady === 'No' && !d.bindPrintType)   { toast('Please select a printing type.','error'); return; }
     }
     if (selectedProduct === 'receipt') {
-      d.receiptQty = parseInt(v('rc_qty')) || d.receiptQty;
+      d.receiptQty     = parseInt(v('rc_qty')) || d.receiptQty;
+      d.receiptStartNo = v('rc_startno') || d.receiptStartNo;
       if (!d.receiptPrintType) { toast('Please select a paper type.','error'); return; }
       if (!d.receiptCopies)    { toast('Please select number of copies.','error'); return; }
       if (!d.receiptSizeDiv)   { toast('Please select a booklet size.','error'); return; }
+      if (d.receiptNumbering === 'Yes' && !String(d.receiptStartNo).trim()) { toast('Please enter the starting number.','error'); return; }
     }
     if (selectedProduct === 'signage') {
       d.signageWidth  = v('sg_w')  || d.signageWidth;
@@ -1078,6 +1185,8 @@ function submitRequest() {
     const base      = (price + printFee) * d.bindQty;
     Object.assign(payload, {
       bindingType: d.bindType, coverColor: d.bindCoverColor === 'Other' ? (d.bindCoverColorOther || 'Other') : d.bindCoverColor,
+      pages: d.bindPages, paperSize: d.bindPaperSize, orientation: d.bindOrientation,
+      bindingSide: d.bindBindingSide, textColor: d.bindTextColor, fontStyle: d.bindFontStyle,
       printedMaterialsReady: d.bindMaterialsReady, printingType: d.bindPrintType,
       quantity: d.bindQty,
       pricePerVol: price, printingFee: printFee * d.bindQty,
@@ -1099,6 +1208,9 @@ function submitRequest() {
     Object.assign(payload, {
       paperType: d.receiptPrintType, copies: d.receiptCopies,
       sizeDiv: d.receiptSizeDiv, quantity: d.receiptQty,
+      colors: (d.receiptColors||['White']).join(', '),
+      perforation: d.receiptPerforation, numbering: d.receiptNumbering,
+      startingNo: d.receiptNumbering === 'Yes' ? d.receiptStartNo : '',
       pricePerBooklet: price, baseAmount: base,
       rushOrder: d.receiptRush, rushFee: rush,
       totalAmount: base + rush,
@@ -1158,10 +1270,21 @@ function buildMessengerText(qn) {
     if (d.frameRush === 'Yes') specsLine += '\nRush Order: Yes';
   } else if (selectedProduct === 'bookbind') {
     specsLine = d.bindType + ' × ' + d.bindQty + ' volume(s)';
+    if (d.bindPages) specsLine += '\nPages: ' + d.bindPages;
+    specsLine += '\nPaper Size: ' + d.bindPaperSize + ' · ' + d.bindOrientation;
+    specsLine += '\nBinding Side: ' + d.bindBindingSide;
+    const bbCover = d.bindCoverColor === 'Other' ? (d.bindCoverColorOther || 'Other') : d.bindCoverColor;
+    if (bbCover)          specsLine += '\nCover Color: ' + bbCover;
+    if (d.bindTextColor)  specsLine += '\nText Color: ' + d.bindTextColor;
+    if (d.bindFontStyle)  specsLine += '\nFont Style: ' + d.bindFontStyle;
+    if (d.bindMaterialsReady === 'No' && d.bindPrintType) specsLine += '\nPrinting: ' + d.bindPrintType;
     if (d.bindRush === 'Yes') specsLine += '\nRush Order: Yes';
   } else if (selectedProduct === 'receipt') {
     const sdL = {'1':'Full Page','2':'Half Page','3':'Third Page','4':'Quarter Page','6':'Sixth Page','8':'Eighth Page'};
     specsLine = d.receiptPrintType + ' · ' + d.receiptCopies + '-Part · ' + (sdL[d.receiptSizeDiv]||d.receiptSizeDiv) + ' × ' + d.receiptQty + ' booklet(s)';
+    specsLine += '\nPaper Colors: ' + (d.receiptColors||['White']).join(', ');
+    specsLine += '\nPerforation: ' + d.receiptPerforation + ' · Numbering: ' + d.receiptNumbering;
+    if (d.receiptNumbering === 'Yes' && d.receiptStartNo) specsLine += '\nStarting No: ' + d.receiptStartNo;
     if (d.receiptRush === 'Yes') specsLine += '\nRush Order: Yes';
   } else if (selectedProduct === 'signage') {
     specsLine = d.signageType + ' · ' + d.signageWidth + ' × ' + d.signageHeight + ' ft × ' + d.signageQty + ' pc(s)';
@@ -1240,7 +1363,9 @@ function resetAll() {
   d.tshirtOwnShirt='No'; d.tarpRush='No'; d.tarpDesign='No';
   d.frameMatting='Yes'; d.frameRush='No';
   d.bindRush='No'; d.bindMaterialsReady='Yes';
+  d.bindPaperSize='A4'; d.bindOrientation='Portrait'; d.bindBindingSide='Left';
   d.receiptRush='No'; d.signageRush='No';
+  d.receiptColors=['White']; d.receiptPerforation='Yes'; d.receiptNumbering='Yes';
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
 }

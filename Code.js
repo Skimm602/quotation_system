@@ -1888,11 +1888,21 @@ function submitCustomerRequest(data) {
             + ' × ' + (data.quantity || 1) + ' pc(s)';
     } else if (data.productType === 'bookbind') {
       specs = (data.bindingType || data.bindType || '—') + ' × ' + (data.quantity || 0) + ' volume(s)';
-      if (data.coverColor) specs += ' | Cover: ' + data.coverColor;
+      if (data.pages)       specs += ' | ' + data.pages + ' pages';
+      if (data.paperSize)   specs += ' | ' + data.paperSize + (data.orientation ? ' ' + data.orientation : '');
+      if (data.bindingSide) specs += ' | ' + data.bindingSide + ' bind';
+      if (data.coverColor)  specs += ' | Cover: ' + data.coverColor;
+      if (data.textColor)   specs += ' | Text: ' + data.textColor;
+      if (data.fontStyle)   specs += ' | Font: ' + data.fontStyle;
+      if (data.printingType && data.printedMaterialsReady === 'No') specs += ' | Print: ' + data.printingType;
     } else if (data.productType === 'receipt') {
       const sizeLabel = RECEIPT_SIZE_LABELS[String(data.sizeDiv)] || data.sizeDiv || '—';
       specs = (data.paperType || '—') + ' · ' + (data.copies || '—') + ' · '
             + sizeLabel + ' × ' + (data.quantity || 0) + ' booklet(s)';
+      if (data.colors)      specs += ' | Colors: ' + data.colors;
+      if (data.perforation) specs += ' | Perf: ' + data.perforation;
+      if (data.numbering)   specs += ' | Numbering: ' + data.numbering;
+      if (data.numbering === 'Yes' && data.startingNo) specs += ' (from ' + data.startingNo + ')';
     } else if (data.productType === 'signage') {
       specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ft × ' + (data.quantity || 1) + ' pc(s)';
     }
