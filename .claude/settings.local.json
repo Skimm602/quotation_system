@@ -24,7 +24,10 @@
       "Bash(dir \"c:\\\\Users\\\\cymon\\\\Downloads\\\\*.jpg\" /b /o-d /t:w)",
       "Bash(powershell \"Get-ChildItem 'c:\\\\Users\\\\cymon\\\\AppData\\\\Local\\\\Temp' -Filter '*.png' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Desc | Select-Object -First 5 FullName, LastWriteTime\")",
       "Bash(powershell \"Get-ChildItem 'c:\\\\Users\\\\cymon\\\\AppData\\\\Roaming\\\\Claude' -Recurse -Filter '*.png' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Desc | Select-Object -First 5 FullName, LastWriteTime\")",
-      "Bash(powershell \"Get-ChildItem 'c:\\\\Users\\\\cymon\\\\AppData\\\\Local\\\\Temp' -Filter '*.png' | Sort-Object LastWriteTime -Desc | Select-Object -First 3 FullName, LastWriteTime\")"
+      "Bash(powershell \"Get-ChildItem 'c:\\\\Users\\\\cymon\\\\AppData\\\\Local\\\\Temp' -Filter '*.png' | Sort-Object LastWriteTime -Desc | Select-Object -First 3 FullName, LastWriteTime\")",
+      "mcp__code-review-graph__get_architecture_overview_tool",
+      "WebFetch(domain:docs.google.com)",
+      "mcp__claude_ai_Google_Drive__read_file_content"
     ],
     "additionalDirectories": [
       "C:\\Users\\cymon\\Documents\\github\\quotation_system"

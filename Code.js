@@ -1865,25 +1865,36 @@ function submitCustomerRequest(data) {
     const dp       = total * 0.5;
     const bal      = total - dp;
 
+    // Page-size labels for receipt size divisions
+    const RECEIPT_SIZE_LABELS = {
+      '1': 'Full Page', '2': 'Half Page', '3': 'Third Page',
+      '4': 'Quarter Page', '6': 'Sixth Page', '8': 'Eighth Page',
+    };
+
     // Build a human-readable specs summary
     let specs = '';
     if (data.productType === 'mug') {
       specs = (data.mugType || '') + ' × ' + (data.quantity || 0) + ' pcs';
     } else if (data.productType === 'tshirt') {
       specs = (data.printType || '') + (data.logoSize ? ' ' + data.logoSize : '') + ' × ' + (data.quantity || 0) + ' pcs';
-      if (data.hasOwnShirt === 'No' && data.shirtChoice) specs += ' | Shirt: ' + data.shirtChoice;
+      if (data.garmentType) specs += ' | ' + data.garmentType;
+      if (data.hasOwnShirt === 'Yes') specs += ' | Own shirt';
+      else if (data.shirtChoice)      specs += ' | Shirt: ' + data.shirtChoice;
     } else if (data.productType === 'tarp') {
       specs = (data.width || '?') + ' × ' + (data.height || '?') + ' ft × ' + (data.quantity || 1) + ' pc(s)';
     } else if (data.productType === 'frame') {
-      specs = (data.width || '?') + ' × ' + (data.height || '?') + ' in | ' + (data.matting || '—') + ' × ' + (data.quantity || 1) + ' pc(s)';
+      specs = (data.frameWidth || data.width || '?') + ' × ' + (data.frameHeight || data.height || '?') + ' in | '
+            + (data.hasMatting === 'Yes' ? 'With matting' : 'No matting')
+            + ' × ' + (data.quantity || 1) + ' pc(s)';
     } else if (data.productType === 'bookbind') {
-      specs = (data.bookType || '—') + ' × ' + (data.quantity || 0) + ' pcs';
+      specs = (data.bindingType || data.bindType || '—') + ' × ' + (data.quantity || 0) + ' volume(s)';
+      if (data.coverColor) specs += ' | Cover: ' + data.coverColor;
     } else if (data.productType === 'receipt') {
-      specs = (data.copies || '—') + ' · ' + (data.size || '—') + ' · ' + (data.quantity || 0) + ' booklets';
-      if (data.numbering === 'Yes') specs += ' · Numbered';
-      if (data.perforation === 'Yes') specs += ' · Perforated';
+      const sizeLabel = RECEIPT_SIZE_LABELS[String(data.sizeDiv)] || data.sizeDiv || '—';
+      specs = (data.paperType || '—') + ' · ' + (data.copies || '—') + ' · '
+            + sizeLabel + ' × ' + (data.quantity || 0) + ' booklet(s)';
     } else if (data.productType === 'signage') {
-      specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ft';
+      specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ft × ' + (data.quantity || 1) + ' pc(s)';
     }
 
     sheet.appendRow([
@@ -1896,7 +1907,7 @@ function submitCustomerRequest(data) {
       specs,                           // G - Specs Summary
       data.quantity      || '',        // H - Quantity
       data.rushOrder     || 'No',      // I - Rush Order
-      data.designService || data.mugDesign || data.tshirtDesign || data.tarpDesign || 'No', // J - Design
+      data.designService || data.designCharge || 'No', // J - Design
       parseFloat(total.toFixed(2)),    // K - Total Amount
       parseFloat(dp.toFixed(2)),       // L - Downpayment
       parseFloat(bal.toFixed(2)),      // M - Balance
@@ -1939,8 +1950,10 @@ function getCustomerDashboardData(token) {
         specs:        String(r[6]  || ''),
         quantity:     r[7] || '',
         rushOrder:    String(r[8]  || ''),
+        designService:String(r[9]  || ''),
         totalAmount:  parseFloat(r[10]) || 0,
         downpayment:  parseFloat(r[11]) || 0,
+        balance:      parseFloat(r[12]) || 0,
         dateNeeded:   r[13] ? new Date(r[13]).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'}) : '',
         notes:        String(r[14] || ''),
         status:       String(r[15] || 'Quote Request'),

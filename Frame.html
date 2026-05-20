@@ -366,6 +366,11 @@ function renderFooter() {
         <button class="btn-primary" onclick="next()">CONTINUE →</button>
       </div>`
     : `<div class="flex items-center gap-3">
+        <select id="msgScriptType" title="Messenger script (opening/closing line)" style="font-family:inherit;font-size:11px;font-weight:600;padding:8px 10px;border:1px solid #D4D4D4;border-radius:4px;background:#fff;color:#333;cursor:pointer;">
+          <option value="walkin">Walk-in customer</option>
+          <option value="phone">Quoted over phone</option>
+          <option value="link">Customer filled the link</option>
+        </select>
         <button class="btn-ghost" onclick="copyForMessenger()">📋 COPY</button>
         <button class="btn-ghost" onclick="window.print()">🖨 PRINT</button>
         <button class="btn-save" id="saveBtn" onclick="saveToSheet()">💾 SAVE QUOTATION</button>
@@ -442,35 +447,61 @@ function resetForm() {
   step=0; render();
 }
 
+// ─── MESSENGER SCRIPT (opening/closing from Quotation Sheet → "script" tab) ──
+var QUOTE_SCRIPTS = {
+  walkin: { opening: "Hi {client}, thank you for visiting Ormoc Printshoppe today! As discussed, here's a recap of your inquiry:",
+            closing: "Kindly confirm if everything is correct so we can proceed with your order. Reply here or message us directly anytime. 😊" },
+  phone:  { opening: "Hi {client}, as discussed over the phone, I've already encoded your specs into our system on your behalf. Here's a recap for your confirmation:",
+            closing: "Kindly confirm if everything is correct so we can proceed with your order. Reply here or message us directly anytime. 😊" },
+  link:   { opening: "Hi {client}! Thank you for submitting your specs. 😊 Here's a quick recap of your inquiry:",
+            closing: "Kindly confirm if everything is correct so we can proceed with your order. Reply here or message us directly anytime. 😊" }
+};
+function wrapMessengerText(specsText, clientName, scriptKey, salesName) {
+  var s = QUOTE_SCRIPTS[scriptKey] || QUOTE_SCRIPTS.walkin;
+  var c = (clientName && String(clientName).trim() && String(clientName).trim() !== '—')
+    ? String(clientName).trim() : '[client name]';
+  var sales = (salesName && String(salesName).trim()) ? String(salesName).trim() : '[Name of Sales Associate]';
+  return s.opening.replace('{client}', c) + '\n\n' + specsText + '\n\n'
+       + s.closing + '\n— ' + sales + ', Ormoc Printshoppe';
+}
+
 function buildMessengerText() {
   const qty = parseInt(d.quantity) || 1;
   const w = parseFloat(d.width) || 0;
   const h = parseFloat(d.height) || 0;
+  const tAmt = taxAmt();
   const dateStr = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
   const lines = [
-    '📋 QUOTATION — Ormoc Printshoppe',
+    '🖼️ PICTURE FRAME QUOTATION — Ormoc Printshoppe',
     '━━━━━━━━━━━━━━━━━━━━━━━━',
     '👤 Client: ' + (d.clientName || '—'),
     '📞 Contact: ' + (d.contact || '—'),
-    '📅 Date Needed: ' + dateStr,
-    '',
-    '🖼️ PICTURE FRAME',
-    '• Matting: ' + (d.matting || '—'),
-    '• Size: ' + w + ' × ' + h + ' ft',
-    '• Qty: ' + qty + ' frame(s)',
-    '• Total Area: ' + totalSqft().toFixed(2) + ' sq ft',
-    '• Rush: ' + (d.rushOrder || 'No'),
-    '',
-    '💰 TOTAL: ' + php(grandTotal()),
-    '   Downpayment (50%): ' + php(dp()),
-    '   Balance: ' + php(bal()),
-    '',
-    '📍 Ormoc Printshoppe',
   ];
+  if (d.email) lines.push('✉️ Email: ' + d.email);
+  lines.push('📅 Date Needed: ' + dateStr);
+  lines.push('');
+  lines.push('📐 SPECIFICATIONS');
+  lines.push('• Frame Size: ' + w + ' × ' + h + ' in');
+  lines.push('• Matting: ' + (d.matting || '—'));
+  lines.push('• Quantity: ' + qty + ' frame(s)');
+  lines.push('• Total Area: ' + totalSqft().toFixed(2) + ' sq ft');
+  lines.push('• Rush Order: ' + (d.rushOrder || 'No'));
+  if (d.notes) lines.push('• Notes: ' + d.notes);
+  lines.push('');
+  lines.push('💰 COST BREAKDOWN');
+  lines.push('• Base: ' + php(baseAmt()));
+  if (rushFeeAmt()>0) lines.push('• Rush fee: ' + php(rushFeeAmt()));
+  if (tAmt>0) lines.push('• ' + (d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)') + ': ' + php(tAmt));
+  lines.push('');
+  lines.push('💵 TOTAL: ' + php(grandTotal()));
+  lines.push('   Downpayment (50%): ' + php(dp()));
+  lines.push('   Balance: ' + php(bal()));
   return lines.join('\n');
 }
 function copyForMessenger() {
-  const text = buildMessengerText();
+  const key   = (document.getElementById('msgScriptType')||{}).value || 'walkin';
+  const sales = (document.getElementById('server-user')||{}).value || '';
+  const text  = wrapMessengerText(buildMessengerText(), d.clientName, key, sales);
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(function() { showCopyToast(); }).catch(function() { fallbackCopy(text); });
   } else { fallbackCopy(text); }

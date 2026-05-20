@@ -799,6 +799,11 @@
           <button class="btn-primary" onclick="next()">CONTINUE →</button>
         </div>`
       : `<div class="flex items-center gap-3">
+          <select id="msgScriptType" title="Messenger script (opening/closing line)" style="font-family:inherit;font-size:11px;font-weight:600;padding:8px 10px;border:1px solid #D4D4D4;border-radius:4px;background:#fff;color:#333;cursor:pointer;">
+            <option value="walkin">Walk-in customer</option>
+            <option value="phone">Quoted over phone</option>
+            <option value="link">Customer filled the link</option>
+          </select>
           <button class="btn-ghost" onclick="copyForMessenger()">📋 COPY</button>
           <button class="btn-ghost" onclick="printQuote()">🖨 PRINT</button>
           <button class="btn-save" id="saveBtn" onclick="saveToSheet()">💾 SAVE QUOTATION</button>
@@ -1066,41 +1071,79 @@
     step=0; render();
   }
 
+  // ─── MESSENGER SCRIPT (opening/closing from Quotation Sheet → "script" tab) ──
+  var QUOTE_SCRIPTS = {
+    walkin: { opening: "Hi {client}, thank you for visiting Ormoc Printshoppe today! As discussed, here's a recap of your inquiry:",
+              closing: "Kindly confirm if everything is correct so we can proceed with your order. Reply here or message us directly anytime. 😊" },
+    phone:  { opening: "Hi {client}, as discussed over the phone, I've already encoded your specs into our system on your behalf. Here's a recap for your confirmation:",
+              closing: "Kindly confirm if everything is correct so we can proceed with your order. Reply here or message us directly anytime. 😊" },
+    link:   { opening: "Hi {client}! Thank you for submitting your specs. 😊 Here's a quick recap of your inquiry:",
+              closing: "Kindly confirm if everything is correct so we can proceed with your order. Reply here or message us directly anytime. 😊" }
+  };
+  function wrapMessengerText(specsText, clientName, scriptKey, salesName) {
+    var s = QUOTE_SCRIPTS[scriptKey] || QUOTE_SCRIPTS.walkin;
+    var c = (clientName && String(clientName).trim() && String(clientName).trim() !== '—')
+      ? String(clientName).trim() : '[client name]';
+    var sales = (salesName && String(salesName).trim()) ? String(salesName).trim() : '[Name of Sales Associate]';
+    return s.opening.replace('{client}', c) + '\n\n' + specsText + '\n\n'
+         + s.closing + '\n— ' + sales + ', Ormoc Printshoppe';
+  }
+
   function buildMessengerText() {
-    const sf   = billableSqft();
+    const sf   = sqft();
+    const bsf  = billableSqft();
     const t    = total();
     const dpv  = dp();
     const balv = bal();
+    const tAmt = taxAmt();
+    const rate = RATES[d.signageType]||0;
     const dateStr = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
-    const addOnLines = [];
-    if (addons.rushOption)     addOnLines.push('• Rush: ' + addons.rushOption);
-    if (addons.transport)      addOnLines.push('• Transport: ' + addons.transport + (addons.transportLocation ? ' ('+addons.transportLocation+')' : ''));
-    if (addons.designService)  addOnLines.push('• Design: ' + addons.designService);
     const lines = [
-      '📋 QUOTATION — Ormoc Printshoppe',
+      '🪧 SIGNAGE QUOTATION — Ormoc Printshoppe',
       '━━━━━━━━━━━━━━━━━━━━━━━━',
       '👤 Client: ' + (d.clientName || '—'),
       '📞 Contact: ' + (d.contact || '—') + (d.delivery ? ' · ' + d.delivery : ''),
-      '📅 Date Needed: ' + dateStr,
-      '',
-      '🪧 SIGNAGE',
-      '• Type: ' + (d.signageType || '—'),
-      '• Lighting: ' + (d.lighting || '—'),
-      '• Material: ' + (d.material || '—'),
-      '• Size: ' + (d.rawWidth||d.width||'?') + ' × ' + (d.rawHeight||d.height||'?') + ' ' + (d.unit||'ft') + ' (' + sf.toFixed(2) + ' sq ft)',
-      '• Mounting: ' + (d.mounting || '—'),
-    ].concat(addOnLines).concat([
-      '',
-      '💰 TOTAL: ' + php(t),
-      '   Downpayment (50%): ' + php(dpv),
-      '   Balance: ' + php(balv),
-      '',
-      '📍 Ormoc Printshoppe',
-    ]);
+    ];
+    if (d.email)   lines.push('✉️ Email: ' + d.email);
+    if (d.address) lines.push('🏠 Address: ' + d.address);
+    lines.push('📅 Date Needed: ' + dateStr);
+    lines.push('');
+    lines.push('📐 SPECIFICATIONS');
+    lines.push('• Type: ' + (d.signageType || '—'));
+    lines.push('• Lighting: ' + (d.lighting || '—'));
+    lines.push('• Material: ' + (d.material || '—'));
+    lines.push('• Size: ' + (d.rawWidth||d.width||'?') + ' × ' + (d.rawHeight||d.height||'?') + ' ' + (d.unit||'ft')
+             + ' = ' + sf.toFixed(2) + ' sq ft' + (bsf>sf ? ' (billed ' + bsf.toFixed(2) + ' sq ft min)' : ''));
+    lines.push('• Rate: ' + php(rate) + ' / sq ft');
+    lines.push('• Mounting: ' + (d.mounting || '—'));
+    (d.selectedComplexity||[]).forEach(function(c){ lines.push('• Complexity: ' + c.label + ' (' + c.surchargeDisplay + ')'); });
+    if (d.designService === 'Yes') lines.push('• Design Service: Yes');
+    if (addons.designService)      lines.push('• Design & Artwork: ' + addons.designService);
+    if (addons.rushOption)         lines.push('• Rush: ' + addons.rushOption);
+    (addons.selectedElec||[]).forEach(function(e){ lines.push('• Electrical: ' + e.label); });
+    if (addons.transport)          lines.push('• Transport: ' + addons.transport + (addons.transportLocation ? ' (' + addons.transportLocation + ')' : ''));
+    if (d.notes)                   lines.push('• Notes: ' + d.notes);
+    lines.push('');
+    lines.push('💰 COST BREAKDOWN');
+    lines.push('• Base: ' + php(base()));
+    if (complexitySurcharge()>0)  lines.push('• Complexity surcharge: ' + php(complexitySurcharge()));
+    if (mountFee()>0)             lines.push('• Mounting fee: ' + php(mountFee()));
+    if (designFeeAmt()>0)         lines.push('• Design service: ' + php(designFeeAmt()));
+    if (addons.designFeeAmt>0)    lines.push('• Design & Artwork: ' + php(addons.designFeeAmt));
+    if (addons.rushFeeAmt>0)      lines.push('• Rush fee: ' + php(addons.rushFeeAmt));
+    if (addons.elecFeeAmt>0)      lines.push('• Electrical add-ons: ' + php(addons.elecFeeAmt));
+    if (addons.transportFeeAmt>0) lines.push('• Transport fee: ' + php(addons.transportFeeAmt));
+    if (tAmt>0)                   lines.push('• ' + (d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)') + ': ' + php(tAmt));
+    lines.push('');
+    lines.push('💵 TOTAL: ' + php(t));
+    lines.push('   Downpayment (50%): ' + php(dpv));
+    lines.push('   Balance: ' + php(balv));
     return lines.join('\n');
   }
   function copyForMessenger() {
-    const text = buildMessengerText();
+    const key   = (document.getElementById('msgScriptType')||{}).value || 'walkin';
+    const sales = (document.getElementById('server-user')||{}).value || '';
+    const text  = wrapMessengerText(buildMessengerText(), d.clientName, key, sales);
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function() { showCopyToast(); }).catch(function() { fallbackCopy(text); });
     } else { fallbackCopy(text); }
