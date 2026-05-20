@@ -859,13 +859,15 @@ function buildQuoteMessage(q) {
 function copyQuoteToMessenger(quoteNum) {
   const q = allQuotes.find(function(x){ return x.quoteNum === quoteNum; });
   if (!q) return;
-  const key   = (document.getElementById('msgScriptType')||{}).value || 'walkin';
+  const sel   = document.getElementById('qdScriptType');
+  const key   = (sel && sel.value) || 'walkin';
+  const label = (sel && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].text : '';
   const sales = (currentUser && currentUser.name) || '';
   const text  = wrapMessengerText(buildQuoteMessage(q), q.clientName, key, sales);
   const btn  = document.getElementById('copyMsgBtn');
   function markCopied() {
     if (!btn) return;
-    btn.textContent = '✓ COPIED!';
+    btn.textContent = '✓ COPIED — ' + (label || 'script');
     btn.style.borderColor = '#1A6A3A'; btn.style.color = '#1A6A3A';
     setTimeout(function() {
       btn.textContent = '📋 COPY TO MESSENGER';
@@ -1008,7 +1010,7 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
     <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved');closeModal('quoteDetailModal')">✓ APPROVE</button>
     <button class="btn-reject"  onclick="updateStatus('${q.quoteNum}','Rejected');closeModal('quoteDetailModal')">✕ REJECT</button>
   ` : ''}
-  <select id="msgScriptType" title="Messenger script (opening/closing line)" style="font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;padding:8px 10px;border:1px solid #D4D4D4;border-radius:4px;background:#fff;color:#333;cursor:pointer;">
+  <select id="qdScriptType" title="Messenger script (opening/closing line)" style="font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;padding:8px 10px;border:1px solid #D4D4D4;border-radius:4px;background:#fff;color:#333;cursor:pointer;">
     <option value="walkin">Walk-in customer</option>
     <option value="phone">Quoted over phone</option>
     <option value="link">Customer filled the link</option>
@@ -1110,7 +1112,7 @@ function selectPortalProduct(id) {
 }
 
 function copyPortalLink() {
-  const link = document.getElementById('portalLink').value;
+  const link = "https://tinyurl.com/3bh2tyae";
   if (!link) return;
   navigator.clipboard.writeText(link).then(function() {
     const btn = document.getElementById('copyBtn');
