@@ -128,7 +128,7 @@ const d = {
   receiptColors:['White'], receiptPerforation:'Yes', receiptNumbering:'Yes', receiptStartNo:'',
   // signage
   signageType:'', signageWidth:'', signageHeight:'', signageQty:1, signageRush:'No',
-  signageLighting:'None', signageMaterial:'Standard', signageMounting:'', signageDesign:'No',
+  signageLighting:'None', signageMaterial:'Standard', signageMounting:'', signageDesign:'No', signageTransport:'',
 };
 
 const MUG_ICONS = {
@@ -895,6 +895,10 @@ function renderSignageSpecs() {
   const mountOpts = '<option value="">— Select —</option>' +
     (mountList.length ? mountList : ['Wall / Post','Rooftop','Hanging','Free-standing','Other'])
       .map(m => `<option ${d.signageMounting===m?'selected':''}>${esc(m)}</option>`).join('');
+  const transportList = ((p.section4||{}).transport || []).map(t => t.label).filter(Boolean);
+  const transportOpts = '<option value="">— None / Customer pick-up —</option>' +
+    (transportList.length ? transportList : ['Within Ormoc City','Nearby town / municipality','Far / out of province'])
+      .map(t => `<option ${d.signageTransport===t?'selected':''}>${esc(t)}</option>`).join('');
 
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
@@ -926,6 +930,11 @@ function renderSignageSpecs() {
       <div>
         <label class="field-label">Mounting / Installation</label>
         <select class="field-input" id="sg_mounting" onchange="d.signageMounting=this.value;">${mountOpts}</select>
+      </div>
+      <div>
+        <label class="field-label">Transport / Delivery</label>
+        <select class="field-input" id="sg_transport" onchange="d.signageTransport=this.value;">${transportOpts}</select>
+        <div style="font-size:11px;color:#999;margin-top:4px;">Transport fee applies if delivery is selected — exact amount confirmed by our team.</div>
       </div>
       <div>
         <label class="field-label">Quantity</label>
@@ -997,6 +1006,7 @@ function renderReview() {
     specSummary = `${esc(d.signageType)||'—'} · ${d.signageWidth||'?'} × ${d.signageHeight||'?'} ft × ${d.signageQty} pc(s)`;
     specSummary += ` · ${esc(d.signageLighting)} · ${esc(d.signageMaterial)}`;
     if (d.signageMounting) specSummary += ` · ${esc(d.signageMounting)}`;
+    if (d.signageTransport) specSummary += ` · Transport: ${esc(d.signageTransport)}`;
     if (d.signageDesign === 'Yes') specSummary += ' · Design';
     if (d.signageRush === 'Yes') specSummary += ' · Rush';
   }
@@ -1265,6 +1275,7 @@ function submitRequest() {
       signageType: d.signageType,
       lighting: d.signageLighting, material: d.signageMaterial,
       mounting: d.signageMounting, designService: d.signageDesign,
+      transport: d.signageTransport,
       width: parseFloat(d.signageWidth)||0, height: parseFloat(d.signageHeight)||0,
       quantity: d.signageQty,
       rushOrder: d.signageRush, rushFee: d.signageRush === 'Yes' ? 150 : 0,
@@ -1336,6 +1347,7 @@ function buildMessengerText(qn) {
     specsLine = d.signageType + ' · ' + d.signageWidth + ' × ' + d.signageHeight + ' ft × ' + d.signageQty + ' pc(s)';
     specsLine += '\nLighting: ' + d.signageLighting + ' · Material: ' + d.signageMaterial;
     if (d.signageMounting)        specsLine += '\nMounting: ' + d.signageMounting;
+    if (d.signageTransport)       specsLine += '\nTransport / Delivery: ' + d.signageTransport + ' (transport fee applies)';
     if (d.signageDesign === 'Yes') specsLine += '\nDesign Service: Yes';
     if (d.signageRush === 'Yes')   specsLine += '\nRush Order: Yes';
   }
