@@ -876,7 +876,8 @@ function toggleReceiptColor(color) {
 // ── SIGNAGE SPECS ─────────────────────────────────────────────────
 function renderSignageSpecs() {
   const p = PRICING.signage || {};
-  const prodList = (p.products || []).filter(pp => pp.section !== '3D Build Up Signage').map(pp => pp.name).filter(Boolean);
+  // Live list from the "Signage New" sheet — ALL sections, de-duplicated (same source as Index.html)
+  const prodList = [...new Set((p.products || []).map(pp => pp.name).filter(Boolean))];
   const fallback = ['Lighted Box (Frontlit)','Lighted Box (Backlit)','Acrylic Cut-Out Letters','Vinyl Sticker','One-Way Vision','Car Sticker','LED Neon Sign'];
   const sigTypes = prodList.length ? prodList : fallback;
 
