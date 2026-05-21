@@ -1918,7 +1918,7 @@ function submitCustomerRequest(data) {
       if (data.numbering)   specs += ' | Numbering: ' + data.numbering;
       if (data.numbering === 'Yes' && data.startingNo) specs += ' (from ' + data.startingNo + ')';
     } else if (data.productType === 'signage') {
-      specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ft × ' + (data.quantity || 1) + ' pc(s)';
+      specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ' + (data.unit || 'ft') + ' × ' + (data.quantity || 1) + ' pc(s)';
       if (data.lighting)  specs += ' | ' + data.lighting;
       if (data.material)  specs += ' | ' + data.material;
       if (data.mounting)  specs += ' | Mount: ' + data.mounting;

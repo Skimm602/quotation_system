@@ -128,7 +128,8 @@ const d = {
   receiptColors:['White'], receiptPerforation:'Yes', receiptNumbering:'Yes', receiptStartNo:'',
   // signage
   signageType:'', signageWidth:'', signageHeight:'', signageQty:1, signageRush:'No',
-  signageLighting:'None', signageMaterial:'Standard', signageMounting:'', signageDesign:'No', signageTransport:'',
+  signageLighting:'None', signageMaterial:'Standard', signageMounting:'', signageDesign:'No',
+  signageTransport:'', signageUnit:'ft',
 };
 
 const MUG_ICONS = {
@@ -222,15 +223,23 @@ function calcReceiptTotal() {
   return (price * d.receiptQty) + rush;
 }
 
+function sigUnitToFeet(val) {
+  const n = parseFloat(val) || 0;
+  const u = d.signageUnit || 'ft';
+  if (u === 'in') return n / 12;
+  if (u === 'cm') return n / 30.48;
+  if (u === 'm')  return n * 3.280839895;
+  return n; // ft
+}
 function calcSignageTotal() {
   const p = PRICING.signage || {};
   const products = p.products || [];
   if (!d.signageType || !d.signageWidth || !d.signageHeight) return 0;
   const prod = products.find(pp => pp.name === d.signageType);
   if (!prod) return 0;
-  const w = parseFloat(d.signageWidth)  || 0;
-  const h = parseFloat(d.signageHeight) || 0;
-  const q = parseInt(d.signageQty)      || 1;
+  const w = sigUnitToFeet(d.signageWidth);
+  const h = sigUnitToFeet(d.signageHeight);
+  const q = parseInt(d.signageQty) || 1;
   const rush = d.signageRush === 'Yes' ? 150 : 0;
   return (prod.rate * w * h * q) + rush;
 }
@@ -895,10 +904,8 @@ function renderSignageSpecs() {
   const mountOpts = '<option value="">— Select —</option>' +
     (mountList.length ? mountList : ['Wall / Post','Rooftop','Hanging','Free-standing','Other'])
       .map(m => `<option ${d.signageMounting===m?'selected':''}>${esc(m)}</option>`).join('');
-  const transportList = ((p.section4||{}).transport || []).map(t => t.label).filter(Boolean);
-  const transportOpts = '<option value="">— None / Customer pick-up —</option>' +
-    (transportList.length ? transportList : ['Within Ormoc City','Nearby town / municipality','Far / out of province'])
-      .map(t => `<option ${d.signageTransport===t?'selected':''}>${esc(t)}</option>`).join('');
+  const unitOpts = ['ft','in','cm','m']
+    .map(u => `<option ${d.signageUnit===u?'selected':''}>${u}</option>`).join('');
 
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
@@ -917,14 +924,15 @@ function renderSignageSpecs() {
         </div>
       </div>
       <div>
-        <label class="field-label">Size (feet) *</label>
-        <div style="display:flex;gap:10px;align-items:center;margin-top:2px;">
+        <label class="field-label">Size *</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
           <input type="number" class="field-input" id="sg_w" value="${d.signageWidth}" placeholder="Width" min="0.1" step="0.1"
             oninput="d.signageWidth=this.value;" inputmode="decimal" style="text-align:center;">
           <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
           <input type="number" class="field-input" id="sg_h" value="${d.signageHeight}" placeholder="Height" min="0.1" step="0.1"
             oninput="d.signageHeight=this.value;" inputmode="decimal" style="text-align:center;">
-          <span style="color:#999;flex-shrink:0;font-size:13px;">ft</span>
+          <select class="field-input" id="sg_unit" onchange="d.signageUnit=this.value;renderForm();"
+            style="max-width:80px;flex-shrink:0;font-weight:700;">${unitOpts}</select>
         </div>
       </div>
       <div>
@@ -932,9 +940,11 @@ function renderSignageSpecs() {
         <select class="field-input" id="sg_mounting" onchange="d.signageMounting=this.value;">${mountOpts}</select>
       </div>
       <div>
-        <label class="field-label">Transport / Delivery</label>
-        <select class="field-input" id="sg_transport" onchange="d.signageTransport=this.value;">${transportOpts}</select>
-        <div style="font-size:11px;color:#999;margin-top:4px;">Transport fee applies if delivery is selected — exact amount confirmed by our team.</div>
+        <label class="field-label">Transport / Delivery Location <span style="color:#BBB;font-weight:400;">(optional)</span></label>
+        <input class="field-input" id="sg_transport" value="${esc(d.signageTransport||'')}"
+          placeholder="Type the delivery / installation place (e.g. Brgy. Cogon, Ormoc City)"
+          oninput="d.signageTransport=this.value;">
+        <div style="font-size:11px;color:#999;margin-top:4px;">Leave blank for pick-up. If a location is entered, a transport fee applies — exact amount confirmed by our team.</div>
       </div>
       <div>
         <label class="field-label">Quantity</label>
@@ -1003,7 +1013,7 @@ function renderReview() {
     if (d.receiptNumbering === 'Yes' && d.receiptStartNo) specSummary += ` (from ${esc(d.receiptStartNo)})`;
     if (d.receiptRush === 'Yes') specSummary += ' · Rush';
   } else if (selectedProduct === 'signage') {
-    specSummary = `${esc(d.signageType)||'—'} · ${d.signageWidth||'?'} × ${d.signageHeight||'?'} ft × ${d.signageQty} pc(s)`;
+    specSummary = `${esc(d.signageType)||'—'} · ${d.signageWidth||'?'} × ${d.signageHeight||'?'} ${esc(d.signageUnit)} × ${d.signageQty} pc(s)`;
     specSummary += ` · ${esc(d.signageLighting)} · ${esc(d.signageMaterial)}`;
     if (d.signageMounting) specSummary += ` · ${esc(d.signageMounting)}`;
     if (d.signageTransport) specSummary += ` · Transport: ${esc(d.signageTransport)}`;
@@ -1275,7 +1285,7 @@ function submitRequest() {
       signageType: d.signageType,
       lighting: d.signageLighting, material: d.signageMaterial,
       mounting: d.signageMounting, designService: d.signageDesign,
-      transport: d.signageTransport,
+      transport: d.signageTransport, unit: d.signageUnit,
       width: parseFloat(d.signageWidth)||0, height: parseFloat(d.signageHeight)||0,
       quantity: d.signageQty,
       rushOrder: d.signageRush, rushFee: d.signageRush === 'Yes' ? 150 : 0,
@@ -1344,7 +1354,7 @@ function buildMessengerText(qn) {
     if (d.receiptNumbering === 'Yes' && d.receiptStartNo) specsLine += '\nStarting No: ' + d.receiptStartNo;
     if (d.receiptRush === 'Yes') specsLine += '\nRush Order: Yes';
   } else if (selectedProduct === 'signage') {
-    specsLine = d.signageType + ' · ' + d.signageWidth + ' × ' + d.signageHeight + ' ft × ' + d.signageQty + ' pc(s)';
+    specsLine = d.signageType + ' · ' + d.signageWidth + ' × ' + d.signageHeight + ' ' + d.signageUnit + ' × ' + d.signageQty + ' pc(s)';
     specsLine += '\nLighting: ' + d.signageLighting + ' · Material: ' + d.signageMaterial;
     if (d.signageMounting)        specsLine += '\nMounting: ' + d.signageMounting;
     if (d.signageTransport)       specsLine += '\nTransport / Delivery: ' + d.signageTransport + ' (transport fee applies)';
@@ -1427,7 +1437,7 @@ function resetAll() {
   d.bindPaperSize='A4'; d.bindOrientation='Portrait'; d.bindBindingSide='Left';
   d.receiptRush='No'; d.signageRush='No';
   d.receiptColors=['White']; d.receiptPerforation='Yes'; d.receiptNumbering='Yes';
-  d.signageLighting='None'; d.signageMaterial='Standard'; d.signageDesign='No';
+  d.signageLighting='None'; d.signageMaterial='Standard'; d.signageDesign='No'; d.signageUnit='ft';
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
 }
