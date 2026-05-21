@@ -1891,6 +1891,7 @@ function submitCustomerRequest(data) {
       if (data.garmentType) specs += ' | ' + data.garmentType;
       if (data.hasOwnShirt === 'Yes') specs += ' | Own shirt';
       else if (data.shirtChoice)      specs += ' | Shirt: ' + data.shirtChoice;
+      if (data.shirtColor) specs += ' | Color: ' + data.shirtColor;
     } else if (data.productType === 'tarp') {
       specs = (data.width || '?') + ' × ' + (data.height || '?') + ' ft × ' + (data.quantity || 1) + ' pc(s)';
     } else if (data.productType === 'frame') {
@@ -1916,6 +1917,10 @@ function submitCustomerRequest(data) {
       if (data.numbering === 'Yes' && data.startingNo) specs += ' (from ' + data.startingNo + ')';
     } else if (data.productType === 'signage') {
       specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ft × ' + (data.quantity || 1) + ' pc(s)';
+      if (data.lighting)  specs += ' | ' + data.lighting;
+      if (data.material)  specs += ' | ' + data.material;
+      if (data.mounting)  specs += ' | Mount: ' + data.mounting;
+      if (data.designService === 'Yes') specs += ' | Design';
     }
 
     sheet.appendRow([

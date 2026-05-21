@@ -113,7 +113,7 @@ const d = {
   mugType:'', mugQty:5, mugRush:'No', mugDesign:'No',
   // tshirt
   tshirtPrintType:'', tshirtLogoSize:'', tshirtGarmentType:'', tshirtOwnShirt:'No', tshirtShirtChoice:'',
-  tshirtSizes:{}, tshirtSizeOthersLabel:'', tshirtRush:'No', tshirtDesign:'No',
+  tshirtColor:'', tshirtSizes:{}, tshirtSizeOthersLabel:'', tshirtRush:'No', tshirtDesign:'No',
   // tarp
   tarpWidth:'', tarpHeight:'', tarpQty:1, tarpRush:'No', tarpDesign:'No',
   // frame
@@ -128,6 +128,7 @@ const d = {
   receiptColors:['White'], receiptPerforation:'Yes', receiptNumbering:'Yes', receiptStartNo:'',
   // signage
   signageType:'', signageWidth:'', signageHeight:'', signageQty:1, signageRush:'No',
+  signageLighting:'None', signageMaterial:'Standard', signageMounting:'', signageDesign:'No',
 };
 
 const MUG_ICONS = {
@@ -540,6 +541,11 @@ function renderTshirtSpecs() {
       ${fsCard}
       ${ownShirtCards}
       ${shirtChoiceCards}
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Shirt Color <span style="color:#BBB;font-weight:400;">(optional)</span></label>
+        <input class="field-input" id="ts_color" value="${esc(d.tshirtColor||'')}"
+          placeholder="e.g. Black, White, Red" oninput="d.tshirtColor=this.value;">
+      </div>
       ${renderTshirtSizePicker()}
       <div>
         <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
@@ -880,11 +886,30 @@ function renderSignageSpecs() {
       <span style="font-size:12px;font-weight:600;">${esc(t)}</span>
     </div>`).join('');
 
+  const litOpts = ['None','Frontlit','Backlit','LED']
+    .map(l => `<option ${d.signageLighting===l?'selected':''}>${l}</option>`).join('');
+  const matOpts = ['Standard','Premium','UV-resistant']
+    .map(m => `<option ${d.signageMaterial===m?'selected':''}>${m}</option>`).join('');
+  const mountList = (p.mountingOptions || []).map(m => m.label).filter(Boolean);
+  const mountOpts = '<option value="">— Select —</option>' +
+    (mountList.length ? mountList : ['Wall / Post','Rooftop','Hanging','Free-standing','Other'])
+      .map(m => `<option ${d.signageMounting===m?'selected':''}>${esc(m)}</option>`).join('');
+
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
       <div>
         <label class="field-label" style="margin-bottom:8px;">Signage Type *</label>
         <div style="display:flex;flex-direction:column;gap:6px;">${typeCards}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label class="field-label">Lighting</label>
+          <select class="field-input" id="sg_lighting" onchange="d.signageLighting=this.value;">${litOpts}</select>
+        </div>
+        <div>
+          <label class="field-label">Material</label>
+          <select class="field-input" id="sg_material" onchange="d.signageMaterial=this.value;">${matOpts}</select>
+        </div>
       </div>
       <div>
         <label class="field-label">Size (feet) *</label>
@@ -898,10 +923,21 @@ function renderSignageSpecs() {
         </div>
       </div>
       <div>
+        <label class="field-label">Mounting / Installation</label>
+        <select class="field-input" id="sg_mounting" onchange="d.signageMounting=this.value;">${mountOpts}</select>
+      </div>
+      <div>
         <label class="field-label">Quantity</label>
         <input type="number" class="field-input" id="sg_qty" value="${d.signageQty}" min="1"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
           oninput="d.signageQty=parseInt(this.value)||1;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.signageDesign==='Yes'?' on':''}" onclick="d.signageDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.signageDesign==='No'?' on':''}"  onclick="d.signageDesign='No';renderForm();">No</button>
+        </div>
       </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
@@ -929,6 +965,7 @@ function renderReview() {
     const sbd  = tshirtSizeBreakdown();
     specSummary = `${d.tshirtPrintType||'—'} × ${tqty} pc(s)${sbd?' ('+esc(sbd)+')':''}`;
     if (d.tshirtOwnShirt === 'No' && d.tshirtShirtChoice) specSummary += ' · ' + esc(d.tshirtShirtChoice);
+    if (d.tshirtColor) specSummary += ' · ' + esc(d.tshirtColor);
     if (d.tshirtRush   === 'Yes') specSummary += ' · Rush';
     if (d.tshirtDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'tarp') {
@@ -957,6 +994,9 @@ function renderReview() {
     if (d.receiptRush === 'Yes') specSummary += ' · Rush';
   } else if (selectedProduct === 'signage') {
     specSummary = `${esc(d.signageType)||'—'} · ${d.signageWidth||'?'} × ${d.signageHeight||'?'} ft × ${d.signageQty} pc(s)`;
+    specSummary += ` · ${esc(d.signageLighting)} · ${esc(d.signageMaterial)}`;
+    if (d.signageMounting) specSummary += ` · ${esc(d.signageMounting)}`;
+    if (d.signageDesign === 'Yes') specSummary += ' · Design';
     if (d.signageRush === 'Yes') specSummary += ' · Rush';
   }
 
@@ -1136,7 +1176,7 @@ function submitRequest() {
       designService: d.tshirtDesign, designFee: des,
       totalAmount: base + rush + des,
       downpayment: (base+rush+des)*0.5, balance: (base+rush+des)*0.5,
-      sizeBreakdown: tshirtSizeBreakdown(), shirtColor: '',
+      sizeBreakdown: tshirtSizeBreakdown(), shirtColor: d.tshirtColor,
     });
   }
 
@@ -1222,6 +1262,8 @@ function submitRequest() {
     const total = calcSignageTotal();
     Object.assign(payload, {
       signageType: d.signageType,
+      lighting: d.signageLighting, material: d.signageMaterial,
+      mounting: d.signageMounting, designService: d.signageDesign,
       width: parseFloat(d.signageWidth)||0, height: parseFloat(d.signageHeight)||0,
       quantity: d.signageQty,
       rushOrder: d.signageRush, rushFee: d.signageRush === 'Yes' ? 150 : 0,
@@ -1258,8 +1300,10 @@ function buildMessengerText(qn) {
   } else if (selectedProduct === 'tshirt') {
     specsLine = d.tshirtPrintType + (d.tshirtLogoSize ? ' – ' + d.tshirtLogoSize : '') + ' × ' + tshirtTotalQty() + ' pcs';
     const sbd = tshirtSizeBreakdown();
+    if (d.tshirtGarmentType) specsLine += '\nGarment: ' + d.tshirtGarmentType;
     if (sbd) specsLine += '\nSizes: ' + sbd;
     if (d.tshirtOwnShirt === 'No' && d.tshirtShirtChoice) specsLine += '\nShirt: ' + d.tshirtShirtChoice;
+    if (d.tshirtColor) specsLine += '\nColor: ' + d.tshirtColor;
     if (d.tshirtRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.tshirtDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'tarp') {
@@ -1289,7 +1333,10 @@ function buildMessengerText(qn) {
     if (d.receiptRush === 'Yes') specsLine += '\nRush Order: Yes';
   } else if (selectedProduct === 'signage') {
     specsLine = d.signageType + ' · ' + d.signageWidth + ' × ' + d.signageHeight + ' ft × ' + d.signageQty + ' pc(s)';
-    if (d.signageRush === 'Yes') specsLine += '\nRush Order: Yes';
+    specsLine += '\nLighting: ' + d.signageLighting + ' · Material: ' + d.signageMaterial;
+    if (d.signageMounting)        specsLine += '\nMounting: ' + d.signageMounting;
+    if (d.signageDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+    if (d.signageRush === 'Yes')   specsLine += '\nRush Order: Yes';
   }
 
   return [
@@ -1367,6 +1414,7 @@ function resetAll() {
   d.bindPaperSize='A4'; d.bindOrientation='Portrait'; d.bindBindingSide='Left';
   d.receiptRush='No'; d.signageRush='No';
   d.receiptColors=['White']; d.receiptPerforation='Yes'; d.receiptNumbering='Yes';
+  d.signageLighting='None'; d.signageMaterial='Standard'; d.signageDesign='No';
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
 }
