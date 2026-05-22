@@ -129,7 +129,7 @@ const d = {
   // signage
   signageType:'', signageWidth:'', signageHeight:'', signageQty:1, signageRush:'No',
   signageLighting:'None', signageMaterial:'Standard', signageMounting:'', signageDesign:'No',
-  signageTransport:'', signageUnit:'ft',
+  signageTransport:'', signageTransportLocation:'', signageTransportFee:0, signageUnit:'ft',
 };
 
 const MUG_ICONS = {
@@ -241,7 +241,8 @@ function calcSignageTotal() {
   const h = sigUnitToFeet(d.signageHeight);
   const q = parseInt(d.signageQty) || 1;
   const rush = d.signageRush === 'Yes' ? 150 : 0;
-  return (prod.rate * w * h * q) + rush;
+  const transport = parseFloat(d.signageTransportFee) || 0;
+  return (prod.rate * w * h * q) + rush + transport;
 }
 
 function calcTotal() {
@@ -885,8 +886,9 @@ function toggleReceiptColor(color) {
 // ── SIGNAGE SPECS ─────────────────────────────────────────────────
 function renderSignageSpecs() {
   const p = PRICING.signage || {};
-  // Live list from the "Signage New" sheet — ALL sections, de-duplicated (same source as Index.html)
-  const prodList = [...new Set((p.products || []).map(pp => pp.name).filter(Boolean))];
+  // Live list from "Signage New" — real signage types only (they have a min. area / letter height;
+  // design / rush add-ons don't), de-duplicated. Same source as Index.html.
+  const prodList = [...new Set((p.products || []).filter(pp => pp.name && pp.minArea > 0).map(pp => pp.name))];
   const fallback = ['Lighted Box (Frontlit)','Lighted Box (Backlit)','Acrylic Cut-Out Letters','Vinyl Sticker','One-Way Vision','Car Sticker','LED Neon Sign'];
   const sigTypes = prodList.length ? prodList : fallback;
 
@@ -906,6 +908,31 @@ function renderSignageSpecs() {
       .map(m => `<option ${d.signageMounting===m?'selected':''}>${esc(m)}</option>`).join('');
   const unitOpts = ['ft','in','cm','m']
     .map(u => `<option ${d.signageUnit===u?'selected':''}>${u}</option>`).join('');
+
+  // Transport / Delivery — live cluster list from "Signage New" Section 4 (same as Index.html)
+  const transportList = (p.section4 || {}).transport || [];
+  const transportCards = transportList.map(t => {
+    const sel     = d.signageTransport === t.label;
+    const fee     = t.flat === 0 ? 'FREE' : (t.flatMax ? '₱'+t.flat+'–₱'+t.flatMax : '₱'+(t.flat||0).toLocaleString());
+    const isOrmoc = /Ormoc City/i.test(t.label);
+    return `
+      <div>
+        <div class="opt-card${sel?' active':''}" onclick="selectSignageTransport(${JSON.stringify(t.label).split('"').join('&quot;')}, ${t.flat||0})">
+          <input type="radio" ${sel?'checked':''} readonly>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;">${esc(t.label)}</div>
+            ${t.notes?`<div style="font-size:11px;color:#888;margin-top:2px;">${esc(t.notes)}</div>`:''}
+          </div>
+          <div style="font-size:13px;font-weight:700;white-space:nowrap;color:${t.flat===0?'#888':'#E8151B'};">${fee}</div>
+        </div>
+        ${sel ? `
+          <div style="background:${isOrmoc?'#F0FFF4':'#FFFBF0'};border:1px solid ${isOrmoc?'#A7F3D0':'#FFE0A0'};border-radius:4px;padding:10px 12px;margin-top:6px;">
+            <label class="field-label" style="margin-bottom:6px;">📍 Specific Location / Barangay${isOrmoc?' (optional)':' *'}</label>
+            <input class="field-input" id="sg_transport_loc" value="${esc(d.signageTransportLocation||'')}"
+              placeholder="e.g. Brgy. Cogon, Ormoc City — exact drop-off point" oninput="d.signageTransportLocation=this.value;">
+          </div>` : ''}
+      </div>`;
+  }).join('');
 
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
@@ -940,11 +967,10 @@ function renderSignageSpecs() {
         <select class="field-input" id="sg_mounting" onchange="d.signageMounting=this.value;">${mountOpts}</select>
       </div>
       <div>
-        <label class="field-label">Transport / Delivery Location <span style="color:#BBB;font-weight:400;">(optional)</span></label>
-        <input class="field-input" id="sg_transport" value="${esc(d.signageTransport||'')}"
-          placeholder="Type the delivery / installation place (e.g. Brgy. Cogon, Ormoc City)"
-          oninput="d.signageTransport=this.value;">
-        <div style="font-size:11px;color:#999;margin-top:4px;">Leave blank for pick-up. If a location is entered, a transport fee applies — exact amount confirmed by our team.</div>
+        <label class="field-label" style="margin-bottom:8px;">Transport / Delivery</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${transportList.length ? transportCards : '<div style="font-size:12px;color:#AAA;padding:6px 0;">Loading transport options…</div>'}
+        </div>
       </div>
       <div>
         <label class="field-label">Quantity</label>
@@ -967,6 +993,15 @@ function renderSignageSpecs() {
         </div>
       </div>
     </div>`;
+}
+
+function selectSignageTransport(label, flat) {
+  const locInput = document.getElementById('sg_transport_loc');
+  if (locInput) d.signageTransportLocation = locInput.value;        // keep typed location
+  if (d.signageTransport !== label) d.signageTransportLocation = ''; // reset when switching cluster
+  d.signageTransport    = label;
+  d.signageTransportFee = flat || 0;
+  renderForm();
 }
 
 // ── REVIEW ────────────────────────────────────────────────────────
@@ -1016,7 +1051,7 @@ function renderReview() {
     specSummary = `${esc(d.signageType)||'—'} · ${d.signageWidth||'?'} × ${d.signageHeight||'?'} ${esc(d.signageUnit)} × ${d.signageQty} pc(s)`;
     specSummary += ` · ${esc(d.signageLighting)} · ${esc(d.signageMaterial)}`;
     if (d.signageMounting) specSummary += ` · ${esc(d.signageMounting)}`;
-    if (d.signageTransport) specSummary += ` · Transport: ${esc(d.signageTransport)}`;
+    if (d.signageTransport) specSummary += ` · Transport: ${esc(d.signageTransport)}${d.signageTransportLocation?' ('+esc(d.signageTransportLocation)+')':''}`;
     if (d.signageDesign === 'Yes') specSummary += ' · Design';
     if (d.signageRush === 'Yes') specSummary += ' · Rush';
   }
@@ -1124,8 +1159,12 @@ function nextStep() {
       d.signageWidth  = v('sg_w')  || d.signageWidth;
       d.signageHeight = v('sg_h')  || d.signageHeight;
       d.signageQty    = parseInt(v('sg_qty')) || d.signageQty;
+      d.signageTransportLocation = v('sg_transport_loc') || d.signageTransportLocation;
       if (!d.signageType)                  { toast('Please select a signage type.','error'); return; }
       if (!d.signageWidth || !d.signageHeight) { toast('Please enter the size (width × height).','error'); return; }
+      if (d.signageTransport && !/Ormoc City/i.test(d.signageTransport) && !String(d.signageTransportLocation).trim()) {
+        toast('Please specify the delivery location for the selected transport cluster.','error'); return;
+      }
     }
   }
   if (formStep === 2) { submitRequest(); return; }
@@ -1285,7 +1324,8 @@ function submitRequest() {
       signageType: d.signageType,
       lighting: d.signageLighting, material: d.signageMaterial,
       mounting: d.signageMounting, designService: d.signageDesign,
-      transport: d.signageTransport, unit: d.signageUnit,
+      transport: d.signageTransport, transportLocation: d.signageTransportLocation,
+      transportFee: d.signageTransportFee, unit: d.signageUnit,
       width: parseFloat(d.signageWidth)||0, height: parseFloat(d.signageHeight)||0,
       quantity: d.signageQty,
       rushOrder: d.signageRush, rushFee: d.signageRush === 'Yes' ? 150 : 0,
@@ -1357,7 +1397,7 @@ function buildMessengerText(qn) {
     specsLine = d.signageType + ' · ' + d.signageWidth + ' × ' + d.signageHeight + ' ' + d.signageUnit + ' × ' + d.signageQty + ' pc(s)';
     specsLine += '\nLighting: ' + d.signageLighting + ' · Material: ' + d.signageMaterial;
     if (d.signageMounting)        specsLine += '\nMounting: ' + d.signageMounting;
-    if (d.signageTransport)       specsLine += '\nTransport / Delivery: ' + d.signageTransport + ' (transport fee applies)';
+    if (d.signageTransport)       specsLine += '\nTransport: ' + d.signageTransport + (d.signageTransportLocation ? ' — ' + d.signageTransportLocation : '');
     if (d.signageDesign === 'Yes') specsLine += '\nDesign Service: Yes';
     if (d.signageRush === 'Yes')   specsLine += '\nRush Order: Yes';
   }
