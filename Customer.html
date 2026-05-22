@@ -909,7 +909,9 @@ function renderSignageSpecs() {
     .map(u => `<option ${d.signageUnit===u?'selected':''}>${u}</option>`).join('');
 
   // Transport / Delivery — live cluster list from "Signage New" Section 4 (same as Index.html)
-  const transportList = (p.section4 || {}).transport || [];
+  // Drop the "Cluster / Area" table-header row that leaks in from the sheet.
+  const transportList = ((p.section4 || {}).transport || [])
+    .filter(t => !/^cluster\s*\/\s*area/i.test(((t && t.label) || '').trim()));
   const transportCards = transportList.map(t => {
     const sel     = d.signageTransport === t.label;
     const fee     = t.flat === 0 ? 'FREE' : (t.flatMax ? '₱'+t.flat+'–₱'+t.flatMax : '₱'+(t.flat||0).toLocaleString());

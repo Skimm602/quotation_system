@@ -582,7 +582,9 @@
       const baseSubtotal = base() + mountFee() + complexitySurcharge();
 
       // Build transport cards with location input box
-      const transportCards = SECTION4.transport.map(t => {
+      const transportCards = SECTION4.transport
+        .filter(t => !/^cluster\s*\/\s*area/i.test(((t && t.label) || '').trim()))
+        .map(t => {
         const isSelected = addons.transport === t.label;
         const needsLocation = isSelected && t.label !== 'Ormoc City — all barangays';
         return `
