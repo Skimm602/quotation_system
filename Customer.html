@@ -130,6 +130,7 @@ const d = {
   signageType:'', signageWidth:'', signageHeight:'', signageQty:1, signageRush:'No',
   signageLighting:'None', signageMaterial:'Standard', signageMounting:'', signageDesign:'No',
   signageTransport:'', signageTransportLocation:'', signageTransportFee:0, signageUnit:'ft',
+  signageElectrical:[],
 };
 
 const MUG_ICONS = {
@@ -935,6 +936,23 @@ function renderSignageSpecs() {
       </div>`;
   }).join('');
 
+  // Electrical & Lighting add-ons — live from "Signage New" Section 4
+  const electricalList = (p.section4 || {}).electrical || [];
+  const electricalCards = electricalList.map(e => {
+    const on  = (d.signageElectrical || []).indexOf(e.label) >= 0;
+    const fee = e.perUnit ? '₱'+(e.unitRate||0).toLocaleString()+' / m'
+              : (e.flat ? (e.flatMax ? '₱'+e.flat+'–₱'+e.flatMax : '₱'+(e.flat||0).toLocaleString()) : '');
+    return `
+      <div class="opt-card${on?' active':''}" onclick="toggleSignageElectrical(${JSON.stringify(e.label).split('"').join('&quot;')})">
+        <input type="checkbox" ${on?'checked':''} readonly>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;">${esc(e.label)}</div>
+          ${e.notes?`<div style="font-size:11px;color:#888;margin-top:2px;">${esc(e.notes)}</div>`:''}
+        </div>
+        ${fee?`<div style="font-size:13px;font-weight:700;white-space:nowrap;color:#E8151B;">${fee}</div>`:''}
+      </div>`;
+  }).join('');
+
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
       <div>
@@ -974,6 +992,12 @@ function renderSignageSpecs() {
         </div>
       </div>
       <div>
+        <label class="field-label" style="margin-bottom:8px;">Electrical &amp; Lighting Add-ons <span style="color:#BBB;font-weight:400;">(optional)</span></label>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${electricalList.length ? electricalCards : '<div style="font-size:12px;color:#AAA;padding:6px 0;">No electrical add-ons available.</div>'}
+        </div>
+      </div>
+      <div>
         <label class="field-label">Quantity</label>
         <input type="number" class="field-input" id="sg_qty" value="${d.signageQty}" min="1"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
@@ -1002,6 +1026,14 @@ function selectSignageTransport(label, flat) {
   if (d.signageTransport !== label) d.signageTransportLocation = ''; // reset when switching cluster
   d.signageTransport    = label;
   d.signageTransportFee = flat || 0;
+  renderForm();
+}
+
+function toggleSignageElectrical(label) {
+  if (!Array.isArray(d.signageElectrical)) d.signageElectrical = [];
+  const i = d.signageElectrical.indexOf(label);
+  if (i >= 0) d.signageElectrical.splice(i, 1);
+  else        d.signageElectrical.push(label);
   renderForm();
 }
 
@@ -1053,6 +1085,7 @@ function renderReview() {
     specSummary += ` · ${esc(d.signageLighting)} · ${esc(d.signageMaterial)}`;
     if (d.signageMounting) specSummary += ` · ${esc(d.signageMounting)}`;
     if (d.signageTransport) specSummary += ` · Transport: ${esc(d.signageTransport)}${d.signageTransportLocation?' ('+esc(d.signageTransportLocation)+')':''}`;
+    if ((d.signageElectrical||[]).length) specSummary += ` · Electrical: ${esc(d.signageElectrical.join(', '))}`;
     if (d.signageDesign === 'Yes') specSummary += ' · Design';
     if (d.signageRush === 'Yes') specSummary += ' · Rush';
   }
@@ -1327,6 +1360,7 @@ function submitRequest() {
       mounting: d.signageMounting, designService: d.signageDesign,
       transport: d.signageTransport, transportLocation: d.signageTransportLocation,
       transportFee: d.signageTransportFee, unit: d.signageUnit,
+      electrical: (d.signageElectrical || []).join(', '),
       width: parseFloat(d.signageWidth)||0, height: parseFloat(d.signageHeight)||0,
       quantity: d.signageQty,
       rushOrder: d.signageRush, rushFee: d.signageRush === 'Yes' ? 150 : 0,
@@ -1399,6 +1433,7 @@ function buildMessengerText(qn) {
     specsLine += '\nLighting: ' + d.signageLighting + ' · Material: ' + d.signageMaterial;
     if (d.signageMounting)        specsLine += '\nMounting: ' + d.signageMounting;
     if (d.signageTransport)       specsLine += '\nTransport: ' + d.signageTransport + (d.signageTransportLocation ? ' — ' + d.signageTransportLocation : '');
+    if ((d.signageElectrical||[]).length) specsLine += '\nElectrical Add-ons: ' + d.signageElectrical.join(', ');
     if (d.signageDesign === 'Yes') specsLine += '\nDesign Service: Yes';
     if (d.signageRush === 'Yes')   specsLine += '\nRush Order: Yes';
   }
@@ -1479,6 +1514,7 @@ function resetAll() {
   d.receiptRush='No'; d.signageRush='No';
   d.receiptColors=['White']; d.receiptPerforation='Yes'; d.receiptNumbering='Yes';
   d.signageLighting='None'; d.signageMaterial='Standard'; d.signageDesign='No'; d.signageUnit='ft';
+  d.signageElectrical=[];
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
 }

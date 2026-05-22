@@ -1334,6 +1334,8 @@ function getPricing() {
     if (/SECTION\s+4/i.test(firstLine)) { inProducts=false; inMounting=false; inComplexity=false; continue; }
     if (/^INSTALLATION\s*&\s*MOUNTING/i.test(firstLine)) { inMounting=true; inComplexity=false; inProducts=false; continue; }
     if (/^COMPLEXITY\s+SURCHARGES/i.test(firstLine))     { inComplexity=true; inMounting=false; inProducts=false; continue; }
+    // End of a collecting section — stop adding to products / mounting / complexity
+    if (/^(ELECTRICAL\s*&|TRANSPORT\s*&|GENERAL\s+CONDITION|DESIGN\s*&|RUSH\s*&)/i.test(firstLine)) { inProducts=false; inMounting=false; inComplexity=false; continue; }
     if (/^(RUSH|ELECTRICAL|TRANSPORT|GENERAL|DESIGN\s*&|CLUSTER|TIMER|Product\s*\/|Type|Service|Item|ORMOC|Effective:)/i.test(firstLine)) continue;
     if (/^(Product|Description|Remarks)/i.test(firstLine)) continue;
 
@@ -1921,6 +1923,7 @@ function submitCustomerRequest(data) {
       if (data.material)  specs += ' | ' + data.material;
       if (data.mounting)  specs += ' | Mount: ' + data.mounting;
       if (data.transport) specs += ' | Transport: ' + data.transport + (data.transportLocation ? ' (' + data.transportLocation + ')' : '');
+      if (data.electrical) specs += ' | Electrical: ' + data.electrical;
       if (data.designService === 'Yes') specs += ' | Design';
     }
 
