@@ -1319,19 +1319,19 @@ function getPricing() {
     if (!rawName) continue;
     const firstLine = rawName.split('\n')[0].trim();
 
-    if (/^SECTION\s+1/i.test(firstLine) || /SINGLE FACE/i.test(firstLine)) {
+    if (/^SECTION\s+1/i.test(firstLine) || /SINGLE FACE SIGNAGE/i.test(firstLine)) {
       inProducts=true; inMounting=false; inComplexity=false;
       currentSection = 'Single Face Signage (Metal Frame)'; continue;
     }
-    if (/^SECTION\s+2/i.test(firstLine) || /DOUBLE FACE/i.test(firstLine)) {
+    if (/^SECTION\s+2/i.test(firstLine) || /DOUBLE FACE SIGNAGE/i.test(firstLine)) {
       inProducts=true; inMounting=false; inComplexity=false;
       currentSection = 'Double Face Signage (Metal Frame)'; continue;
     }
-    if (/^SECTION\s+3/i.test(firstLine) || /3D BUILD UP/i.test(firstLine)) {
+    if (/^SECTION\s+3/i.test(firstLine) || /3D BUILD UP SIGNAGE/i.test(firstLine)) {
       inProducts=true; inMounting=false; inComplexity=false;
       currentSection = '3D Build Up Signage'; continue;
     }
-    if (/^SECTION\s+4/i.test(firstLine)) { inProducts=false; inMounting=false; inComplexity=false; continue; }
+    if (/SECTION\s+4/i.test(firstLine)) { inProducts=false; inMounting=false; inComplexity=false; continue; }
     if (/^INSTALLATION\s*&\s*MOUNTING/i.test(firstLine)) { inMounting=true; inComplexity=false; inProducts=false; continue; }
     if (/^COMPLEXITY\s+SURCHARGES/i.test(firstLine))     { inComplexity=true; inMounting=false; inProducts=false; continue; }
     if (/^(RUSH|ELECTRICAL|TRANSPORT|GENERAL|DESIGN\s*&|CLUSTER|TIMER|Product\s*\/|Type|Service|Item|ORMOC|Effective:)/i.test(firstLine)) continue;

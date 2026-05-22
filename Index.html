@@ -1241,7 +1241,7 @@
   function loadPricing() {
     google.script.run
       .withSuccessHandler(function(pricing) {
-        PRODUCTS           = (pricing.products || []).filter(p => p.minArea > 0);
+        PRODUCTS           = pricing.products || [];
         RATES              = pricing.rates                || {};
         MIN_CHARGE         = pricing.minCharge            || {};
         MIN_AREA           = pricing.minArea              || {};

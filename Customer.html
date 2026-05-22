@@ -886,9 +886,8 @@ function toggleReceiptColor(color) {
 // ── SIGNAGE SPECS ─────────────────────────────────────────────────
 function renderSignageSpecs() {
   const p = PRICING.signage || {};
-  // Live list from "Signage New" — real signage types only (they have a min. area / letter height;
-  // design / rush add-ons don't), de-duplicated. Same source as Index.html.
-  const prodList = [...new Set((p.products || []).filter(pp => pp.name && pp.minArea > 0).map(pp => pp.name))];
+  // Live, de-duplicated signage type list from "Signage New" (same source as Index.html)
+  const prodList = [...new Set((p.products || []).map(pp => pp.name).filter(Boolean))];
   const fallback = ['Lighted Box (Frontlit)','Lighted Box (Backlit)','Acrylic Cut-Out Letters','Vinyl Sticker','One-Way Vision','Car Sticker','LED Neon Sign'];
   const sigTypes = prodList.length ? prodList : fallback;
 
