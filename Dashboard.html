@@ -1263,7 +1263,7 @@ function copyCustomerQuote(reqNum, btn) {
   function done() {
     if (!btn) return;
     btn.textContent = '✓ Copied';
-    setTimeout(function(){ btn.textContent = '📋 Copy'; }, 2000);
+    setTimeout(function(){  btn.textContent = '📋 Copy'; }, 2000);
   }
   function fallback() {
     const ta = document.createElement('textarea');
