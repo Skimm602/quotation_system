@@ -144,6 +144,7 @@ const d = {
   clientName: '', contact: '', email: '', dateNeeded: '',
   // Step 1 — Frame Dimensions
   width: '', height: '', quantity: 1, matting: '',
+  unit: 'ft',
   rushOrder: '',
   // Step 2 — Notes & Summary
   notes: '',
@@ -156,7 +157,15 @@ function ratePerSqft() {
   if (d.matting === 'Without Matting') return PRICES.withoutMatting || 550;
   return 0;
 }
-function areaPerPc() { return (parseFloat(d.width)||0) * (parseFloat(d.height)||0); }
+function unitToFt(v) {
+  const n = parseFloat(v) || 0;
+  const u = d.unit || 'ft';
+  if (u === 'in') return n / 12;
+  if (u === 'cm') return n / 30.48;
+  if (u === 'm')  return n * 3.280839895;
+  return n; // ft
+}
+function areaPerPc() { return unitToFt(d.width) * unitToFt(d.height); }
 function totalSqft() { return areaPerPc() * (parseInt(d.quantity)||1); }
 function baseAmt()   { return totalSqft() * ratePerSqft(); }
 function rushFeeAmt() { return d.rushOrder === 'Yes' ? (PRICES.rushFee || 150) : 0; }
@@ -275,14 +284,20 @@ function renderBody() {
           <label class="field-label" style="margin-bottom:10px;">Matting</label>
           <div class="flex flex-col gap-2">${mattingCards}</div>
         </div>
-        <div class="grid gap-5" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="grid gap-5" style="grid-template-columns:1fr 1fr 80px 1fr;">
           <div class="flex flex-col gap-1">
-            <label class="field-label">Width (ft)</label>
+            <label class="field-label">Width (${esc(d.unit||'ft')})</label>
             <input class="field-input" id="f_width" type="number" min="0" step="0.01" value="${d.width||''}" placeholder="e.g. 2" oninput="d.width=this.value;renderBody();">
           </div>
           <div class="flex flex-col gap-1">
-            <label class="field-label">Height (ft)</label>
+            <label class="field-label">Height (${esc(d.unit||'ft')})</label>
             <input class="field-input" id="f_height" type="number" min="0" step="0.01" value="${d.height||''}" placeholder="e.g. 3" oninput="d.height=this.value;renderBody();">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Unit</label>
+            <select class="field-input" id="f_unit" onchange="d.unit=this.value;renderBody();" style="font-weight:700;">
+              ${['ft','in','cm','m'].map(u=>`<option ${d.unit===u?'selected':''}>${u}</option>`).join('')}
+            </select>
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Quantity</label>
@@ -336,7 +351,7 @@ function renderBody() {
       <table class="q-table">
         <tr><td colspan="2" class="sec-label">FRAME SPECIFICATIONS</td></tr>
         <tr><td>Matting</td><td>${esc(d.matting)||'—'}</td></tr>
-        <tr><td>Dimensions</td><td>${w} ft × ${h} ft</td></tr>
+        <tr><td>Dimensions</td><td>${w} ${esc(d.unit||'ft')} × ${h} ${esc(d.unit||'ft')}</td></tr>
         <tr><td>Quantity</td><td>${qty} frame(s)</td></tr>
         <tr><td>Area / frame</td><td>${area.toFixed(2)} sq ft</td></tr>
         <tr><td>Total Area</td><td>${totalSq.toFixed(2)} sq ft</td></tr>
@@ -443,7 +458,7 @@ function resetForm() {
   if (!confirm('Start a new quotation? Current data will be cleared.')) return;
   d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
   d.width=''; d.height=''; d.quantity=1; d.matting=''; d.rushOrder='';
-  d.notes=''; d.taxType='non-vat';
+  d.unit='ft'; d.notes=''; d.taxType='non-vat';
   step=0; render();
 }
 
@@ -481,7 +496,7 @@ function buildMessengerText() {
   lines.push('📅 Date Needed: ' + dateStr);
   lines.push('');
   lines.push('📐 SPECIFICATIONS');
-  lines.push('• Frame Size: ' + w + ' × ' + h + ' in');
+  lines.push('• Frame Size: ' + w + ' × ' + h + ' ' + (d.unit || 'ft'));
   lines.push('• Matting: ' + (d.matting || '—'));
   lines.push('• Quantity: ' + qty + ' frame(s)');
   lines.push('• Total Area: ' + totalSqft().toFixed(2) + ' sq ft');
@@ -529,8 +544,11 @@ function saveToSheet() {
     contact:      d.contact,
     email:        d.email,
     dateNeeded:   d.dateNeeded,
-    width:        parseFloat(d.width)||0,
-    height:       parseFloat(d.height)||0,
+    width:        unitToFt(d.width),
+    height:       unitToFt(d.height),
+    rawWidth:     parseFloat(d.width)||0,
+    rawHeight:    parseFloat(d.height)||0,
+    unit:         d.unit||'ft',
     quantity:     parseInt(d.quantity)||1,
     matting:      d.matting,
     ratePerSqft:  ratePerSqft(),
