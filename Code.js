@@ -1897,7 +1897,7 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'tarp') {
       specs = (data.width || '?') + ' × ' + (data.height || '?') + ' ft × ' + (data.quantity || 1) + ' pc(s)';
     } else if (data.productType === 'frame') {
-      specs = (data.frameWidth || data.width || '?') + ' × ' + (data.frameHeight || data.height || '?') + ' in | '
+      specs = (data.frameWidth || data.width || '?') + ' × ' + (data.frameHeight || data.height || '?') + ' ' + (data.frameUnit || data.unit || 'in') + ' | '
             + (data.hasMatting === 'Yes' ? 'With matting' : 'No matting')
             + ' × ' + (data.quantity || 1) + ' pc(s)';
     } else if (data.productType === 'bookbind') {

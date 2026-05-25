@@ -117,7 +117,7 @@ const d = {
   // tarp
   tarpWidth:'', tarpHeight:'', tarpQty:1, tarpRush:'No', tarpDesign:'No',
   // frame
-  frameWidth:'', frameHeight:'', frameMatting:'Yes', frameQty:1, frameRush:'No',
+  frameWidth:'', frameHeight:'', frameUnit:'in', frameMatting:'Yes', frameQty:1, frameRush:'No',
   // bookbind
   bindType:'', bindQty:1, bindRush:'No', bindPages:'',
   bindPaperSize:'A4', bindOrientation:'Portrait', bindBindingSide:'Left',
@@ -189,10 +189,18 @@ function calcTarpTotal() {
   return (sqft * rate * q) + rush + des;
 }
 
+function frameToIn(val) {
+  const n = parseFloat(val) || 0;
+  const u = d.frameUnit || 'in';
+  if (u === 'ft') return n * 12;
+  if (u === 'cm') return n / 2.54;
+  if (u === 'm')  return n * 39.3701;
+  return n; // in
+}
 function calcFrameTotal() {
   const p = PRICING.frame || {};
-  const w = parseFloat(d.frameWidth)  || 0;
-  const h = parseFloat(d.frameHeight) || 0;
+  const w = frameToIn(d.frameWidth);
+  const h = frameToIn(d.frameHeight);
   const q = parseInt(d.frameQty)      || 1;
   if (!w || !h) return 0;
   const sqft = (w * h) / 144;
@@ -618,14 +626,17 @@ function renderFrameSpecs() {
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
       <div>
-        <label class="field-label">Frame Size (inches) *</label>
-        <div style="display:flex;gap:10px;align-items:center;margin-top:2px;">
-          <input type="number" class="field-input" id="fr_w" value="${d.frameWidth}" placeholder="Width" min="1" step="0.5"
+        <label class="field-label">Frame Size *</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
+          <input type="number" class="field-input" id="fr_w" value="${d.frameWidth}" placeholder="Width" min="0.1" step="0.5"
             oninput="d.frameWidth=this.value;" inputmode="decimal" style="text-align:center;">
           <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
-          <input type="number" class="field-input" id="fr_h" value="${d.frameHeight}" placeholder="Height" min="1" step="0.5"
+          <input type="number" class="field-input" id="fr_h" value="${d.frameHeight}" placeholder="Height" min="0.1" step="0.5"
             oninput="d.frameHeight=this.value;" inputmode="decimal" style="text-align:center;">
-          <span style="color:#999;flex-shrink:0;font-size:13px;">in</span>
+          <select class="field-input" id="fr_unit" onchange="d.frameUnit=this.value;renderForm();"
+            style="max-width:80px;flex-shrink:0;font-weight:700;">
+            ${['in','ft','cm','m'].map(u=>`<option ${d.frameUnit===u?'selected':''}>${u}</option>`).join('')}
+          </select>
         </div>
       </div>
       <div>
@@ -1061,7 +1072,7 @@ function renderReview() {
     if (d.tarpRush   === 'Yes') specSummary += ' · Rush';
     if (d.tarpDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'frame') {
-    specSummary = `${d.frameWidth||'?'} × ${d.frameHeight||'?'} in${d.frameMatting==='Yes'?' · With Matting':' · No Matting'} × ${d.frameQty} pc(s)`;
+    specSummary = `${d.frameWidth||'?'} × ${d.frameHeight||'?'} ${esc(d.frameUnit)}${d.frameMatting==='Yes'?' · With Matting':' · No Matting'} × ${d.frameQty} pc(s)`;
     if (d.frameRush === 'Yes') specSummary += ' · Rush';
   } else if (selectedProduct === 'bookbind') {
     const resolvedColor = d.bindCoverColor === 'Other' ? (d.bindCoverColorOther || 'Other') : d.bindCoverColor;
@@ -1305,7 +1316,7 @@ function submitRequest() {
     const base = rate * sqft * d.frameQty;
     const rush = d.frameRush === 'Yes' ? (p.rushFee||150) : 0;
     Object.assign(payload, {
-      frameWidth: w, frameHeight: h, hasMatting: d.frameMatting,
+      frameWidth: w, frameHeight: h, frameUnit: d.frameUnit, hasMatting: d.frameMatting,
       quantity: d.frameQty, ratePerSqft: rate, sqft: sqft,
       baseAmount: base, rushOrder: d.frameRush, rushFee: rush,
       totalAmount: base + rush,
@@ -1408,7 +1419,7 @@ function buildMessengerText(qn) {
     if (d.tarpRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.tarpDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'frame') {
-    specsLine = d.frameWidth + ' × ' + d.frameHeight + ' in' + (d.frameMatting==='Yes'?' w/ Matting':' w/o Matting') + ' × ' + d.frameQty + ' pc(s)';
+    specsLine = d.frameWidth + ' × ' + d.frameHeight + ' ' + d.frameUnit + (d.frameMatting==='Yes'?' w/ Matting':' w/o Matting') + ' × ' + d.frameQty + ' pc(s)';
     if (d.frameRush === 'Yes') specsLine += '\nRush Order: Yes';
   } else if (selectedProduct === 'bookbind') {
     specsLine = d.bindType + ' × ' + d.bindQty + ' volume(s)';
@@ -1508,7 +1519,7 @@ function resetAll() {
   d.tshirtSizes = {};
   d.mugRush='No'; d.mugDesign='No'; d.tshirtRush='No'; d.tshirtDesign='No';
   d.tshirtOwnShirt='No'; d.tarpRush='No'; d.tarpDesign='No';
-  d.frameMatting='Yes'; d.frameRush='No';
+  d.frameMatting='Yes'; d.frameRush='No'; d.frameUnit='in';
   d.bindRush='No'; d.bindMaterialsReady='Yes';
   d.bindPaperSize='A4'; d.bindOrientation='Portrait'; d.bindBindingSide='Left';
   d.receiptRush='No'; d.signageRush='No';
