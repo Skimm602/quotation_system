@@ -1955,6 +1955,50 @@ function submitCustomerRequest(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  CUSTOMER DESIGN FILE UPLOAD — emails the file to ormocprintshoppe@gmail.com
+// ══════════════════════════════════════════════════════════════════
+function uploadCustomerDesign(data) {
+  try {
+    if (!data || !data.base64 || !data.filename) {
+      return { success: false, message: 'No file received.' };
+    }
+    const bytes   = Utilities.base64Decode(data.base64);
+    const mime    = data.mimeType || 'application/octet-stream';
+    const blob    = Utilities.newBlob(bytes, mime, data.filename);
+    const product = String(data.productType || 'Quotation').toUpperCase();
+    const client  = String(data.clientName  || '—');
+    const contact = String(data.contact     || '—');
+    const email   = String(data.email       || '—');
+    const notes   = String(data.notes       || '');
+    const stamp   = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Manila', 'yyyy-MM-dd HH:mm');
+
+    const subject = '📎 [Design Upload] ' + product + ' — ' + client;
+    const body =
+      'A customer uploaded a design file via the ' + product + ' quote portal.\n\n' +
+      '── Customer ──────────────────────────────\n' +
+      'Name:    ' + client  + '\n' +
+      'Contact: ' + contact + '\n' +
+      'Email:   ' + email   + '\n' +
+      'Product: ' + product + '\n' +
+      'Time:    ' + stamp   + '\n' +
+      (notes ? '\nNotes:\n' + notes + '\n' : '') +
+      '\nFilename: ' + data.filename + '\n' +
+      'See the attached file.';
+
+    MailApp.sendEmail({
+      to:          'ormocprintshoppe@gmail.com',
+      subject:     subject,
+      body:        body,
+      attachments: [blob],
+      replyTo:     (email && /@/.test(email)) ? email : undefined,
+    });
+    return { success: true };
+  } catch(e) {
+    return { success: false, message: e.message };
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  CUSTOMER DASHBOARD DATA
 // ══════════════════════════════════════════════════════════════════
 function getCustomerDashboardData(token) {
