@@ -244,8 +244,20 @@ function renderStep3() {
           <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:#E8151B;">${php(total)}</div>
           <div style="font-size:12px;color:#999;margin-top:4px;">Downpayment (50%): ${php(total*0.5)}</div>
         </div>` : ''}
-      <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:12px 14px;font-size:12px;color:#7A5500;">
-        📎 If you already have a design or artwork ready, kindly email it to <strong><a href="mailto:ormocprintshoppe@gmail.com" style="color:#7A5500;">ormocprintshoppe@gmail.com</a></strong>
+      <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:14px;">
+        <div style="font-size:13px;color:#7A5500;margin-bottom:10px;font-weight:600;">
+          📎 Have a design or artwork ready?
+        </div>
+        <div style="font-size:11px;color:#7A5500;margin-bottom:10px;line-height:1.5;">
+          Upload it here — we'll send it directly to <strong>ormocprintshoppe@gmail.com</strong>. (max 10 MB)
+        </div>
+        <input type="file" id="design_file" accept="image/*,application/pdf,.psd,.ai,.eps,.svg,.cdr,.zip"
+          style="display:none;" onchange="handleDesignFile(this)">
+        <button type="button" onclick="document.getElementById('design_file').click()"
+          style="width:100%;padding:11px;background:#fff;border:1px dashed #E0A020;border-radius:4px;color:#7A5500;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          📁 Choose File to Upload
+        </button>
+        <div id="design_status" style="font-size:11px;margin-top:8px;text-align:center;color:#999;"></div>
       </div>
     </div>`;
 }
@@ -351,6 +363,56 @@ function submitRequest() {
       ratePerSqft:   p.ratePerSqft || 50,
       totalAmount:   total,
     });
+}
+
+function handleDesignFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('design_status');
+  const MAX = 10 * 1024 * 1024; // 10 MB
+  if (file.size > MAX) {
+    statusEl.textContent = '⚠ File too large (max 10 MB).';
+    statusEl.style.color = '#B00E12';
+    input.value = '';
+    return;
+  }
+  statusEl.textContent = '⏳ Uploading ' + file.name + '…';
+  statusEl.style.color = '#7A5500';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = String(e.target.result || '');
+    const base64  = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',')[1] : dataUrl;
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          statusEl.textContent = '✓ Sent to Ormoc Printshoppe — ' + file.name;
+          statusEl.style.color = '#1A6A3A';
+        } else {
+          statusEl.textContent = '⚠ ' + ((res && res.message) || 'Upload failed.');
+          statusEl.style.color = '#B00E12';
+        }
+      })
+      .withFailureHandler(function(err) {
+        statusEl.textContent = '⚠ ' + ((err && err.message) || 'Upload failed.');
+        statusEl.style.color = '#B00E12';
+      })
+      .uploadCustomerDesign({
+        filename:    file.name,
+        mimeType:    file.type || 'application/octet-stream',
+        base64:      base64,
+        productType: 'tarp',
+        clientName:  d.name,
+        contact:     d.contact,
+        email:       d.email,
+        notes:       d.notes,
+      });
+  };
+  reader.onerror = function() {
+    statusEl.textContent = '⚠ Could not read the file.';
+    statusEl.style.color = '#B00E12';
+  };
+  reader.readAsDataURL(file);
 }
 
 function toast(msg) {
