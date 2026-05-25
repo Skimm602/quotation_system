@@ -251,9 +251,7 @@ function renderStep3() {
         <div style="font-size:11px;color:#7A5500;margin-bottom:10px;line-height:1.5;">
           Attach it here — we'll send it directly to <strong>ormocprintshoppe@gmail.com</strong>. (max 5 MB)
         </div>
-        <input type="file" id="design_file" accept="image/*,application/pdf,.psd,.ai,.eps,.svg,.cdr,.zip"
-          style="display:none;" onchange="handleDesignFile(this)">
-        <button type="button" onclick="(function(){var el=document.getElementById('design_file'); if(el) el.click();})();"
+        <button type="button" onclick="pickDesignFile()"
           style="width:100%;padding:11px;background:#fff;border:1px dashed #E0A020;border-radius:4px;color:#7A5500;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
           📁 Choose File to Attach
         </button>
@@ -363,6 +361,22 @@ function submitRequest() {
       ratePerSqft:   p.ratePerSqft || 50,
       totalAmount:   total,
     });
+}
+
+function pickDesignFile() {
+  try {
+    const input = document.createElement('input');
+    input.type   = 'file';
+    input.accept = 'image/*,application/pdf,.psd,.ai,.eps,.svg,.cdr,.zip';
+    input.style.display = 'none';
+    input.onchange = function() { handleDesignFile(input); };
+    document.body.appendChild(input);
+    input.click();
+    setTimeout(function(){ try{ input.remove(); }catch(_){} }, 60000);
+  } catch (e) {
+    const statusEl = document.getElementById('design_status');
+    if (statusEl) { statusEl.textContent = '⚠ Could not open file picker.'; statusEl.style.color = '#B00E12'; }
+  }
 }
 
 function handleDesignFile(input) {
