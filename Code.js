@@ -1957,6 +1957,18 @@ function submitCustomerRequest(data) {
 // ══════════════════════════════════════════════════════════════════
 //  CUSTOMER DESIGN FILE UPLOAD — emails the file to ormocprintshoppe@gmail.com
 // ══════════════════════════════════════════════════════════════════
+
+// Run this ONCE from the Apps Script editor to grant MailApp permission.
+// Function dropdown → select __authorizeMailScope → click ▶ Run → approve.
+function __authorizeMailScope() {
+  MailApp.sendEmail({
+    to:      'ormocprintshoppe@gmail.com',
+    subject: '✅ Mail permission authorized',
+    body:    'This is a one-time test to grant script.send_mail permission. You can ignore this email.',
+  });
+  return 'OK — sent test email. MailApp scope is now authorized.';
+}
+
 function uploadCustomerDesign(data) {
   try {
     if (!data || !data.base64 || !data.filename) {
