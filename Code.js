@@ -2616,6 +2616,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('BQ-')) sheetName = BOOKBIND_SHEET;
   else if (quoteNum.startsWith('FQ-')) sheetName = FRAME_SHEET;
   else if (quoteNum.startsWith('SH-')) sheetName = TSHIRT_SHEET;
+  else if (quoteNum.startsWith('MUG-')) sheetName = MUG_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -2631,6 +2632,7 @@ else if (quoteNum.startsWith('RQ-')) ptCol = 23; // col W
 else if (quoteNum.startsWith('BQ-')) ptCol = 28; // col AB
 else if (quoteNum.startsWith('FQ-')) ptCol = 22; // col V
 else if (quoteNum.startsWith('SH-')) ptCol = 30; // col AD
+else if (quoteNum.startsWith('MUG-')) ptCol = 24; // col X
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
