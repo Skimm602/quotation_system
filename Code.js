@@ -2263,7 +2263,7 @@ function uploadCustomerDesign(data) {
     const notes   = String(data.notes       || '');
     const stamp   = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Manila', 'yyyy-MM-dd HH:mm');
 
-    const subject = '📎 [Design Upload] ' + product + ' — ' + client;
+    const subject = 'Attention Sales New Inquiry ' + product + ' — ' + client;
     const body =
       'A customer uploaded a design file via the ' + product + ' quote portal.\n\n' +
       '── Customer ──────────────────────────────\n' +
