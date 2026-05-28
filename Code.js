@@ -1574,6 +1574,7 @@ function saveTarpQuotation(data) {
   ]);
 
   sheet.getRange(sheet.getLastRow(), 18, 1, 4).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Tarpaulin', Object.assign({ totalAmount: totalAmt }, data)); } catch(_) {}
   return quoteNum;
 }
 
@@ -1724,6 +1725,7 @@ function saveFrameOrder(data) {
   ]);
 
   sheet.getRange(sheet.getLastRow(), 14, 1, 4).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Frame', data); } catch(_) {}
   return quoteNum;
 }
 
@@ -1919,6 +1921,7 @@ function saveTshirtOrder(data) {
   ]);
 
   sheet.getRange(sheet.getLastRow(), 15, 1, 11).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'T-Shirt', data); } catch(_) {}
   return quoteNum;
 }
 
@@ -2741,6 +2744,7 @@ function saveQuotation(data) {
   ]);
 
   sheet.getRange(sheet.getLastRow(), 22, 1, 7).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Signage', data); } catch(_) {}
   return quoteNum;
 }
 
@@ -2811,6 +2815,16 @@ function saveReceiptOrder(payload) {
   ]);
 
   sheet.getRange(sheet.getLastRow(), 19, 1, 1).setNumberFormat('₱#,##0.00');
+  try {
+    notifyQuoteSaved_(orderNum, 'Receipt', {
+      clientName:  (payload.company || ((payload.firstName || '') + ' ' + (payload.lastName || '')).trim() || '—'),
+      contact:     payload.mobile     || '',
+      email:       payload.email      || '',
+      dateNeeded:  payload.dateNeeded  || '',
+      notes:       payload.notes       || '',
+      totalAmount: parseFloat(payload.totalPrice) || 0,
+    });
+  } catch(_) {}
   return orderNum;
 }
 function getReceiptPricing() {
@@ -3085,5 +3099,6 @@ function saveBookbindOrder(data) {
   ]);
 
   sheet.getRange(sheet.getLastRow(), 21, 1, 3).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Bookbinding', data); } catch(_) {}
   return quoteNum;
 }
