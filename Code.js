@@ -14,6 +14,7 @@ const FRAME_SHEET             = 'Frame Quotations';
 const TSHIRT_SHEET            = 'Tshirt Quotations';
 const MUG_SHEET               = 'Mug Quotations';
 const STICKER_SHEET           = 'Sticker Quotations';
+const RISOGRAPH_SHEET         = 'Risograph Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
 
@@ -113,6 +114,9 @@ function doGet(e) {
   }
   if (page === 'sticker') {
     return serveWithToken_('Sticker', 'Quotation System — Sticker', token, appUrl);
+  }
+  if (page === 'risograph') {
+    return serveWithToken_('Risograph', 'Quotation System — Risograph', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -818,8 +822,59 @@ function getDashboardData(token) {
       });
     }
 
+    // ── RISOGRAPH QUOTES ────────────────────────────────────────
+    let risoQuotes = [];
+    const risoSheet = ss.getSheetByName(RISOGRAPH_SHEET);
+    if (risoSheet) {
+      const rdata  = risoSheet.getDataRange().getValues();
+      const rStart = rdata.length > 0 && String(rdata[0][0]).startsWith('RG-') ? 0 : 1;
+      risoQuotes = rdata.slice(rStart).filter(r => r[0] && String(r[0]).startsWith('RG-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[19] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          paperType:        String(row[6]  || ''),
+          paperSize:        String(row[7]  || ''),
+          service:          String(row[8]  || ''),
+          sides:            String(row[9]  || ''),
+          quantity:         row[10] || 0,
+          rate:             parseFloat(row[11]) || 0,
+          baseAmount:       parseFloat(row[12]) || 0,
+          sortStaple:       String(row[13] || ''),
+          sortStapleFee:    parseFloat(row[14]) || 0,
+          rushOrder:        String(row[15] || ''),
+          rushFee:          parseFloat(row[16]) || 0,
+          designService:    String(row[17] || ''),
+          designFee:        parseFloat(row[18]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[20]) || 0,
+          notes:            String(row[21] || ''),
+          salesStaff:       String(row[22] || ''),
+          status:           String(row[23] || 'Pending'),
+          approvedBy:       String(row[24] || ''),
+          taxType:          String(row[25] || 'non-vat'),
+          taxAmount:        parseFloat(row[26]) || 0,
+          quoteType:        'risograph',
+          signageType:      'Risograph — ' + String(row[6] || '') + ' ' + String(row[7] || ''),
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[17] || ''), addonDesignFee: parseFloat(row[18]) || 0,
+          addonRush:   String(row[15] || ''), addonRushFee:   parseFloat(row[16]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1178,6 +1233,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isTshirt    = String(quoteNum).startsWith('SH-');
   const isMug       = String(quoteNum).startsWith('MUG-');
   const isSticker   = String(quoteNum).startsWith('STK-');
+  const isRiso      = String(quoteNum).startsWith('RG-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -1273,6 +1329,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Sticker order not found: ' + quoteNum);
+  }
+
+  if (isRiso) {
+    const sheet = ss.getSheetByName(RISOGRAPH_SHEET);
+    if (!sheet) throw new Error('Risograph Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 24).setValue(status);  // col X = Status
+        sheet.getRange(i+1, 25).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col Y = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 27).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Risograph order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -1936,6 +2008,7 @@ function getPublicPricing() {
     frame:    getFramePricing(),
     bookbind: getBookbindPricing(),
     sticker:  (function(){ try{ return getStickerPricing(); }catch(e){ return null; } })(),
+    risograph:(function(){ try{ return getRisographPricing(); }catch(e){ return null; } })(),
     receipt:  (function(){ try{ return getReceiptPricing(); }catch(e){ return null; } })(),
     signage:  (function(){ try{ return getPricing(); }      catch(e){ return null; } })(),
   };
@@ -2012,6 +2085,9 @@ function submitCustomerRequest(data) {
       if (data.numbering === 'Yes' && data.startingNo) specs += ' (from ' + data.startingNo + ')';
     } else if (data.productType === 'sticker') {
       specs = 'Sticker · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ' + (data.unit || 'in') + ' × ' + (data.quantity || 1) + ' pc(s)';
+    } else if (data.productType === 'risograph') {
+      specs = (data.paperType || '—') + ' · ' + (data.paperSize || '—') + ' · ' + (data.service || '—') + ' · ' + (data.sides || '—') + ' × ' + (data.quantity || 1) + ' ream(s)';
+      if (data.sortStaple === 'Yes') specs += ' | Sort & Staple';
     } else if (data.productType === 'signage') {
       specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ' + (data.unit || 'ft') + ' × ' + (data.quantity || 1) + ' pc(s)';
       if (data.lighting)  specs += ' | ' + data.lighting;
@@ -2544,6 +2620,166 @@ function saveStickerOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET RISOGRAPH PRICING (live from the "Risograph" tab)
+// ══════════════════════════════════════════════════════════════════
+function getRisographPricing() {
+  const defaults = {
+    paperTypes: {
+      'News Print': {
+        'Short': { 'Riso With Paper': { 'Front Only': 340, 'Back to Back': 580 }, 'Riso Only': { 'Front Only': 225, 'Back to Back': 450 } },
+        'Long':  { 'Riso With Paper': { 'Front Only': 390, 'Back to Back': 625 }, 'Riso Only': { 'Front Only': 235, 'Back to Back': 470 } },
+      },
+      'BookPaper Sub 20': {
+        'Short': { 'Riso With Paper': { 'Front Only': 450, 'Back to Back': 715 }, 'Riso Only': { 'Front Only': 285, 'Back to Back': 570 } },
+        'Long':  { 'Riso With Paper': { 'Front Only': 500, 'Back to Back': 780 }, 'Riso Only': { 'Front Only': 300, 'Back to Back': 600 } },
+      },
+    },
+    sortStapleFee: 200,   // per ream when sort & staple is selected
+    rushFee:       150,
+    designFee:     250,
+    unitLabel:     'ream',
+  };
+
+  function parsePrice(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/[^\d.]/g, '');
+    return parseFloat(m) || 0;
+  }
+
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Risograph') || ss.getSheetByName('Riso');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 4) return defaults;
+
+    // Detect columns. Expected layout:
+    // Row 0 header A=Paper Type, B-C=Riso With Paper (Front,Back), D-E=Riso Only (Front,Back)
+    // Row 1 sub-header: blank, Front only, Back to Back, Front Only, Back to back
+    // Row 2+ either a paper-type group header (col A only) or a size row (col A=Short/Long, cols B-E=prices)
+    const result = { paperTypes: {}, sortStapleFee: defaults.sortStapleFee, rushFee: defaults.rushFee, designFee: defaults.designFee, unitLabel: defaults.unitLabel };
+
+    let currentPaper = null;
+    for (let i = 2; i < rows.length; i++) {
+      const r = rows[i];
+      const label  = String(r[0] || '').trim();
+      if (!label) continue;
+
+      // Note line — "For sorting and stapling ... 200 per ream"
+      if (/sort/i.test(label) || /stapl/i.test(label)) {
+        const m = (label.match(/(\d+)/g) || []).map(Number).filter(n => n > 0);
+        if (m.length) result.sortStapleFee = Math.max.apply(null, m);
+        continue;
+      }
+
+      // If no prices in columns B-E it's a paper-type header row.
+      const b = parsePrice(r[1]);
+      const c = parsePrice(r[2]);
+      const d2 = parsePrice(r[3]);
+      const e = parsePrice(r[4]);
+      const anyPrice = (b + c + d2 + e) > 0;
+
+      if (!anyPrice) {
+        currentPaper = label;
+        result.paperTypes[currentPaper] = result.paperTypes[currentPaper] || {};
+        continue;
+      }
+
+      // Size row (Short / Long)
+      if (!currentPaper) continue;
+      result.paperTypes[currentPaper][label] = {
+        'Riso With Paper': { 'Front Only': b, 'Back to Back': c },
+        'Riso Only':       { 'Front Only': d2, 'Back to Back': e },
+      };
+    }
+
+    return Object.keys(result.paperTypes).length ? result : defaults;
+  } catch(e) {
+    Logger.log('getRisographPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE RISOGRAPH ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveRisographOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(RISOGRAPH_SHEET);
+  if (!sheet) sheet = ss.insertSheet(RISOGRAPH_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Paper Type', 'Size', 'Service', 'Sides',
+    'Quantity', 'Rate', 'Base Amount',
+    'Sort & Staple', 'Sort & Staple Fee',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('RG-')) {
+    if (firstCell.startsWith('RG-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'RG-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty        = parseInt(data.quantity)   || 1;
+  const rate       = parseFloat(data.rate)     || 0;
+  const baseAmt    = parseFloat(data.baseAmount) || (rate * qty);
+  const ssFee      = parseFloat(data.sortStapleFee) || 0;
+  const rushFee    = parseFloat(data.rushFee)   || 0;
+  const designFee  = parseFloat(data.designFee) || 0;
+  const totalAmt   = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + ssFee + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.paperType     || '',                   // G  - Paper Type
+    data.paperSize     || '',                   // H  - Size
+    data.service       || '',                   // I  - Service
+    data.sides         || '',                   // J  - Sides
+    qty,                                        // K  - Quantity
+    parseFloat(rate.toFixed(2)),                // L  - Rate
+    parseFloat(baseAmt.toFixed(2)),             // M  - Base Amount
+    data.sortStaple    || '',                   // N  - Sort & Staple
+    parseFloat(ssFee.toFixed(2)),               // O  - Sort & Staple Fee
+    data.rushOrder     || '',                   // P  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // Q  - Rush Fee
+    data.designService || '',                   // R  - Design Service
+    parseFloat(designFee.toFixed(2)),           // S  - Design Fee
+    '',                                         // T  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // U  - Total Amount
+    data.notes         || '',                   // V  - Special Instructions
+    staffName,                                  // W  - Sales Staff
+    data.status || 'Pending',                   // X  - Status
+    '',                                         // Y  - Approved By
+    data.taxType       || 'non-vat',            // Z  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // AA - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 12, 1, 10).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Risograph', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -2969,6 +3205,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('SH-')) sheetName = TSHIRT_SHEET;
   else if (quoteNum.startsWith('MUG-')) sheetName = MUG_SHEET;
   else if (quoteNum.startsWith('STK-')) sheetName = STICKER_SHEET;
+  else if (quoteNum.startsWith('RG-'))  sheetName = RISOGRAPH_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -2986,6 +3223,7 @@ else if (quoteNum.startsWith('FQ-')) ptCol = 22; // col V
 else if (quoteNum.startsWith('SH-')) ptCol = 30; // col AD
 else if (quoteNum.startsWith('MUG-')) ptCol = 24; // col X
 else if (quoteNum.startsWith('STK-')) ptCol = 23; // col W
+else if (quoteNum.startsWith('RG-'))  ptCol = 20; // col T
 
 // Find the row
 for (let i = 1; i < data.length; i++) {

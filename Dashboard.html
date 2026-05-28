@@ -145,6 +145,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
             <span class="nq-icon">🏷️</span>
             <span>Sticker Quote</span>
           </div>
+          <div class="nq-option" onclick="goToRisograph()">
+            <span class="nq-icon">🖨️</span>
+            <span>Risograph Quote</span>
+          </div>
         </div>
       </div>
       <!-- END NEW QUOTE DROPDOWN -->
@@ -197,6 +201,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
         <button onclick="switchTab('sticker')" id="tab-sticker"
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
           STICKER
+        </button>
+        <button onclick="switchTab('risograph')" id="tab-risograph"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          RISOGRAPH
         </button>
       </div>
 
@@ -286,6 +294,7 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
             <option value="TSHIRT">T-Shirt</option>
             <option value="MUG">Mug</option>
             <option value="STICKER">Sticker</option>
+            <option value="RISOGRAPH">Risograph</option>
             <option value="RECEIPT">Receipt</option>
             <option value="SIGNAGE">Signage</option>
             <option value="BOOKBIND">Bookbinding</option>
@@ -552,6 +561,17 @@ function goToSticker() {
   }).getAppUrl();
 }
 
+function goToRisograph() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=risograph&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
 function setupDashboard() {
   const u = currentUser, role = (u.role||'').toLowerCase();
   document.getElementById('sidebarName').textContent = u.name;
@@ -600,13 +620,13 @@ let currentTab = 'all';
 
 function switchTab(tab) {
   currentTab = tab;
-  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker'].forEach(t => {
+  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
     btn.style.borderBottom = t === tab ? '3px solid #E8151B' : '3px solid transparent';
     btn.style.color        = t === tab ? '#0A0A0A' : '#999';
   });
-  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER' };
+  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH' };
   const el = document.getElementById('recentLabel');
   if (el) el.textContent = labels[tab] || 'QUOTATIONS';
   renderStats(); renderRecentTable();
@@ -621,6 +641,7 @@ function getFilteredByTab() {
   if (currentTab === 'tshirt')    return allQuotes.filter(q => String(q.quoteNum).startsWith('SH-'));
   if (currentTab === 'mug')       return allQuotes.filter(q => String(q.quoteNum).startsWith('MUG-'));
   if (currentTab === 'sticker')   return allQuotes.filter(q => String(q.quoteNum).startsWith('STK-'));
+  if (currentTab === 'risograph') return allQuotes.filter(q => String(q.quoteNum).startsWith('RG-'));
   return allQuotes;
 }
 
@@ -651,6 +672,7 @@ function renderRecentTable() {
     const isFrame    = String(q.quoteNum).startsWith('FQ-');
     const isTshirt   = String(q.quoteNum).startsWith('SH-');
     const isSticker  = String(q.quoteNum).startsWith('STK-');
+    const isRiso     = String(q.quoteNum).startsWith('RG-');
     const typeLabel = isTarp
       ? `<span style="color:#888;">Tarpaulin</span>`
       : isReceipt
@@ -663,6 +685,8 @@ function renderRecentTable() {
       ? `<span style="color:#888;">${q.signageType||'T-Shirt'}</span>`
       : isSticker
       ? `<span style="color:#888;">${q.signageType||'Sticker'}</span>`
+      : isRiso
+      ? `<span style="color:#888;">${q.signageType||'Risograph'}</span>`
       : `<span style="color:#888;">${q.signageType||'—'}</span>`;
     html += `<tr>
       <td style="font-weight:600;color:#0A0A0A;">${q.quoteNum}</td>
@@ -693,7 +717,8 @@ function renderAllQuotes() {
     const date=q.date?new Date(q.date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
     let actions=`<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button>`;
     if (canApprove&&q.status==='Pending') actions+=` <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓</button> <button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕</button>`;
-    const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : String(q.quoteNum).startsWith('MUG-') ? ('Mug — '+(q.mugType||'')) : String(q.quoteNum).startsWith('STK-') ? ('Sticker — '+(q.stickerType||'')+(q.layout==='Pre-cut'?' (Pre-cut)':'')) : (q.signageType||'—');
+    const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : String(q.quoteNum).startsWith('MUG-') ? ('Mug — '+(q.mugType||'')) : String(q.quoteNum).startsWith('STK-') ? ('Sticker — '+(q.stickerType||'')+(q.layout==='Pre-cut'?' (Pre-cut)':''))
+      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : (q.signageType||'—');
     html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${qTypeLabel}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
   });
   html+='</tbody></table>';
@@ -815,6 +840,23 @@ function buildQuoteMessage(q) {
       'Quantity: ' + (q.quantity||0) + ' pc(s)',
       q.unitPrice  ? 'Unit Price: '  + php(q.unitPrice) + ' / pc' : '',
       q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+      q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
+      q.designService === 'Yes' ? 'Design Service: Yes' : '',
+      q.designFee>0 ? 'Design / Artwork Fee: ' + php(q.designFee) : '',
+    ];
+  } else if (qn.startsWith('RG-')) {
+    title = '🖨️ RISOGRAPH PRINTING QUOTATION';
+    specs = [
+      'Paper Type: ' + (q.paperType || '—'),
+      'Paper Size: ' + (q.paperSize || '—'),
+      'Service: '    + (q.service   || '—'),
+      'Sides: '      + (q.sides     || '—'),
+      'Quantity: '   + (q.quantity  || 0) + ' ream(s)',
+      q.rate>0 ? 'Rate: ' + php(q.rate) + ' / ream' : '',
+      q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
+      q.sortStaple === 'Yes' ? 'Sort & Staple: Yes' : '',
+      q.sortStapleFee>0 ? 'Sort & Staple Fee: ' + php(q.sortStapleFee) : '',
       q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
       q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
       q.designService === 'Yes' ? 'Design Service: Yes' : '',
@@ -1001,6 +1043,20 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
   ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
   ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
   ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
+` : String(q.quoteNum).startsWith('RG-') ? `
+  ${row('Paper Type', '<span style="font-weight:600;">'+(q.paperType||'—')+'</span>')}
+  ${row('Paper Size', q.paperSize||'—')}
+  ${row('Service',    q.service  ||'—')}
+  ${row('Sides',      q.sides    ||'—')}
+  ${row('Quantity',   (q.quantity||0)+' ream(s)')}
+  ${q.rate>0?row('Rate', php(q.rate)+' / ream'):''}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.sortStaple==='Yes'?row('Sort & Staple','✓ Yes'):''}
+  ${q.sortStapleFee>0?row('Sort & Staple Fee', php(q.sortStapleFee)):''}
+  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+  ${q.rushFee>0?row('Rush Fee', php(q.rushFee)):''}
+  ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+  ${q.designFee>0?row('Design / Artwork Fee', php(q.designFee)):''}
 ` : String(q.quoteNum).startsWith('STK-') ? `
   ${row('Material', '<span style="font-weight:600;">'+(q.stickerType || (q.signageType||'').replace('Sticker — ','') || '—')+'</span>')}
   ${row('Pre-cut', q.layout === 'Pre-cut' ? '✓ Yes' : 'No')}
@@ -1119,6 +1175,7 @@ const PORTAL_PRODUCTS = [
   { id:'tarp',     icon:'🖨️', label:'Tarpaulin',   active:true,  page:'customer-tarp',     shortUrl:'https://tinyurl.com/53ampkt4' },
   { id:'mug',      icon:'☕', label:'Mug',           active:true,  page:'customer-mug',      shortUrl:'https://tinyurl.com/4w5t5da7' },
   { id:'sticker',  icon:'🏷️', label:'Sticker',       active:true,  page:'customer-sticker'                                          },
+  { id:'risograph',icon:'🖨️', label:'Risograph',     active:true,  page:'customer-risograph'                                        },
   { id:'tshirt',   icon:'👕', label:'T-Shirt',       active:true,  page:'customer-tshirt',   shortUrl:'https://tinyurl.com/387r4ncs' },
   { id:'receipt',  icon:'🧾', label:'Receipt',       active:true,  page:'customer-receipt',  shortUrl:'https://tinyurl.com/56v9ytx4' },
   { id:'signage',  icon:'🪧', label:'Signage',       active:true,  page:'customer-signage',  shortUrl:'https://tinyurl.com/una3rkbu' },
