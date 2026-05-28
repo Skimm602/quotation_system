@@ -2051,6 +2051,67 @@ function submitCustomerRequest(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  NOTIFY ORMOC PRINTSHOPPE — sales-side save (internal quote logged)
+// ══════════════════════════════════════════════════════════════════
+function notifyQuoteSaved_(quoteNum, productType, data) {
+  try {
+    const client  = String(data.clientName || '—');
+    const contact = String(data.contact    || '—');
+    const email   = String(data.email      || '');
+    const dateN   = String(data.dateNeeded || '—');
+    const notes   = String(data.notes      || '');
+    const total   = parseFloat(data.totalAmount) || 0;
+    const stamp   = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Manila', 'yyyy-MM-dd HH:mm');
+    const totalPHP = '₱' + total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const subject = '📝 New Quote Saved — ' + productType + ' — ' + client + ' (' + quoteNum + ')';
+    const body =
+      'A new quotation was saved in the system.\n\n' +
+      '── Reference ────────────────────────────\n' +
+      'Quote #: ' + quoteNum    + '\n' +
+      'Product: ' + productType + '\n' +
+      'Time:    ' + stamp       + '\n\n' +
+      '── Client ───────────────────────────────\n' +
+      'Name:    ' + client  + '\n' +
+      'Contact: ' + contact + '\n' +
+      (email ? 'Email:   ' + email + '\n' : '') +
+      'Date Needed: ' + dateN + '\n\n' +
+      '── Total ────────────────────────────────\n' +
+      'Total: ' + totalPHP + '\n' +
+      (notes ? '\nNotes:\n' + notes + '\n' : '') +
+      '\nOpen the Dashboard to view full details.';
+
+    MailApp.sendEmail({
+      to:      'ormocprintshoppe@gmail.com',
+      subject: subject,
+      body:    body,
+    });
+    Logger.log('notifyQuoteSaved_ sent for ' + quoteNum);
+  } catch(e) {
+    Logger.log('notifyQuoteSaved_ ERROR for ' + quoteNum + ': ' + (e && e.message));
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ONE-TIME TEST — run from Apps Script editor to verify MailApp works
+// ══════════════════════════════════════════════════════════════════
+function testEmailNotif() {
+  try {
+    MailApp.sendEmail({
+      to:      'ormocprintshoppe@gmail.com',
+      subject: '🧪 TEST — MailApp from Quotation System',
+      body:    'If you received this email, MailApp permissions are working.\n\nSent at ' +
+               Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Manila', 'yyyy-MM-dd HH:mm:ss'),
+    });
+    Logger.log('TEST email sent — remaining daily quota: ' + MailApp.getRemainingDailyQuota());
+    return 'OK — test email sent to ormocprintshoppe@gmail.com. Remaining quota: ' + MailApp.getRemainingDailyQuota();
+  } catch(e) {
+    Logger.log('testEmailNotif ERROR: ' + (e && e.message));
+    return 'ERROR: ' + (e && e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  NOTIFY ORMOC PRINTSHOPPE — sent after every customer submission
 // ══════════════════════════════════════════════════════════════════
 function notifyCustomerSubmission_(reqNum, productType, data, specs, total) {
@@ -2339,6 +2400,7 @@ function saveMugOrder(data) {
   ]);
 
   sheet.getRange(sheet.getLastRow(), 9, 1, 11).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Mug', data); } catch(_) {}
   return quoteNum;
 }
 
@@ -2447,6 +2509,7 @@ function saveStickerOrder(data) {
   ]);
 
   sheet.getRange(sheet.getLastRow(), 14, 1, 7).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Sticker', data); } catch(_) {}
   return quoteNum;
 }
 
