@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, receipt: null, signage: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, receipt: null, signage: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -101,6 +101,7 @@ const PRODUCTS = [
   { id:'tshirt',   icon:'👕', label:'T-Shirt',       sub:'DTF / Sublimation'     },
   { id:'tarp',     icon:'🖨️', label:'Tarpaulin',     sub:'Banner / Streamer'     },
   { id:'signage',  icon:'🪧', label:'Signage',       sub:'LED / Acrylic / Vinyl' },
+  { id:'sticker',  icon:'🏷️', label:'Sticker',       sub:'Vinyl / Paper / Mirror'},
   { id:'receipt',  icon:'🧾', label:'Receipt',       sub:'Carbon Duplicate'      },
   { id:'bookbind', icon:'📚', label:'Bookbinding',   sub:'Hardbound / Softbound' },
   { id:'frame',    icon:'🖼️', label:'Photo Frame',   sub:'With / Without Matting'},
@@ -131,6 +132,9 @@ const d = {
   signageLighting:'None', signageMaterial:'Standard', signageMounting:'', signageDesign:'No',
   signageTransport:'', signageTransportLocation:'', signageTransportFee:0, signageUnit:'ft',
   signageElectrical:[],
+  // sticker
+  stickerType:'', stickerLayout:'', stickerWidth:'', stickerHeight:'', stickerUnit:'in',
+  stickerQty:1, stickerRush:'No', stickerDesign:'No',
 };
 
 const MUG_ICONS = {
@@ -254,6 +258,30 @@ function calcSignageTotal() {
   return (prod.rate * w * h * q) + rush + transport;
 }
 
+function stickerToFeet(val, unit) {
+  const n = parseFloat(val) || 0;
+  if (unit === 'in') return n / 12;
+  if (unit === 'cm') return n / 30.48;
+  if (unit === 'm')  return n * 3.280839895;
+  return n; // ft
+}
+function calcStickerTotal() {
+  const p = PRICING.sticker || {};
+  const mats = p.materials || {};
+  const mat  = mats[d.stickerType];
+  if (!mat || !d.stickerLayout) return 0;
+  const w    = stickerToFeet(d.stickerWidth,  d.stickerUnit);
+  const h    = stickerToFeet(d.stickerHeight, d.stickerUnit);
+  const sqft = w * h;
+  if (!sqft) return 0;
+  const adj  = 1 + ((p.layouts || {})[d.stickerLayout] || 0);
+  const qty  = parseInt(d.stickerQty) || 1;
+  const unit = Math.max(mat.ratePerSqft * sqft * adj, mat.minCharge || 0);
+  const rush = d.stickerRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.stickerDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return (unit * qty) + rush + des;
+}
+
 function calcTotal() {
   if (selectedProduct === 'mug')      return calcMugTotal();
   if (selectedProduct === 'tshirt')   return calcTshirtTotal();
@@ -262,6 +290,7 @@ function calcTotal() {
   if (selectedProduct === 'bookbind') return calcBookbindTotal();
   if (selectedProduct === 'receipt')  return calcReceiptTotal();
   if (selectedProduct === 'signage')  return calcSignageTotal();
+  if (selectedProduct === 'sticker')  return calcStickerTotal();
   return 0;
 }
 
@@ -365,7 +394,96 @@ function renderSpecs() {
   if (selectedProduct === 'bookbind') return renderBookbindSpecs();
   if (selectedProduct === 'receipt')  return renderReceiptSpecs();
   if (selectedProduct === 'signage')  return renderSignageSpecs();
+  if (selectedProduct === 'sticker')  return renderStickerSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
+}
+
+// ── STICKER SPECS ─────────────────────────────────────────────────
+function renderStickerSpecs() {
+  const p     = PRICING.sticker || {};
+  const mats  = p.materials || {};
+  const matKeys = Object.keys(mats).length
+    ? Object.keys(mats)
+    : ['Vinyl Sticker','Sticker Paper','Transparent Sticker','Mirror Sticker','Holographic Sticker'];
+  const layoutKeys = Object.keys(p.layouts || {}).length
+    ? Object.keys(p.layouts)
+    : ['Single (One per cut)','Kiss-cut Sheet','Die-cut Individual','Sheet (Uncut)'];
+
+  const matIcons = { 'Vinyl Sticker':'🟦','Sticker Paper':'📄','Transparent Sticker':'🪟','Mirror Sticker':'🪞','Holographic Sticker':'🌈' };
+  const layoutIcons = { 'Single (One per cut)':'⬜','Kiss-cut Sheet':'🔲','Die-cut Individual':'✂️','Sheet (Uncut)':'📋' };
+
+  const matCards = matKeys.map(k => {
+    const m = mats[k] || {};
+    const icon = matIcons[k] || '🏷️';
+    const sel  = d.stickerType === k;
+    return `<div class="opt-card${sel?' active':''}" onclick="d.stickerType='${k.replace(/'/g,"\\'")}';renderForm();">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${icon} ${esc(k)}</div>
+        ${m.ratePerSqft ? `<div style="font-size:11px;color:#888;margin-top:1px;">₱${m.ratePerSqft.toLocaleString()}/sqft</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const layoutCards = layoutKeys.map(k => {
+    const adj  = (p.layouts || {})[k];
+    const icon = layoutIcons[k] || '🔳';
+    const sel  = d.stickerLayout === k;
+    const adjLbl = adj === undefined || adj === 0 ? '' : (adj > 0 ? '+' + (adj * 100).toFixed(0) + '%' : (adj * 100).toFixed(0) + '%');
+    return `<div class="opt-card${sel?' active':''}" onclick="d.stickerLayout='${k.replace(/'/g,"\\'")}';renderForm();">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${icon} ${esc(k)}</div>
+        ${adjLbl ? `<div style="font-size:11px;color:#888;margin-top:1px;">${adjLbl}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const unitOpts = ['in','ft','cm','m'].map(u => `<option ${d.stickerUnit===u?'selected':''}>${u}</option>`).join('');
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Sticker Material / Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${matCards}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Layout / Cutting Style *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${layoutCards}</div>
+      </div>
+      <div>
+        <label class="field-label">Sticker Size *</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
+          <input type="number" class="field-input" id="stk_w" value="${d.stickerWidth}" placeholder="Width" min="0.1" step="0.1"
+            oninput="d.stickerWidth=this.value;" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
+          <input type="number" class="field-input" id="stk_h" value="${d.stickerHeight}" placeholder="Height" min="0.1" step="0.1"
+            oninput="d.stickerHeight=this.value;" inputmode="decimal" style="text-align:center;">
+          <select class="field-input" id="stk_unit" onchange="d.stickerUnit=this.value;renderForm();"
+            style="max-width:80px;flex-shrink:0;font-weight:700;">${unitOpts}</select>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="stk_qty" value="${d.stickerQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.stickerQty=parseInt(this.value)||1;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.stickerRush==='Yes'?' on':''}" onclick="d.stickerRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.stickerRush==='No'?' on':''}"  onclick="d.stickerRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.stickerDesign==='Yes'?' on':''}" onclick="d.stickerDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.stickerDesign==='No'?' on':''}"  onclick="d.stickerDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 // ── MUG SPECS ────────────────────────────────────────────────────
@@ -1097,6 +1215,10 @@ function renderReview() {
     specSummary += ` · Perf: ${d.receiptPerforation} · Numbering: ${d.receiptNumbering}`;
     if (d.receiptNumbering === 'Yes' && d.receiptStartNo) specSummary += ` (from ${esc(d.receiptStartNo)})`;
     if (d.receiptRush === 'Yes') specSummary += ' · Rush';
+  } else if (selectedProduct === 'sticker') {
+    specSummary = `${esc(d.stickerType)||'—'} · ${esc(d.stickerLayout)||'—'} · ${d.stickerWidth||'?'} × ${d.stickerHeight||'?'} ${esc(d.stickerUnit)} × ${d.stickerQty} pc(s)`;
+    if (d.stickerRush   === 'Yes') specSummary += ' · Rush';
+    if (d.stickerDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'signage') {
     specSummary = `${esc(d.signageType)||'—'} · ${d.signageWidth||'?'} × ${d.signageHeight||'?'} ${esc(d.signageUnit)} × ${d.signageQty} pc(s)`;
     specSummary += ` · ${esc(d.signageLighting)} · ${esc(d.signageMaterial)}`;
@@ -1205,6 +1327,14 @@ function nextStep() {
       if (!d.receiptCopies)    { toast('Please select number of copies.','error'); return; }
       if (!d.receiptSizeDiv)   { toast('Please select a booklet size.','error'); return; }
       if (d.receiptNumbering === 'Yes' && !String(d.receiptStartNo).trim()) { toast('Please enter the starting number.','error'); return; }
+    }
+    if (selectedProduct === 'sticker') {
+      d.stickerWidth  = v('stk_w')   || d.stickerWidth;
+      d.stickerHeight = v('stk_h')   || d.stickerHeight;
+      d.stickerQty    = parseInt(v('stk_qty')) || d.stickerQty;
+      if (!d.stickerType)   { toast('Please select a sticker material/type.','error'); return; }
+      if (!d.stickerLayout) { toast('Please select a layout / cutting style.','error'); return; }
+      if (!d.stickerWidth || !d.stickerHeight) { toast('Please enter the sticker size (width × height).','error'); return; }
     }
     if (selectedProduct === 'signage') {
       d.signageWidth  = v('sg_w')  || d.signageWidth;
@@ -1369,6 +1499,29 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'sticker') {
+    const p    = PRICING.sticker || {};
+    const mat  = (p.materials || {})[d.stickerType] || {};
+    const w    = stickerToFeet(d.stickerWidth,  d.stickerUnit);
+    const h    = stickerToFeet(d.stickerHeight, d.stickerUnit);
+    const sqft = w * h;
+    const adj  = 1 + ((p.layouts || {})[d.stickerLayout] || 0);
+    const qty  = parseInt(d.stickerQty) || 1;
+    const unit = Math.max((mat.ratePerSqft || 0) * sqft * adj, mat.minCharge || 0);
+    const base = unit * qty;
+    const rush = d.stickerRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des  = d.stickerDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      stickerType: d.stickerType, layout: d.stickerLayout,
+      width: parseFloat(d.stickerWidth)||0, height: parseFloat(d.stickerHeight)||0, unit: d.stickerUnit,
+      sqft: sqft, quantity: qty,
+      ratePerSqft: mat.ratePerSqft || 0, unitPrice: unit,
+      baseAmount: base, rushOrder: d.stickerRush, rushFee: rush,
+      designService: d.stickerDesign, designFee: des,
+      totalAmount: base + rush + des,
+    });
+  }
+
   if (selectedProduct === 'signage') {
     const total = calcSignageTotal();
     Object.assign(payload, {
@@ -1445,6 +1598,10 @@ function buildMessengerText(qn) {
     specsLine += '\nPerforation: ' + d.receiptPerforation + ' · Numbering: ' + d.receiptNumbering;
     if (d.receiptNumbering === 'Yes' && d.receiptStartNo) specsLine += '\nStarting No: ' + d.receiptStartNo;
     if (d.receiptRush === 'Yes') specsLine += '\nRush Order: Yes';
+  } else if (selectedProduct === 'sticker') {
+    specsLine = d.stickerType + ' · ' + d.stickerLayout + '\nSize: ' + d.stickerWidth + ' × ' + d.stickerHeight + ' ' + d.stickerUnit + ' × ' + d.stickerQty + ' pc(s)';
+    if (d.stickerRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.stickerDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'signage') {
     specsLine = d.signageType + ' · ' + d.signageWidth + ' × ' + d.signageHeight + ' ' + d.signageUnit + ' × ' + d.signageQty + ' pc(s)';
     specsLine += '\nLighting: ' + d.signageLighting + ' · Material: ' + d.signageMaterial;
@@ -1517,7 +1674,7 @@ function copyMsg() {
 
 function resetAll() {
   screen = 'products'; selectedProduct = ''; formStep = 0;
-  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty'];
+  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty'];
   Object.keys(d).forEach(k => {
     if (typeof d[k] === 'string') d[k] = '';
     else if (typeof d[k] === 'number') d[k] = k==='mugQty'?5:qty1.includes(k)?1:0;
@@ -1532,6 +1689,7 @@ function resetAll() {
   d.receiptColors=['White']; d.receiptPerforation='Yes'; d.receiptNumbering='Yes';
   d.signageLighting='None'; d.signageMaterial='Standard'; d.signageDesign='No'; d.signageUnit='ft';
   d.signageElectrical=[];
+  d.stickerUnit='in'; d.stickerRush='No'; d.stickerDesign='No';
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
 }

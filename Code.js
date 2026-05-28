@@ -13,6 +13,7 @@ const BOOKBIND_SHEET          = 'Bookbind Quotations';
 const FRAME_SHEET             = 'Frame Quotations';
 const TSHIRT_SHEET            = 'Tshirt Quotations';
 const MUG_SHEET               = 'Mug Quotations';
+const STICKER_SHEET           = 'Sticker Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
 
@@ -109,6 +110,9 @@ function doGet(e) {
   }
   if (page === 'mug') {
     return serveWithToken_('Mug', 'Quotation System — Mug', token, appUrl);
+  }
+  if (page === 'sticker') {
+    return serveWithToken_('Sticker', 'Quotation System — Sticker', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -763,8 +767,59 @@ function getDashboardData(token) {
       });
     }
 
+    // ── STICKER QUOTES ──────────────────────────────────────────
+    let stickerQuotes = [];
+    const stickerSheet = ss.getSheetByName(STICKER_SHEET);
+    if (stickerSheet) {
+      const sdata  = stickerSheet.getDataRange().getValues();
+      const sStart = sdata.length > 0 && String(sdata[0][0]).startsWith('STK-') ? 0 : 1;
+      stickerQuotes = sdata.slice(sStart).filter(r => r[0] && String(r[0]).startsWith('STK-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[22] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          stickerType:      String(row[6]  || ''),
+          layout:           String(row[7]  || ''),
+          width:            parseFloat(row[8])  || 0,
+          height:           parseFloat(row[9])  || 0,
+          unit:             String(row[10] || 'in'),
+          sqft:             parseFloat(row[11]) || 0,
+          quantity:         row[12] || 0,
+          ratePerSqft:      parseFloat(row[13]) || 0,
+          baseAmount:       parseFloat(row[14]) || 0,
+          rushOrder:        String(row[15] || ''),
+          rushFee:          parseFloat(row[16]) || 0,
+          designService:    String(row[17] || ''),
+          designFee:        parseFloat(row[18]) || 0,
+          totalAmount:      parseFloat(row[19]) || 0,
+          notes:            String(row[20] || ''),
+          salesStaff:       String(row[21] || ''),
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          status:           String(row[23] || 'Pending'),
+          approvedBy:       String(row[24] || ''),
+          taxType:          String(row[25] || 'non-vat'),
+          taxAmount:        parseFloat(row[26]) || 0,
+          quoteType:        'sticker',
+          signageType:      'Sticker — ' + String(row[6] || ''),
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[17] || ''), addonDesignFee: parseFloat(row[18]) || 0,
+          addonRush:   String(row[15] || ''), addonRushFee:   parseFloat(row[16]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1121,6 +1176,8 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isBookbind  = String(quoteNum).startsWith('BQ-');
   const isFrame     = String(quoteNum).startsWith('FQ-');
   const isTshirt    = String(quoteNum).startsWith('SH-');
+  const isMug       = String(quoteNum).startsWith('MUG-');
+  const isSticker   = String(quoteNum).startsWith('STK-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -1184,6 +1241,38 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('T-Shirt order not found: ' + quoteNum);
+  }
+
+  if (isMug) {
+    const sheet = ss.getSheetByName(MUG_SHEET);
+    if (!sheet) throw new Error('Mug Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 22).setValue(status);  // col V = Status
+        sheet.getRange(i+1, 23).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col W = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 26).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Mug order not found: ' + quoteNum);
+  }
+
+  if (isSticker) {
+    const sheet = ss.getSheetByName(STICKER_SHEET);
+    if (!sheet) throw new Error('Sticker Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 24).setValue(status);  // col X = Status
+        sheet.getRange(i+1, 25).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col Y = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 27).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Sticker order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -1843,6 +1932,7 @@ function getPublicPricing() {
     tarp:     getTarpPricing(),
     frame:    getFramePricing(),
     bookbind: getBookbindPricing(),
+    sticker:  (function(){ try{ return getStickerPricing(); }catch(e){ return null; } })(),
     receipt:  (function(){ try{ return getReceiptPricing(); }catch(e){ return null; } })(),
     signage:  (function(){ try{ return getPricing(); }      catch(e){ return null; } })(),
   };
@@ -1917,6 +2007,9 @@ function submitCustomerRequest(data) {
       if (data.perforation) specs += ' | Perf: ' + data.perforation;
       if (data.numbering)   specs += ' | Numbering: ' + data.numbering;
       if (data.numbering === 'Yes' && data.startingNo) specs += ' (from ' + data.startingNo + ')';
+    } else if (data.productType === 'sticker') {
+      specs = (data.stickerType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ' + (data.unit || 'in') + ' × ' + (data.quantity || 1) + ' pc(s)';
+      if (data.layout) specs += ' | Layout: ' + data.layout;
     } else if (data.productType === 'signage') {
       specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ' + (data.unit || 'ft') + ' × ' + (data.quantity || 1) + ' pc(s)';
       if (data.lighting)  specs += ' | ' + data.lighting;
@@ -2200,6 +2293,125 @@ function saveMugOrder(data) {
   ]);
 
   sheet.getRange(sheet.getLastRow(), 9, 1, 11).setNumberFormat('₱#,##0.00');
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  GET STICKER PRICING
+// ══════════════════════════════════════════════════════════════════
+function getStickerPricing() {
+  const defaults = {
+    materials: {
+      'Vinyl Sticker':         { ratePerSqft: 80,  minCharge: 50 },
+      'Sticker Paper':         { ratePerSqft: 60,  minCharge: 40 },
+      'Transparent Sticker':   { ratePerSqft: 100, minCharge: 60 },
+      'Mirror Sticker':        { ratePerSqft: 120, minCharge: 80 },
+      'Holographic Sticker':   { ratePerSqft: 150, minCharge: 100 },
+    },
+    layouts: {
+      'Single (One per cut)':     0,
+      'Kiss-cut Sheet':           0.10,
+      'Die-cut Individual':       0.20,
+      'Sheet (Uncut)':           -0.10,
+    },
+    rushFee: 150, designFee: 250,
+  };
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Stickers') || ss.getSheetByName('Sticker');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    const result = { materials: {}, layouts: defaults.layouts, rushFee: defaults.rushFee, designFee: defaults.designFee };
+
+    for (let i = 1; i < rows.length; i++) {
+      const name = String(rows[i][0] || '').trim();
+      if (!name) continue;
+      const rate     = parseFloat(String(rows[i][1] || '').replace(/[^\d.]/g, '')) || 0;
+      const minChg   = parseFloat(String(rows[i][2] || '').replace(/[^\d.]/g, '')) || 0;
+      if (rate > 0) result.materials[name] = { ratePerSqft: rate, minCharge: minChg };
+    }
+
+    return Object.keys(result.materials).length ? result : defaults;
+  } catch(e) {
+    Logger.log('getStickerPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE STICKER ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveStickerOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(STICKER_SHEET);
+  if (!sheet) sheet = ss.insertSheet(STICKER_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Sticker Type', 'Layout',
+    'Width', 'Height', 'Unit', 'Area (sqft)', 'Quantity',
+    'Rate/sqft', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Payment Term', 'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('STK-')) {
+    if (firstCell.startsWith('STK-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'STK-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)   || 1;
+  const ratePerSf = parseFloat(data.ratePerSqft) || 0;
+  const sqft      = parseFloat(data.sqft) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (ratePerSf * sqft * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                  // A  - Quote #
+    new Date(),                                // B  - Date
+    data.clientName    || '',                  // C  - Client Name
+    data.contact       || '',                  // D  - Contact
+    data.email         || '',                  // E  - Email
+    data.dateNeeded    || '',                  // F  - Date Needed
+    data.stickerType   || '',                  // G  - Sticker Type
+    data.layout        || '',                  // H  - Layout
+    parseFloat(data.width)  || 0,              // I  - Width
+    parseFloat(data.height) || 0,              // J  - Height
+    data.unit          || 'in',                // K  - Unit
+    parseFloat(sqft.toFixed(4)),               // L  - Area (sqft)
+    qty,                                       // M  - Quantity
+    parseFloat(ratePerSf.toFixed(2)),          // N  - Rate/sqft
+    parseFloat(baseAmt.toFixed(2)),            // O  - Base Amount
+    data.rushOrder     || '',                  // P  - Rush Order
+    parseFloat(rushFee.toFixed(2)),            // Q  - Rush Fee
+    data.designService || '',                  // R  - Design Service
+    parseFloat(designFee.toFixed(2)),          // S  - Design Fee
+    parseFloat(totalAmt.toFixed(2)),           // T  - Total Amount
+    data.notes         || '',                  // U  - Special Instructions
+    staffName,                                 // V  - Sales Staff
+    '',                                        // W  - Payment Term
+    data.status || 'Pending',                  // X  - Status
+    '',                                        // Y  - Approved By
+    data.taxType       || 'non-vat',           // Z  - Tax Type
+    parseFloat(data.taxAmount) || 0,           // AA - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 14, 1, 7).setNumberFormat('₱#,##0.00');
   return quoteNum;
 }
 
@@ -2617,6 +2829,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('FQ-')) sheetName = FRAME_SHEET;
   else if (quoteNum.startsWith('SH-')) sheetName = TSHIRT_SHEET;
   else if (quoteNum.startsWith('MUG-')) sheetName = MUG_SHEET;
+  else if (quoteNum.startsWith('STK-')) sheetName = STICKER_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -2633,6 +2846,7 @@ else if (quoteNum.startsWith('BQ-')) ptCol = 28; // col AB
 else if (quoteNum.startsWith('FQ-')) ptCol = 22; // col V
 else if (quoteNum.startsWith('SH-')) ptCol = 30; // col AD
 else if (quoteNum.startsWith('MUG-')) ptCol = 24; // col X
+else if (quoteNum.startsWith('STK-')) ptCol = 23; // col W
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
@@ -2689,8 +2903,7 @@ function saveBookbindOrder(data) {
     'Target Pickup Date', 'Binding Type', 'With Lettering', 'Quantity', 'Pages',
     'Paper Size', 'Orientation', 'Binding Side', 'Cover Color',
     'Printed Materials Ready', 'Printing Needed', 'File Final for Printing', 'Rush Order',
-    'Binding Price/Unit', 'Rush Fee',
-    'Total Amount', 'Downpayment', 'Balance',
+    'Binding Price/Unit', 'Rush Fee', 
     'Special Instructions', 'Sales Staff',
     'Status', 'Approved By', 'Payment Term', 'Tax Type', 'Tax Amount',
     'Text Color', 'Font Style',
