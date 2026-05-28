@@ -693,7 +693,7 @@ function renderAllQuotes() {
     const date=q.date?new Date(q.date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
     let actions=`<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button>`;
     if (canApprove&&q.status==='Pending') actions+=` <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓</button> <button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕</button>`;
-    const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : String(q.quoteNum).startsWith('MUG-') ? ('Mug — '+(q.mugType||'')) : String(q.quoteNum).startsWith('STK-') ? ('Sticker — '+(q.stickerType||'')) : (q.signageType||'—');
+    const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : String(q.quoteNum).startsWith('MUG-') ? ('Mug — '+(q.mugType||'')) : String(q.quoteNum).startsWith('STK-') ? 'Sticker' : (q.signageType||'—');
     html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${qTypeLabel}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
   });
   html+='</tbody></table>';
@@ -823,8 +823,6 @@ function buildQuoteMessage(q) {
   } else if (qn.startsWith('STK-')) {
     title = '🏷️ STICKER PRINTING QUOTATION';
     specs = [
-      'Material: ' + (q.stickerType || (q.signageType||'').replace('Sticker — ','') || '—'),
-      'Layout: ' + (q.layout || '—'),
       'Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ' + (q.unit||'in') + (q.sqft ? ' = ' + q.sqft.toFixed(4) + ' sqft/pc' : ''),
       'Quantity: ' + (q.quantity||0) + ' pc(s)',
       q.ratePerSqft>0 ? 'Rate: ' + php(q.ratePerSqft) + ' / sqft' : '',
@@ -1002,8 +1000,6 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
   ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
   ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
 ` : String(q.quoteNum).startsWith('STK-') ? `
-  ${row('Material', '<span style="font-weight:600;">'+(q.stickerType || (q.signageType||'').replace('Sticker — ','') || '—')+'</span>')}
-  ${row('Layout', q.layout||'—')}
   ${row('Size', (q.width||'?')+' × '+(q.height||'?')+' '+(q.unit||'in')+(q.sqft?' = '+q.sqft.toFixed(4)+' sqft/pc':''))}
   ${row('Quantity', (q.quantity||0)+' pc(s)')}
   ${q.ratePerSqft>0?row('Rate', php(q.ratePerSqft)+' / sqft'):''}

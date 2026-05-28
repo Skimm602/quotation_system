@@ -2008,8 +2008,7 @@ function submitCustomerRequest(data) {
       if (data.numbering)   specs += ' | Numbering: ' + data.numbering;
       if (data.numbering === 'Yes' && data.startingNo) specs += ' (from ' + data.startingNo + ')';
     } else if (data.productType === 'sticker') {
-      specs = (data.stickerType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ' + (data.unit || 'in') + ' × ' + (data.quantity || 1) + ' pc(s)';
-      if (data.layout) specs += ' | Layout: ' + data.layout;
+      specs = 'Sticker · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ' + (data.unit || 'in') + ' × ' + (data.quantity || 1) + ' pc(s)';
     } else if (data.productType === 'signage') {
       specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ' + (data.unit || 'ft') + ' × ' + (data.quantity || 1) + ' pc(s)';
       if (data.lighting)  specs += ' | ' + data.lighting;
@@ -2348,38 +2347,27 @@ function saveMugOrder(data) {
 // ══════════════════════════════════════════════════════════════════
 function getStickerPricing() {
   const defaults = {
-    materials: {
-      'Vinyl Sticker':         { ratePerSqft: 80,  minCharge: 50 },
-      'Sticker Paper':         { ratePerSqft: 60,  minCharge: 40 },
-      'Transparent Sticker':   { ratePerSqft: 100, minCharge: 60 },
-      'Mirror Sticker':        { ratePerSqft: 120, minCharge: 80 },
-      'Holographic Sticker':   { ratePerSqft: 150, minCharge: 100 },
-    },
-    layouts: {
-      'Single (One per cut)':     0,
-      'Kiss-cut Sheet':           0.10,
-      'Die-cut Individual':       0.20,
-      'Sheet (Uncut)':           -0.10,
-    },
-    rushFee: 150, designFee: 250,
+    ratePerSqft: 100,
+    minCharge:   50,
+    rushFee:     150,
+    designFee:   250,
   };
   try {
     const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
     const sheet = ss.getSheetByName('Stickers') || ss.getSheetByName('Sticker');
     if (!sheet) return defaults;
-
     const rows = sheet.getDataRange().getValues();
-    const result = { materials: {}, layouts: defaults.layouts, rushFee: defaults.rushFee, designFee: defaults.designFee };
-
+    const result = Object.assign({}, defaults);
     for (let i = 1; i < rows.length; i++) {
-      const name = String(rows[i][0] || '').trim();
-      if (!name) continue;
-      const rate     = parseFloat(String(rows[i][1] || '').replace(/[^\d.]/g, '')) || 0;
-      const minChg   = parseFloat(String(rows[i][2] || '').replace(/[^\d.]/g, '')) || 0;
-      if (rate > 0) result.materials[name] = { ratePerSqft: rate, minCharge: minChg };
+      const key = String(rows[i][0] || '').trim().toLowerCase();
+      const val = parseFloat(String(rows[i][1] || '').replace(/[^\d.]/g, '')) || 0;
+      if (!key || !val) continue;
+      if (/rate.*sqft|sqft.*rate|per.*sqft/.test(key)) result.ratePerSqft = val;
+      else if (/min.*charge|minimum/.test(key))        result.minCharge   = val;
+      else if (/rush/.test(key))                       result.rushFee     = val;
+      else if (/design/.test(key))                     result.designFee   = val;
     }
-
-    return Object.keys(result.materials).length ? result : defaults;
+    return result;
   } catch(e) {
     Logger.log('getStickerPricing error: ' + e);
     return defaults;

@@ -133,7 +133,7 @@ const d = {
   signageTransport:'', signageTransportLocation:'', signageTransportFee:0, signageUnit:'ft',
   signageElectrical:[],
   // sticker
-  stickerType:'', stickerWidth:'', stickerHeight:'', stickerUnit:'in',
+  stickerWidth:'', stickerHeight:'', stickerUnit:'in',
   stickerQty:1, stickerRush:'No', stickerDesign:'No',
 };
 
@@ -266,16 +266,13 @@ function stickerToFeet(val, unit) {
   return n; // ft
 }
 function calcStickerTotal() {
-  const p = PRICING.sticker || {};
-  const mats = p.materials || {};
-  const mat  = mats[d.stickerType];
-  if (!mat) return 0;
+  const p    = PRICING.sticker || {};
   const w    = stickerToFeet(d.stickerWidth,  d.stickerUnit);
   const h    = stickerToFeet(d.stickerHeight, d.stickerUnit);
   const sqft = w * h;
   if (!sqft) return 0;
   const qty  = parseInt(d.stickerQty) || 1;
-  const unit = Math.max(mat.ratePerSqft * sqft, mat.minCharge || 0);
+  const unit = Math.max((p.ratePerSqft || 100) * sqft, p.minCharge || 0);
   const rush = d.stickerRush   === 'Yes' ? (p.rushFee   || 150) : 0;
   const des  = d.stickerDesign === 'Yes' ? (p.designFee || 250) : 0;
   return (unit * qty) + rush + des;
@@ -399,35 +396,10 @@ function renderSpecs() {
 
 // ── STICKER SPECS ─────────────────────────────────────────────────
 function renderStickerSpecs() {
-  const p     = PRICING.sticker || {};
-  const mats  = p.materials || {};
-  const matKeys = Object.keys(mats).length
-    ? Object.keys(mats)
-    : ['Vinyl Sticker','Sticker Paper','Transparent Sticker','Mirror Sticker','Holographic Sticker'];
-
-  const matIcons = { 'Vinyl Sticker':'🟦','Sticker Paper':'📄','Transparent Sticker':'🪟','Mirror Sticker':'🪞','Holographic Sticker':'🌈' };
-
-  const matCards = matKeys.map(k => {
-    const m = mats[k] || {};
-    const icon = matIcons[k] || '🏷️';
-    const sel  = d.stickerType === k;
-    return `<div class="opt-card${sel?' active':''}" onclick="d.stickerType='${k.replace(/'/g,"\\'")}';renderForm();">
-      <input type="radio" ${sel?'checked':''} readonly>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:600;">${icon} ${esc(k)}</div>
-        ${m.ratePerSqft ? `<div style="font-size:11px;color:#888;margin-top:1px;">₱${m.ratePerSqft.toLocaleString()}/sqft</div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-
   const unitOpts = ['in','ft','cm','m'].map(u => `<option ${d.stickerUnit===u?'selected':''}>${u}</option>`).join('');
 
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
-      <div>
-        <label class="field-label" style="margin-bottom:8px;">Sticker Material / Type *</label>
-        <div style="display:flex;flex-direction:column;gap:6px;">${matCards}</div>
-      </div>
       <div>
         <label class="field-label">Sticker Size *</label>
         <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
@@ -1264,7 +1236,7 @@ function renderReview() {
     if (d.receiptNumbering === 'Yes' && d.receiptStartNo) specSummary += ` (from ${esc(d.receiptStartNo)})`;
     if (d.receiptRush === 'Yes') specSummary += ' · Rush';
   } else if (selectedProduct === 'sticker') {
-    specSummary = `${esc(d.stickerType)||'—'} · ${d.stickerWidth||'?'} × ${d.stickerHeight||'?'} ${esc(d.stickerUnit)} × ${d.stickerQty} pc(s)`;
+    specSummary = `${d.stickerWidth||'?'} × ${d.stickerHeight||'?'} ${esc(d.stickerUnit)} × ${d.stickerQty} pc(s)`;
     if (d.stickerRush   === 'Yes') specSummary += ' · Rush';
     if (d.stickerDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'signage') {
@@ -1380,7 +1352,6 @@ function nextStep() {
       d.stickerWidth  = v('stk_w')   || d.stickerWidth;
       d.stickerHeight = v('stk_h')   || d.stickerHeight;
       d.stickerQty    = parseInt(v('stk_qty')) || d.stickerQty;
-      if (!d.stickerType) { toast('Please select a sticker material/type.','error'); return; }
       if (!d.stickerWidth || !d.stickerHeight) { toast('Please enter the sticker size (width × height).','error'); return; }
     }
     if (selectedProduct === 'signage') {
@@ -1548,20 +1519,20 @@ function submitRequest() {
 
   if (selectedProduct === 'sticker') {
     const p    = PRICING.sticker || {};
-    const mat  = (p.materials || {})[d.stickerType] || {};
     const w    = stickerToFeet(d.stickerWidth,  d.stickerUnit);
     const h    = stickerToFeet(d.stickerHeight, d.stickerUnit);
     const sqft = w * h;
     const qty  = parseInt(d.stickerQty) || 1;
-    const unit = Math.max((mat.ratePerSqft || 0) * sqft, mat.minCharge || 0);
+    const rate = p.ratePerSqft || 100;
+    const unit = Math.max(rate * sqft, p.minCharge || 0);
     const base = unit * qty;
     const rush = d.stickerRush   === 'Yes' ? (p.rushFee   || 150) : 0;
     const des  = d.stickerDesign === 'Yes' ? (p.designFee || 250) : 0;
     Object.assign(payload, {
-      stickerType: d.stickerType, layout: '',
+      stickerType: '', layout: '',
       width: parseFloat(d.stickerWidth)||0, height: parseFloat(d.stickerHeight)||0, unit: d.stickerUnit,
       sqft: sqft, quantity: qty,
-      ratePerSqft: mat.ratePerSqft || 0, unitPrice: unit,
+      ratePerSqft: rate, unitPrice: unit,
       baseAmount: base, rushOrder: d.stickerRush, rushFee: rush,
       designService: d.stickerDesign, designFee: des,
       totalAmount: base + rush + des,
@@ -1645,7 +1616,7 @@ function buildMessengerText(qn) {
     if (d.receiptNumbering === 'Yes' && d.receiptStartNo) specsLine += '\nStarting No: ' + d.receiptStartNo;
     if (d.receiptRush === 'Yes') specsLine += '\nRush Order: Yes';
   } else if (selectedProduct === 'sticker') {
-    specsLine = d.stickerType + '\nSize: ' + d.stickerWidth + ' × ' + d.stickerHeight + ' ' + d.stickerUnit + ' × ' + d.stickerQty + ' pc(s)';
+    specsLine = 'Size: ' + d.stickerWidth + ' × ' + d.stickerHeight + ' ' + d.stickerUnit + ' × ' + d.stickerQty + ' pc(s)';
     if (d.stickerRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.stickerDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'signage') {

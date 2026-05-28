@@ -62,13 +62,6 @@ textarea.field-input { min-height: 90px; resize: vertical; }
 .section-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.05em; color: #0A0A0A; line-height: 1; }
 .section-title span { color: #E8151B; }
 .price-badge { display: inline-flex; align-items: center; gap: 5px; background: #FFF0F0; color: #E8151B; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 2px; border: 1px solid #FFCCCC; }
-.mat-card { border: 1px solid #E0E0E0; border-radius: 3px; padding: 14px 10px; cursor: pointer; transition: all 0.15s; text-align: center; background: #FAFAFA; }
-.mat-card:hover { border-color: #E8151B; background: #FFF8F8; }
-.mat-card.selected { border-color: #E8151B; background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
-.layout-card { border: 1px solid #E0E0E0; border-radius: 3px; padding: 12px 14px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 10px; background: #FAFAFA; }
-.layout-card:hover { border-color: #E8151B; background: #FFF8F8; }
-.layout-card.selected { border-color: #E8151B; background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
-.layout-card input[type=radio] { accent-color: #E8151B; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -122,21 +115,10 @@ function goToDashboard() {
 
 // ─── PRICING ──────────────────────────────────────────────────────
 let PRICING = {
-  materials: {
-    'Vinyl Sticker':         { ratePerSqft: 80,  minCharge: 50 },
-    'Sticker Paper':         { ratePerSqft: 60,  minCharge: 40 },
-    'Transparent Sticker':   { ratePerSqft: 100, minCharge: 60 },
-    'Mirror Sticker':        { ratePerSqft: 120, minCharge: 80 },
-    'Holographic Sticker':   { ratePerSqft: 150, minCharge: 100 },
-  },
-  layouts: {
-    'Single (One per cut)':     0,
-    'Kiss-cut Sheet':           0.10,
-    'Die-cut Individual':       0.20,
-    'Sheet (Uncut)':           -0.10,
-  },
-  rushFee:   150,
-  designFee: 250,
+  ratePerSqft: 100,
+  minCharge:   50,
+  rushFee:     150,
+  designFee:   250,
 };
 let pricesLoaded = false;
 
@@ -144,10 +126,10 @@ function loadPricing() {
   google.script.run
     .withSuccessHandler(function(p) {
       if (p) {
-        if (p.materials && Object.keys(p.materials).length) PRICING.materials = p.materials;
-        if (p.layouts && Object.keys(p.layouts).length) PRICING.layouts = p.layouts;
-        if (p.rushFee   > 0) PRICING.rushFee   = p.rushFee;
-        if (p.designFee > 0) PRICING.designFee = p.designFee;
+        if (p.ratePerSqft > 0) PRICING.ratePerSqft = p.ratePerSqft;
+        if (p.minCharge   > 0) PRICING.minCharge   = p.minCharge;
+        if (p.rushFee     > 0) PRICING.rushFee     = p.rushFee;
+        if (p.designFee   > 0) PRICING.designFee   = p.designFee;
       }
       pricesLoaded = true;
       renderBody();
@@ -176,7 +158,6 @@ let step = 0;
 
 const d = {
   clientName: '', contact: '', email: '', dateNeeded: '',
-  stickerType:   '',
   width:         '',
   height:        '',
   unit:          'in',
@@ -188,15 +169,12 @@ const d = {
 };
 
 // ─── CALCULATIONS ─────────────────────────────────────────────────
-function getMaterial() { return (PRICING.materials || {})[d.stickerType] || null; }
-function ratePerSqft() { const m = getMaterial(); return m ? m.ratePerSqft : 0; }
-function minCharge()   { const m = getMaterial(); return m ? (m.minCharge || 0) : 0; }
+function ratePerSqft() { return PRICING.ratePerSqft || 0; }
+function minCharge()   { return PRICING.minCharge   || 0; }
 function unitPrice() {
-  const rate = ratePerSqft();
   const sqft = calcSqft();
-  const raw  = rate * sqft;
-  const mc   = minCharge();
-  return Math.max(raw, mc);
+  const raw  = ratePerSqft() * sqft;
+  return Math.max(raw, minCharge());
 }
 function baseAmt()      { return unitPrice() * (parseInt(d.quantity) || 0); }
 function rushFeeAmt()   { return d.rushOrder    === 'Yes' ? (PRICING.rushFee   || 150) : 0; }
@@ -229,21 +207,6 @@ const STEPS = [
   { label: 'Sticker Specs', sub: 'Material, size & quantity'   },
   { label: 'Quotation',     sub: 'Full breakdown & summary'    },
 ];
-
-const MATERIAL_ICONS = {
-  'Vinyl Sticker':       '🟦',
-  'Sticker Paper':       '📄',
-  'Transparent Sticker': '🪟',
-  'Mirror Sticker':      '🪞',
-  'Holographic Sticker': '🌈',
-};
-
-const LAYOUT_ICONS = {
-  'Single (One per cut)': '⬜',
-  'Kiss-cut Sheet':       '🔲',
-  'Die-cut Individual':   '✂️',
-  'Sheet (Uncut)':        '📋',
-};
 
 function renderStepper() {
   const el = document.getElementById('stepper-wrap');
@@ -300,39 +263,24 @@ function renderBody() {
 
   // ── STEP 1: STICKER SPECS ───────────────────────────────────────
   else if (step === 1) {
-    const matKeys  = Object.keys(PRICING.materials || {});
-    const matCards = matKeys.length
-      ? matKeys.map(function(k) {
-          const sel  = d.stickerType === k;
-          const icon = MATERIAL_ICONS[k] || '🏷️';
-          const mat  = (PRICING.materials || {})[k] || {};
-          return `<div class="mat-card ${sel ? 'selected' : ''}" onclick="d.stickerType='${k.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';renderBody();">
-            <div style="font-size:26px;margin-bottom:5px;">${icon}</div>
-            <div style="font-size:11px;font-weight:700;color:${sel ? '#E8151B' : '#0A0A0A'};line-height:1.3;margin-bottom:5px;">${esc(k)}</div>
-            <div class="price-badge" style="justify-content:center;font-size:10px;">${php(mat.ratePerSqft || 0)}/sqft</div>
-          </div>`;
-        }).join('')
-      : `<div style="padding:14px;background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;font-size:12px;color:#8A6500;grid-column:1/-1;">No sticker materials loaded. Using built-in defaults.</div>`;
-
     const sqft = calcSqft();
     const up   = unitPrice();
     const qty  = parseInt(d.quantity) || 1;
-    const mat  = getMaterial();
-    const canPreview = d.stickerType && sqft > 0 && qty > 0 && up > 0;
+    const mc   = minCharge();
+    const canPreview = sqft > 0 && qty > 0 && up > 0;
     const sizePreview = canPreview
       ? `<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">
           <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Sticker Cost</div>
           <div style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:#E8151B;letter-spacing:0.05em;line-height:1;">${php(up * qty)}</div>
-          <div style="font-size:12px;color:#999;margin-top:5px;">${qty} pc(s) × ${php(up)}/pc · ${sqft.toFixed(3)} sqft/pc${mat && (up === mat.minCharge) ? ' (min. charge applied)' : ''}</div>
+          <div style="font-size:12px;color:#999;margin-top:5px;">${qty} pc(s) × ${php(up)}/pc · ${sqft.toFixed(3)} sqft/pc${(up === mc && mc > 0) ? ' (min. charge applied)' : ''}</div>
         </div>`
       : '';
 
     el.innerHTML = `
       <div class="flex flex-col gap-6">
 
-        <div>
-          <label class="field-label" style="margin-bottom:10px;">Sticker Material / Type</label>
-          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">${matCards}</div>
+        <div style="background:#F9F9F9;border:1px solid #E5E5E5;border-radius:3px;padding:10px 14px;font-size:12px;color:#666;">
+          <strong style="color:#0A0A0A;">Rate:</strong> ${php(ratePerSqft())}/sqft${mc > 0 ? ' · <strong style="color:#0A0A0A;">Min. charge:</strong> ' + php(mc) + '/pc' : ''}
         </div>
 
         <div>
@@ -407,15 +355,15 @@ function renderBody() {
 
       <table class="q-table">
         <tr><td colspan="2" class="sec-label">STICKER SPECIFICATIONS</td></tr>
-        <tr><td>Material / Type</td><td>${esc(d.stickerType) || '—'}</td></tr>
         <tr><td>Size</td><td>${esc(d.width) || '?'} × ${esc(d.height) || '?'} ${esc(d.unit)} (${sqft.toFixed(4)} sqft/pc)</td></tr>
+        <tr><td>Rate</td><td>${php(ratePerSqft())} / sqft</td></tr>
         <tr><td>Quantity</td><td>${qty} pc(s)</td></tr>
         <tr><td>Rush Order</td><td>${d.rushOrder || '—'}</td></tr>
         <tr><td>Design Service</td><td>${d.designService || '—'}</td></tr>
 
         <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
         <tr>
-          <td>${esc(d.stickerType || 'Sticker')} × ${qty} @ ${php(up)}/pc</td>
+          <td>Sticker × ${qty} @ ${php(up)}/pc</td>
           <td>${php(up * qty)}</td>
         </tr>
         ${rush > 0 ? `<tr><td>Rush Fee</td><td>${php(rush)}</td></tr>` : ''}
@@ -436,19 +384,19 @@ function updateSizePreview() {
   const sqft = calcSqft();
   const up   = unitPrice();
   const qty  = parseInt(d.quantity) || 1;
-  const mat  = getMaterial();
+  const mc   = minCharge();
 
   const info = document.getElementById('size-info');
   if (info) info.innerHTML = sqft > 0 ? 'Area per piece: <strong>' + sqft.toFixed(4) + ' sqft</strong>' : 'Enter width and height to compute area.';
 
   const prev = document.getElementById('cost-preview');
   if (!prev) return;
-  if (d.stickerType && sqft > 0 && qty > 0 && up > 0) {
+  if (sqft > 0 && qty > 0 && up > 0) {
     prev.innerHTML =
       '<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">' +
         '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Sticker Cost</div>' +
         '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:34px;color:#E8151B;letter-spacing:0.05em;line-height:1;">' + php(up * qty) + '</div>' +
-        '<div style="font-size:12px;color:#999;margin-top:5px;">' + qty + ' pc(s) \xd7 ' + php(up) + '/pc · ' + sqft.toFixed(3) + ' sqft/pc' + (mat && (up === mat.minCharge) ? ' (min. charge applied)' : '') + '</div>' +
+        '<div style="font-size:12px;color:#999;margin-top:5px;">' + qty + ' pc(s) \xd7 ' + php(up) + '/pc · ' + sqft.toFixed(3) + ' sqft/pc' + ((up === mc && mc > 0) ? ' (min. charge applied)' : '') + '</div>' +
       '</div>';
   } else {
     prev.innerHTML = '';
@@ -518,7 +466,6 @@ function next() {
     }
   }
   if (step === 1) {
-    if (!d.stickerType) { showToast('⚠ Please select a Sticker Material / Type.', 'error'); return; }
     if (!parseFloat(d.width) || !parseFloat(d.height)) { showToast('⚠ Please enter the sticker size (width × height).', 'error'); return; }
     if (!d.quantity || d.quantity < 1) { showToast('⚠ Quantity must be at least 1.', 'error'); return; }
     if (!d.rushOrder)     { showToast('⚠ Please indicate if this is a Rush Order.', 'error'); return; }
@@ -539,7 +486,6 @@ function render() {
 function resetForm() {
   if (!confirm('Start a new quotation? Current data will be cleared.')) return;
   d.clientName = ''; d.contact = ''; d.email = ''; d.dateNeeded = '';
-  d.stickerType = '';
   d.width = ''; d.height = ''; d.unit = 'in';
   d.quantity = 1;
   d.rushOrder = ''; d.designService = '';
@@ -581,8 +527,8 @@ function buildMessengerText() {
   lines.push('📅 Date Needed: ' + dateStr);
   lines.push('');
   lines.push('📐 SPECIFICATIONS');
-  lines.push('• Material: ' + (d.stickerType || '—'));
   lines.push('• Size: ' + (d.width || '?') + ' × ' + (d.height || '?') + ' ' + d.unit + ' (' + sqft.toFixed(4) + ' sqft/pc)');
+  lines.push('• Rate: ' + php(ratePerSqft()) + ' / sqft');
   lines.push('• Quantity: ' + qty + ' pc(s)');
   lines.push('• Unit Price: ' + php(up) + ' / pc');
   lines.push('• Rush Order: ' + (d.rushOrder || 'No'));
@@ -634,7 +580,7 @@ function saveToSheet() {
     contact:       d.contact,
     email:         d.email,
     dateNeeded:    d.dateNeeded,
-    stickerType:   d.stickerType,
+    stickerType:   '',
     layout:        '',
     width:         parseFloat(d.width)  || 0,
     height:        parseFloat(d.height) || 0,
