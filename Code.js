@@ -2120,8 +2120,21 @@ function submitCustomerRequest(data) {
 
     sheet.getRange(sheet.getLastRow(), 11, 1, 3).setNumberFormat('₱#,##0.00');
 
+    // ── Decode optional proof-of-payment attachment ──
+    let proofBlob = null;
+    if (data.proofFileBase64 && data.proofFileName) {
+      try {
+        const bytes = Utilities.base64Decode(data.proofFileBase64);
+        proofBlob = Utilities.newBlob(
+          bytes,
+          data.proofFileMime || 'application/octet-stream',
+          data.proofFileName
+        );
+      } catch(e) { Logger.log('Proof of payment decode error: ' + e.message); }
+    }
+
     // ── Notify Ormoc Printshoppe of every new customer quote submission ──
-    try { notifyCustomerSubmission_(reqNum, type, data, specs, total); } catch(_) {}
+    try { notifyCustomerSubmission_(reqNum, type, data, specs, total, proofBlob); } catch(_) {}
 
     return reqNum;
   } catch(e) {
@@ -2193,7 +2206,7 @@ function testEmailNotif() {
 // ══════════════════════════════════════════════════════════════════
 //  NOTIFY ORMOC PRINTSHOPPE — sent after every customer submission
 // ══════════════════════════════════════════════════════════════════
-function notifyCustomerSubmission_(reqNum, productType, data, specs, total) {
+function notifyCustomerSubmission_(reqNum, productType, data, specs, total, proofBlob) {
   try {
     const client  = String(data.clientName || '—');
     const contact = String(data.contact    || '—');
@@ -2202,8 +2215,9 @@ function notifyCustomerSubmission_(reqNum, productType, data, specs, total) {
     const dateN   = String(data.dateNeeded || '—');
     const stamp   = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Manila', 'yyyy-MM-dd HH:mm');
     const totalPHP = '₱' + (parseFloat(total) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const hasProof = !!(proofBlob && proofBlob.getName);
 
-    const subject = '🆕 New Customer Quote — ' + productType + ' — ' + client + ' (' + reqNum + ')';
+    const subject = (hasProof ? '💰 ' : '🆕 ') + 'New Customer Quote — ' + productType + ' — ' + client + ' (' + reqNum + ')';
     const body =
       'A new customer quote request was submitted via the online portal.\n\n' +
       '── Reference ────────────────────────────\n' +
@@ -2220,14 +2234,18 @@ function notifyCustomerSubmission_(reqNum, productType, data, specs, total) {
       '── Estimate ─────────────────────────────\n' +
       'Total: ' + totalPHP + '\n' +
       (notes ? '\nNotes:\n' + notes + '\n' : '') +
+      (hasProof ? '\n📎 Proof of Payment attached: ' + proofBlob.getName() + '\n' : '\n(No proof of payment uploaded.)\n') +
       '\nOpen the Dashboard → Customer Quotes to follow up.';
 
-    MailApp.sendEmail({
+    const mailOpts = {
       to:      'ormocprintshoppe@gmail.com',
       subject: subject,
       body:    body,
       replyTo: (email && /@/.test(email)) ? email : undefined,
-    });
+    };
+    if (hasProof) mailOpts.attachments = [proofBlob];
+
+    MailApp.sendEmail(mailOpts);
   } catch(e) {
     Logger.log('notifyCustomerSubmission_ error: ' + e.message);
   }

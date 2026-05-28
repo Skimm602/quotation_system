@@ -74,6 +74,7 @@ const d = {
   width:'', height:'', quantity:1, unit:'ft',
   eyelet:'No Eyelet',
   rush:false, designCharge:false,
+  proofFile: { name: '', mime: '', base64: '' },
 };
 
 const UNIT_TO_FT = { ft:1, m:3.28084, cm:0.0328084, in:0.0833333 };
@@ -290,7 +291,72 @@ function renderStep4() {
       <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:12px 14px;font-size:12px;color:#7A5500;">
         ℹ️ This is an <strong>estimate</strong>. Our team will contact you at <strong>${esc(d.contact)}</strong> to confirm.
       </div>
+
+      <div style="background:#F0F7FF;border:1px solid #C5DBFF;border-radius:4px;padding:14px;">
+        <div style="font-size:13px;color:#1A4A9A;margin-bottom:6px;font-weight:700;">
+          💳 Proof of Payment <span style="color:#7A8FB0;font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span>
+        </div>
+        <div style="font-size:11px;color:#5A6FA0;margin-bottom:10px;line-height:1.5;">
+          Already paid the downpayment? Upload your receipt/screenshot to fast-track your order. Max 5&nbsp;MB.
+        </div>
+        <button type="button" onclick="pickProofFile()"
+          style="width:100%;padding:11px;background:#fff;border:1px dashed #6090E0;border-radius:4px;color:#1A4A9A;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          ${d.proofFile && d.proofFile.name ? '✓ ' + esc(d.proofFile.name) + ' — tap to change' : '📁 Choose Proof of Payment'}
+        </button>
+        ${d.proofFile && d.proofFile.name ? `
+          <button type="button" onclick="clearProofFile()"
+            style="width:100%;margin-top:6px;padding:7px;background:transparent;border:none;color:#888;font-size:11px;font-weight:600;cursor:pointer;text-decoration:underline;">
+            Remove attachment
+          </button>` : ''}
+        <div id="proof_status" style="font-size:11px;margin-top:8px;text-align:center;color:#999;"></div>
+      </div>
     </div>`;
+}
+
+function pickProofFile() {
+  try {
+    const input = document.createElement('input');
+    input.type   = 'file';
+    input.accept = 'image/*,application/pdf';
+    input.style.display = 'none';
+    input.onchange = function() { handleProofFile(input); };
+    document.body.appendChild(input);
+    input.click();
+    setTimeout(function(){ try{ input.remove(); }catch(_){} }, 60000);
+  } catch (e) {
+    const el = document.getElementById('proof_status');
+    if (el) { el.textContent = '⚠ Could not open file picker.'; el.style.color = '#B00E12'; }
+  }
+}
+
+function handleProofFile(input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('proof_status');
+  const setStatus = function(msg, color) {
+    if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || '#999'; }
+  };
+  const MAX = 5 * 1024 * 1024;
+  if (file.size > MAX) { setStatus('⚠ File too large (max 5 MB).', '#B00E12'); input.value = ''; return; }
+  setStatus('⏳ Reading ' + file.name + '…', '#7A5500');
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const dataUrl = String((e && e.target && e.target.result) || '');
+      const base64  = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',')[1] : dataUrl;
+      d.proofFile = { name: file.name, mime: file.type || 'application/octet-stream', base64: base64 };
+      setStatus('✓ Attached — will be sent with your submission.', '#1A6A3A');
+      render();
+    } catch (err2) { setStatus('⚠ ' + (err2 && err2.message || 'Read failed.'), '#B00E12'); }
+  };
+  reader.onerror = function() { setStatus('⚠ Could not read the file.', '#B00E12'); };
+  reader.readAsDataURL(file);
+}
+
+function clearProofFile() {
+  d.proofFile = { name: '', mime: '', base64: '' };
+  render();
 }
 
 
@@ -337,6 +403,7 @@ function submitRequest() {
       d.name=''; d.contact=''; d.email=''; d.dateNeeded=''; d.notes='';
       d.width=''; d.height=''; d.quantity=1; d.unit='ft';
       d.eyelet='No Eyelet'; d.rush=false; d.designCharge=false;
+      d.proofFile = { name: '', mime: '', base64: '' };
       render();
       window.scrollTo({top:0,behavior:'smooth'});
       toastSuccess('Quote submitted!' + (qn ? ' Ref: ' + qn : ''));
@@ -360,6 +427,9 @@ function submitRequest() {
       designService: d.designCharge ? 'Yes' : 'No',
       ratePerSqft:   p.ratePerSqft || 50,
       totalAmount:   total,
+      proofFileName:   (d.proofFile && d.proofFile.name)   || '',
+      proofFileMime:   (d.proofFile && d.proofFile.mime)   || '',
+      proofFileBase64: (d.proofFile && d.proofFile.base64) || '',
     });
 }
 
