@@ -2409,27 +2409,54 @@ function saveMugOrder(data) {
 // ══════════════════════════════════════════════════════════════════
 function getStickerPricing() {
   const defaults = {
-    ratePerSqft: 100,
-    minCharge:   50,
-    rushFee:     150,
-    designFee:   250,
+    materials: {
+      'Sticker Paper':  { base: { rate: 80,  unit: 'sheet', range: [80,80]   }, preCut: { rate: 150, unit: 'sheet', range: [125,150] } },
+      'Vinyl':          { base: { rate: 80,  unit: 'sqft',  range: [80,80]   }, preCut: { rate: 150, unit: 'sqft',  range: [120,150] } },
+      'Clear':          { base: { rate: 80,  unit: 'sqft',  range: [80,80]   }, preCut: { rate: 150, unit: 'sqft',  range: [125,150] } },
+      'Frosted':        { base: { rate: 150, unit: 'sheet', range: [150,150] }, preCut: null },
+      'Reflectorized':  { base: { rate: 175, unit: 'sheet', range: [175,175] }, preCut: { rate: 225, unit: 'sqft',  range: [225,225] } },
+    },
+    rushFee:   150,
+    designFee: 250,
   };
+
+  // Parse a price cell like "₱80/sheet", "₱125-150/sq.ft." into {rate, unit, range}.
+  // Uses the upper bound of any range so we don't underquote.
+  function parseCell(raw) {
+    const s = String(raw || '').trim();
+    if (!s || s === '-' || s === '—') return null;
+    const unit = /sq\.?\s*ft|sqft/i.test(s) ? 'sqft'
+               : /sheet/i.test(s)            ? 'sheet'
+               : null;
+    if (!unit) return null;
+    const nums = (s.match(/\d+(?:\.\d+)?/g) || []).map(Number).filter(n => n > 0);
+    if (!nums.length) return null;
+    const lo = Math.min.apply(null, nums);
+    const hi = Math.max.apply(null, nums);
+    return { rate: hi, unit: unit, range: [lo, hi] };
+  }
+
   try {
     const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
-    const sheet = ss.getSheetByName('Stickers') || ss.getSheetByName('Sticker');
+    const sheet = ss.getSheetByName('Sticker') || ss.getSheetByName('Stickers');
     if (!sheet) return defaults;
+
     const rows = sheet.getDataRange().getValues();
-    const result = Object.assign({}, defaults);
+    if (rows.length < 2) return defaults;
+
+    const materials = {};
+    // Skip header row (row 0)
     for (let i = 1; i < rows.length; i++) {
-      const key = String(rows[i][0] || '').trim().toLowerCase();
-      const val = parseFloat(String(rows[i][1] || '').replace(/[^\d.]/g, '')) || 0;
-      if (!key || !val) continue;
-      if (/rate.*sqft|sqft.*rate|per.*sqft/.test(key)) result.ratePerSqft = val;
-      else if (/min.*charge|minimum/.test(key))        result.minCharge   = val;
-      else if (/rush/.test(key))                       result.rushFee     = val;
-      else if (/design/.test(key))                     result.designFee   = val;
+      const name = String(rows[i][0] || '').trim();
+      if (!name) continue;
+      const base   = parseCell(rows[i][1]);
+      const preCut = parseCell(rows[i][2]);
+      if (!base && !preCut) continue;
+      materials[name] = { base: base, preCut: preCut };
     }
-    return result;
+
+    if (!Object.keys(materials).length) return defaults;
+    return { materials: materials, rushFee: defaults.rushFee, designFee: defaults.designFee };
   } catch(e) {
     Logger.log('getStickerPricing error: ' + e);
     return defaults;
@@ -2446,9 +2473,9 @@ function saveStickerOrder(data) {
 
   const headers = [
     'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
-    'Sticker Type', 'Layout',
+    'Sticker Type', 'Pre-Cut',
     'Width', 'Height', 'Unit', 'Area (sqft)', 'Quantity',
-    'Rate/sqft', 'Base Amount',
+    'Rate', 'Base Amount',
     'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
     'Total Amount',
     'Special Instructions', 'Sales Staff',
