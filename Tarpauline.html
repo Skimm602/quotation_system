@@ -916,20 +916,9 @@ function saveQuotation() {
   google.script.run
     .withSuccessHandler(function(quoteNum) {
       document.getElementById('loadingOverlay').style.display = 'none';
-      document.getElementById('stepper-wrap').style.display = 'none';
-      document.getElementById('formCard').innerHTML = `
-        <div style="padding:60px 40px;text-align:center;">
-          <div style="font-size:56px;margin-bottom:16px;">✅</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.05em;color:#0A0A0A;margin-bottom:8px;">QUOTATION SAVED!</div>
-          <div style="background:#F5F5F5;display:inline-block;padding:6px 22px;border-radius:20px;font-size:13px;color:#888;margin-bottom:20px;border:1px solid #E5E5E5;">
-            Reference: <strong style="color:#0A0A0A;">${quoteNum}</strong>
-          </div>
-          <p style="font-size:14px;color:#666;margin-bottom:32px;line-height:1.7;">Tarpaulin quotation has been saved successfully.</p>
-          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-            <button onclick="startNewOrder()" class="btn-save">+ NEW ORDER</button>
-            <button onclick="goToDashboard()" class="btn-ghost">← DASHBOARD</button>
-          </div>
-        </div>`;
+      showToast('✓ Saved — ' + quoteNum, 'success');
+      btn.classList.remove('loading'); btn.textContent = '✓ SAVED';
+      btn.style.background = '#0A2A1A'; btn.style.borderColor = '#1A6A3A'; btn.style.color = '#4AE89A';
     })
     .withFailureHandler(function(err) {
       document.getElementById('loadingOverlay').style.display = 'none';
