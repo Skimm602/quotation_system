@@ -177,7 +177,6 @@ let step = 0;
 const d = {
   clientName: '', contact: '', email: '', dateNeeded: '',
   stickerType:   '',
-  layout:        '',
   width:         '',
   height:        '',
   unit:          'in',
@@ -190,18 +189,12 @@ const d = {
 
 // ─── CALCULATIONS ─────────────────────────────────────────────────
 function getMaterial() { return (PRICING.materials || {})[d.stickerType] || null; }
-function getLayoutAdj() {
-  if (!d.layout) return 0;
-  const v = (PRICING.layouts || {})[d.layout];
-  return typeof v === 'number' ? v : 0;
-}
 function ratePerSqft() { const m = getMaterial(); return m ? m.ratePerSqft : 0; }
 function minCharge()   { const m = getMaterial(); return m ? (m.minCharge || 0) : 0; }
 function unitPrice() {
   const rate = ratePerSqft();
   const sqft = calcSqft();
-  const adj  = 1 + getLayoutAdj();
-  const raw  = rate * sqft * adj;
+  const raw  = rate * sqft;
   const mc   = minCharge();
   return Math.max(raw, mc);
 }
@@ -232,9 +225,9 @@ function setTaxType(key) { d.taxType = key; renderBody(); }
 
 // ─── STEPS ────────────────────────────────────────────────────────
 const STEPS = [
-  { label: 'Client Info',   sub: 'Name, contact & pickup date'  },
-  { label: 'Sticker Specs', sub: 'Material, size, layout & qty' },
-  { label: 'Quotation',     sub: 'Full breakdown & summary'     },
+  { label: 'Client Info',   sub: 'Name, contact & pickup date' },
+  { label: 'Sticker Specs', sub: 'Material, size & quantity'   },
+  { label: 'Quotation',     sub: 'Full breakdown & summary'    },
 ];
 
 const MATERIAL_ICONS = {
@@ -321,28 +314,11 @@ function renderBody() {
         }).join('')
       : `<div style="padding:14px;background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;font-size:12px;color:#8A6500;grid-column:1/-1;">No sticker materials loaded. Using built-in defaults.</div>`;
 
-    const layoutKeys  = Object.keys(PRICING.layouts || {});
-    const layoutCards = layoutKeys.length
-      ? layoutKeys.map(function(k) {
-          const sel  = d.layout === k;
-          const icon = LAYOUT_ICONS[k] || '🔳';
-          const adj  = (PRICING.layouts || {})[k] || 0;
-          const adjLbl = adj === 0 ? 'No surcharge' : (adj > 0 ? '+' + (adj * 100).toFixed(0) + '%' : (adj * 100).toFixed(0) + '%');
-          return `<div class="layout-card ${sel ? 'selected' : ''}" onclick="d.layout='${k.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';renderBody();">
-            <input type="radio" ${sel ? 'checked' : ''} readonly>
-            <div style="flex:1;">
-              <div style="font-size:13px;font-weight:600;color:${sel ? '#E8151B' : '#0A0A0A'};">${icon} ${esc(k)}</div>
-              <div style="font-size:11px;color:#999;margin-top:1px;">${adjLbl}</div>
-            </div>
-          </div>`;
-        }).join('')
-      : '';
-
     const sqft = calcSqft();
     const up   = unitPrice();
     const qty  = parseInt(d.quantity) || 1;
     const mat  = getMaterial();
-    const canPreview = d.stickerType && d.layout && sqft > 0 && qty > 0 && up > 0;
+    const canPreview = d.stickerType && sqft > 0 && qty > 0 && up > 0;
     const sizePreview = canPreview
       ? `<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">
           <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Sticker Cost</div>
@@ -357,11 +333,6 @@ function renderBody() {
         <div>
           <label class="field-label" style="margin-bottom:10px;">Sticker Material / Type</label>
           <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">${matCards}</div>
-        </div>
-
-        <div>
-          <label class="field-label" style="margin-bottom:10px;">Layout / Cutting Style</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${layoutCards}</div>
         </div>
 
         <div>
@@ -437,7 +408,6 @@ function renderBody() {
       <table class="q-table">
         <tr><td colspan="2" class="sec-label">STICKER SPECIFICATIONS</td></tr>
         <tr><td>Material / Type</td><td>${esc(d.stickerType) || '—'}</td></tr>
-        <tr><td>Layout</td><td>${esc(d.layout) || '—'}</td></tr>
         <tr><td>Size</td><td>${esc(d.width) || '?'} × ${esc(d.height) || '?'} ${esc(d.unit)} (${sqft.toFixed(4)} sqft/pc)</td></tr>
         <tr><td>Quantity</td><td>${qty} pc(s)</td></tr>
         <tr><td>Rush Order</td><td>${d.rushOrder || '—'}</td></tr>
@@ -473,7 +443,7 @@ function updateSizePreview() {
 
   const prev = document.getElementById('cost-preview');
   if (!prev) return;
-  if (d.stickerType && d.layout && sqft > 0 && qty > 0 && up > 0) {
+  if (d.stickerType && sqft > 0 && qty > 0 && up > 0) {
     prev.innerHTML =
       '<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">' +
         '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Sticker Cost</div>' +
@@ -549,7 +519,6 @@ function next() {
   }
   if (step === 1) {
     if (!d.stickerType) { showToast('⚠ Please select a Sticker Material / Type.', 'error'); return; }
-    if (!d.layout)      { showToast('⚠ Please select a Layout.', 'error'); return; }
     if (!parseFloat(d.width) || !parseFloat(d.height)) { showToast('⚠ Please enter the sticker size (width × height).', 'error'); return; }
     if (!d.quantity || d.quantity < 1) { showToast('⚠ Quantity must be at least 1.', 'error'); return; }
     if (!d.rushOrder)     { showToast('⚠ Please indicate if this is a Rush Order.', 'error'); return; }
@@ -570,7 +539,7 @@ function render() {
 function resetForm() {
   if (!confirm('Start a new quotation? Current data will be cleared.')) return;
   d.clientName = ''; d.contact = ''; d.email = ''; d.dateNeeded = '';
-  d.stickerType = ''; d.layout = '';
+  d.stickerType = '';
   d.width = ''; d.height = ''; d.unit = 'in';
   d.quantity = 1;
   d.rushOrder = ''; d.designService = '';
@@ -613,7 +582,6 @@ function buildMessengerText() {
   lines.push('');
   lines.push('📐 SPECIFICATIONS');
   lines.push('• Material: ' + (d.stickerType || '—'));
-  lines.push('• Layout: ' + (d.layout || '—'));
   lines.push('• Size: ' + (d.width || '?') + ' × ' + (d.height || '?') + ' ' + d.unit + ' (' + sqft.toFixed(4) + ' sqft/pc)');
   lines.push('• Quantity: ' + qty + ' pc(s)');
   lines.push('• Unit Price: ' + php(up) + ' / pc');
@@ -667,7 +635,7 @@ function saveToSheet() {
     email:         d.email,
     dateNeeded:    d.dateNeeded,
     stickerType:   d.stickerType,
-    layout:        d.layout,
+    layout:        '',
     width:         parseFloat(d.width)  || 0,
     height:        parseFloat(d.height) || 0,
     unit:          d.unit,

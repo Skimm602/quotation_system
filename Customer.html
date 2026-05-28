@@ -133,7 +133,7 @@ const d = {
   signageTransport:'', signageTransportLocation:'', signageTransportFee:0, signageUnit:'ft',
   signageElectrical:[],
   // sticker
-  stickerType:'', stickerLayout:'', stickerWidth:'', stickerHeight:'', stickerUnit:'in',
+  stickerType:'', stickerWidth:'', stickerHeight:'', stickerUnit:'in',
   stickerQty:1, stickerRush:'No', stickerDesign:'No',
 };
 
@@ -269,14 +269,13 @@ function calcStickerTotal() {
   const p = PRICING.sticker || {};
   const mats = p.materials || {};
   const mat  = mats[d.stickerType];
-  if (!mat || !d.stickerLayout) return 0;
+  if (!mat) return 0;
   const w    = stickerToFeet(d.stickerWidth,  d.stickerUnit);
   const h    = stickerToFeet(d.stickerHeight, d.stickerUnit);
   const sqft = w * h;
   if (!sqft) return 0;
-  const adj  = 1 + ((p.layouts || {})[d.stickerLayout] || 0);
   const qty  = parseInt(d.stickerQty) || 1;
-  const unit = Math.max(mat.ratePerSqft * sqft * adj, mat.minCharge || 0);
+  const unit = Math.max(mat.ratePerSqft * sqft, mat.minCharge || 0);
   const rush = d.stickerRush   === 'Yes' ? (p.rushFee   || 150) : 0;
   const des  = d.stickerDesign === 'Yes' ? (p.designFee || 250) : 0;
   return (unit * qty) + rush + des;
@@ -405,12 +404,8 @@ function renderStickerSpecs() {
   const matKeys = Object.keys(mats).length
     ? Object.keys(mats)
     : ['Vinyl Sticker','Sticker Paper','Transparent Sticker','Mirror Sticker','Holographic Sticker'];
-  const layoutKeys = Object.keys(p.layouts || {}).length
-    ? Object.keys(p.layouts)
-    : ['Single (One per cut)','Kiss-cut Sheet','Die-cut Individual','Sheet (Uncut)'];
 
   const matIcons = { 'Vinyl Sticker':'🟦','Sticker Paper':'📄','Transparent Sticker':'🪟','Mirror Sticker':'🪞','Holographic Sticker':'🌈' };
-  const layoutIcons = { 'Single (One per cut)':'⬜','Kiss-cut Sheet':'🔲','Die-cut Individual':'✂️','Sheet (Uncut)':'📋' };
 
   const matCards = matKeys.map(k => {
     const m = mats[k] || {};
@@ -425,20 +420,6 @@ function renderStickerSpecs() {
     </div>`;
   }).join('');
 
-  const layoutCards = layoutKeys.map(k => {
-    const adj  = (p.layouts || {})[k];
-    const icon = layoutIcons[k] || '🔳';
-    const sel  = d.stickerLayout === k;
-    const adjLbl = adj === undefined || adj === 0 ? '' : (adj > 0 ? '+' + (adj * 100).toFixed(0) + '%' : (adj * 100).toFixed(0) + '%');
-    return `<div class="opt-card${sel?' active':''}" onclick="d.stickerLayout='${k.replace(/'/g,"\\'")}';renderForm();">
-      <input type="radio" ${sel?'checked':''} readonly>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:600;">${icon} ${esc(k)}</div>
-        ${adjLbl ? `<div style="font-size:11px;color:#888;margin-top:1px;">${adjLbl}</div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-
   const unitOpts = ['in','ft','cm','m'].map(u => `<option ${d.stickerUnit===u?'selected':''}>${u}</option>`).join('');
 
   return `
@@ -446,10 +427,6 @@ function renderStickerSpecs() {
       <div>
         <label class="field-label" style="margin-bottom:8px;">Sticker Material / Type *</label>
         <div style="display:flex;flex-direction:column;gap:6px;">${matCards}</div>
-      </div>
-      <div>
-        <label class="field-label" style="margin-bottom:8px;">Layout / Cutting Style *</label>
-        <div style="display:flex;flex-direction:column;gap:6px;">${layoutCards}</div>
       </div>
       <div>
         <label class="field-label">Sticker Size *</label>
@@ -483,7 +460,78 @@ function renderStickerSpecs() {
           <button class="yn-btn no${d.stickerDesign==='No'?' on':''}"  onclick="d.stickerDesign='No';renderForm();">No</button>
         </div>
       </div>
+      <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:14px;">
+        <div style="font-size:13px;color:#7A5500;margin-bottom:8px;font-weight:600;">
+          📎 Have a layout or artwork ready?
+        </div>
+        <div style="font-size:11px;color:#7A5500;margin-bottom:10px;line-height:1.5;">
+          Attach it here — we'll send it directly to <strong>ormocprintshoppe@gmail.com</strong>. (max 5 MB)
+        </div>
+        <button type="button" onclick="pickStickerDesignFile()"
+          style="width:100%;padding:11px;background:#fff;border:1px dashed #E0A020;border-radius:4px;color:#7A5500;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          📁 Choose File to Attach
+        </button>
+        <div id="stk_design_status" style="font-size:11px;margin-top:8px;text-align:center;color:#999;"></div>
+      </div>
     </div>`;
+}
+
+function pickStickerDesignFile() {
+  try {
+    const input = document.createElement('input');
+    input.type   = 'file';
+    input.accept = 'image/*,application/pdf,.psd,.ai,.eps,.svg,.cdr,.zip';
+    input.style.display = 'none';
+    input.onchange = function() { handleStickerDesignFile(input); };
+    document.body.appendChild(input);
+    input.click();
+    setTimeout(function(){ try{ input.remove(); }catch(_){} }, 60000);
+  } catch (e) {
+    const statusEl = document.getElementById('stk_design_status');
+    if (statusEl) { statusEl.textContent = '⚠ Could not open file picker.'; statusEl.style.color = '#B00E12'; }
+  }
+}
+
+function handleStickerDesignFile(input) {
+  try {
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('stk_design_status');
+    const setStatus = function(msg, color) {
+      if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || '#999'; }
+    };
+    const MAX = 5 * 1024 * 1024;
+    if (file.size > MAX) { setStatus('⚠ File too large (max 5 MB).', '#B00E12'); input.value = ''; return; }
+    setStatus('⏳ Sending ' + file.name + '…', '#7A5500');
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const dataUrl = String((e && e.target && e.target.result) || '');
+        const base64  = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',')[1] : dataUrl;
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success) setStatus('✓ Sent to Ormoc Printshoppe — ' + file.name, '#1A6A3A');
+            else setStatus('⚠ ' + ((res && res.message) || 'Upload failed.'), '#B00E12');
+          })
+          .withFailureHandler(function(err) {
+            setStatus('⚠ ' + ((err && err.message) || 'Upload failed.'), '#B00E12');
+          })
+          .uploadCustomerDesign({
+            filename:    file.name,
+            mimeType:    file.type || 'application/octet-stream',
+            base64:      base64,
+            productType: 'sticker',
+            clientName:  d.name,
+            contact:     d.contact,
+            email:       d.email,
+            notes:       d.notes,
+          });
+      } catch (err2) { setStatus('⚠ ' + (err2 && err2.message || 'Send failed.'), '#B00E12'); }
+    };
+    reader.onerror = function() { setStatus('⚠ Could not read the file.', '#B00E12'); };
+    reader.readAsDataURL(file);
+  } catch (e) { /* swallow */ }
 }
 
 // ── MUG SPECS ────────────────────────────────────────────────────
@@ -1216,7 +1264,7 @@ function renderReview() {
     if (d.receiptNumbering === 'Yes' && d.receiptStartNo) specSummary += ` (from ${esc(d.receiptStartNo)})`;
     if (d.receiptRush === 'Yes') specSummary += ' · Rush';
   } else if (selectedProduct === 'sticker') {
-    specSummary = `${esc(d.stickerType)||'—'} · ${esc(d.stickerLayout)||'—'} · ${d.stickerWidth||'?'} × ${d.stickerHeight||'?'} ${esc(d.stickerUnit)} × ${d.stickerQty} pc(s)`;
+    specSummary = `${esc(d.stickerType)||'—'} · ${d.stickerWidth||'?'} × ${d.stickerHeight||'?'} ${esc(d.stickerUnit)} × ${d.stickerQty} pc(s)`;
     if (d.stickerRush   === 'Yes') specSummary += ' · Rush';
     if (d.stickerDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'signage') {
@@ -1332,8 +1380,7 @@ function nextStep() {
       d.stickerWidth  = v('stk_w')   || d.stickerWidth;
       d.stickerHeight = v('stk_h')   || d.stickerHeight;
       d.stickerQty    = parseInt(v('stk_qty')) || d.stickerQty;
-      if (!d.stickerType)   { toast('Please select a sticker material/type.','error'); return; }
-      if (!d.stickerLayout) { toast('Please select a layout / cutting style.','error'); return; }
+      if (!d.stickerType) { toast('Please select a sticker material/type.','error'); return; }
       if (!d.stickerWidth || !d.stickerHeight) { toast('Please enter the sticker size (width × height).','error'); return; }
     }
     if (selectedProduct === 'signage') {
@@ -1505,14 +1552,13 @@ function submitRequest() {
     const w    = stickerToFeet(d.stickerWidth,  d.stickerUnit);
     const h    = stickerToFeet(d.stickerHeight, d.stickerUnit);
     const sqft = w * h;
-    const adj  = 1 + ((p.layouts || {})[d.stickerLayout] || 0);
     const qty  = parseInt(d.stickerQty) || 1;
-    const unit = Math.max((mat.ratePerSqft || 0) * sqft * adj, mat.minCharge || 0);
+    const unit = Math.max((mat.ratePerSqft || 0) * sqft, mat.minCharge || 0);
     const base = unit * qty;
     const rush = d.stickerRush   === 'Yes' ? (p.rushFee   || 150) : 0;
     const des  = d.stickerDesign === 'Yes' ? (p.designFee || 250) : 0;
     Object.assign(payload, {
-      stickerType: d.stickerType, layout: d.stickerLayout,
+      stickerType: d.stickerType, layout: '',
       width: parseFloat(d.stickerWidth)||0, height: parseFloat(d.stickerHeight)||0, unit: d.stickerUnit,
       sqft: sqft, quantity: qty,
       ratePerSqft: mat.ratePerSqft || 0, unitPrice: unit,
@@ -1599,7 +1645,7 @@ function buildMessengerText(qn) {
     if (d.receiptNumbering === 'Yes' && d.receiptStartNo) specsLine += '\nStarting No: ' + d.receiptStartNo;
     if (d.receiptRush === 'Yes') specsLine += '\nRush Order: Yes';
   } else if (selectedProduct === 'sticker') {
-    specsLine = d.stickerType + ' · ' + d.stickerLayout + '\nSize: ' + d.stickerWidth + ' × ' + d.stickerHeight + ' ' + d.stickerUnit + ' × ' + d.stickerQty + ' pc(s)';
+    specsLine = d.stickerType + '\nSize: ' + d.stickerWidth + ' × ' + d.stickerHeight + ' ' + d.stickerUnit + ' × ' + d.stickerQty + ' pc(s)';
     if (d.stickerRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.stickerDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'signage') {
