@@ -933,6 +933,32 @@ function buildQuoteMessage(q) {
       q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
       q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
     ];
+  } else if (qn.startsWith('TB-')) {
+    title = '👜 TOTE BAG QUOTATION';
+    specs = [
+      'Size: ' + (q.totebagSize || (q.signageType||'').replace('Tote Bag — ','') || '—'),
+      q.printMethod ? 'Print Method: ' + q.printMethod : '',
+      q.material ? 'Material: ' + q.material : '',
+      'Quantity: ' + (q.quantity||0) + ' pc(s)',
+      q.unitPrice  ? 'Unit Price: '  + php(q.unitPrice) + ' / pc' : '',
+      q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+      q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
+      q.designService === 'Yes' ? 'Design Service: Yes' : '',
+      q.designFee>0 ? 'Design / Artwork Fee: ' + php(q.designFee) : '',
+    ];
+  } else if (qn.startsWith('TKT-')) {
+    title = '🎫 TICKETS QUOTATION';
+    specs = [
+      'Ticket Type: ' + (q.ticketType || (q.signageType||'').replace('Tickets — ','') || '—'),
+      'Quantity: ' + (q.quantity||0) + ' pc(s)',
+      q.unitPrice  ? 'Unit Price: '  + php(q.unitPrice) + ' / pc' : '',
+      q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+      q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
+      q.designService === 'Yes' ? 'Design Service: Yes' : '',
+      q.designFee>0 ? 'Design / Artwork Fee: ' + php(q.designFee) : '',
+    ];
   } else {
     title = '🪧 SIGNAGE QUOTATION';
     specs = [
@@ -1122,6 +1148,26 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
   ${row('Base Amount', php(q.baseAmount))}
   ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
   ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
+` : String(q.quoteNum).startsWith('TB-') ? `
+  ${row('Tote Bag Size', '<span style="font-weight:600;">'+(q.totebagSize || (q.signageType||'').replace('Tote Bag — ','') || '—')+'</span>')}
+  ${q.printMethod?row('Print Method', q.printMethod):''}
+  ${q.material?row('Material', q.material):''}
+  ${row('Quantity', (q.quantity||0)+' pc(s)')}
+  ${q.unitPrice>0?row('Unit Price', php(q.unitPrice)+' / pc'):''}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+  ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
+  ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+  ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
+` : String(q.quoteNum).startsWith('TKT-') ? `
+  ${row('Ticket Type', '<span style="font-weight:600;">'+(q.ticketType || (q.signageType||'').replace('Tickets — ','') || '—')+'</span>')}
+  ${row('Quantity', (q.quantity||0)+' pc(s)')}
+  ${q.unitPrice>0?row('Unit Price', php(q.unitPrice)+' / pc'):''}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+  ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
+  ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+  ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
 ` : `
   ${row('Signage Type', '<span style="font-weight:500;">'+(q.signageType||'—')+'</span>')}
   ${row('Dimensions', (q.width||'?')+' × '+(q.height||'?')+' ft = '+(q.sqft||'?')+' sqft')}
