@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -106,6 +106,7 @@ const PRODUCTS = [
   { id:'receipt',  icon:'🧾', label:'Receipt',       sub:'Carbon Duplicate'      },
   { id:'bookbind', icon:'📚', label:'Bookbinding',   sub:'Hardbound / Softbound' },
   { id:'frame',    icon:'🖼️', label:'Photo Frame',   sub:'With / Without Matting'},
+  { id:'totebag',  icon:'👜', label:'Tote Bag',      sub:'Sublimation on Canvas' },
 ];
 
 const d = {
@@ -140,6 +141,8 @@ const d = {
   // risograph
   risoPaperType:'', risoSize:'', risoService:'', risoSides:'',
   risoQty:1, risoSortStaple:'No', risoRush:'No', risoDesign:'No',
+  // totebag
+  totebagSize:'', totebagQty:1, totebagRush:'No', totebagDesign:'No',
   // proof of payment (optional, sent as email attachment)
   proofFile: { name: '', mime: '', base64: '' },
 };
@@ -316,6 +319,18 @@ function calcRisoTotal() {
   return (rate * qty) + ssFee + rush + des;
 }
 
+function calcTotebagTotal() {
+  const p = PRICING.totebag || {};
+  if (!d.totebagSize || !d.totebagQty) return 0;
+  const tiers = (p.sizes || {})[d.totebagSize] || [];
+  let active = null;
+  for (const t of tiers) { if (d.totebagQty >= t.minQty) active = t; }
+  if (!active) return 0;
+  const rush = d.totebagRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.totebagDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return (active.price * d.totebagQty) + rush + des;
+}
+
 function calcTotal() {
   if (selectedProduct === 'mug')      return calcMugTotal();
   if (selectedProduct === 'tshirt')   return calcTshirtTotal();
@@ -326,6 +341,7 @@ function calcTotal() {
   if (selectedProduct === 'signage')  return calcSignageTotal();
   if (selectedProduct === 'sticker')  return calcStickerTotal();
   if (selectedProduct === 'risograph')return calcRisoTotal();
+  if (selectedProduct === 'totebag')  return calcTotebagTotal();
   return 0;
 }
 
@@ -431,7 +447,75 @@ function renderSpecs() {
   if (selectedProduct === 'signage')  return renderSignageSpecs();
   if (selectedProduct === 'sticker')  return renderStickerSpecs();
   if (selectedProduct === 'risograph')return renderRisoSpecs();
+  if (selectedProduct === 'totebag')  return renderTotebagSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
+}
+
+// ── TOTE BAG SPECS ────────────────────────────────────────────────
+function getTotebagActiveTier() {
+  const tiers = ((PRICING.totebag||{}).sizes||{})[d.totebagSize] || [];
+  let active = null;
+  for (const t of tiers) { if (d.totebagQty >= t.minQty) active = t; }
+  return active;
+}
+
+function renderTotebagSpecs() {
+  const p     = PRICING.totebag || {};
+  const sizes = p.sizes || {};
+  const sizeKeys = Object.keys(sizes).length ? Object.keys(sizes) : ['10 × 12','12 × 14','14 × 16'];
+
+  const sizeCards = sizeKeys.map(k => {
+    const tiers = sizes[k] || [];
+    const startPrice = tiers.length ? tiers[0].price : 0;
+    const sel = d.totebagSize === k;
+    return `<div class="opt-card${sel?' active':''}" onclick="d.totebagSize='${k.replace(/'/g,"\\'")}';renderForm();">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">👜 ${esc(k)}</div>
+        ${startPrice ? `<div style="font-size:11px;color:#888;margin-top:1px;">From ₱${startPrice.toLocaleString('en-PH')}/pc</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const active = getTotebagActiveTier();
+  const tierHint = active && d.totebagSize
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Current tier: ${active.minQty}+ pcs @ ₱${active.price.toLocaleString('en-PH')}/pc</div>`
+    : '';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Tote Bag Size *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${sizeCards}</div>
+      </div>
+      <div style="background:#FAFAFA;border:1px solid #EEE;border-radius:4px;padding:12px 14px;">
+        <div style="font-size:11px;color:#888;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;">Specifications</div>
+        <div style="font-size:13px;color:#444;margin-top:4px;">
+          Print Method: <strong>${esc(p.printMethod || 'Sublimation')}</strong> · Material: <strong>${esc(p.material || 'Canvas')}</strong>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="tb_qty" value="${d.totebagQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.totebagQty=parseInt(this.value)||1;renderForm();" inputmode="numeric">
+        ${tierHint}
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.totebagRush==='Yes'?' on':''}" onclick="d.totebagRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.totebagRush==='No'?' on':''}"  onclick="d.totebagRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.totebagDesign==='Yes'?' on':''}" onclick="d.totebagDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.totebagDesign==='No'?' on':''}"  onclick="d.totebagDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 // ── RISOGRAPH SPECS ───────────────────────────────────────────────
@@ -1450,6 +1534,11 @@ function renderReview() {
     if ((d.signageElectrical||[]).length) specSummary += ` · Electrical: ${esc(d.signageElectrical.join(', '))}`;
     if (d.signageDesign === 'Yes') specSummary += ' · Design';
     if (d.signageRush === 'Yes') specSummary += ' · Rush';
+  } else if (selectedProduct === 'totebag') {
+    const tbp = PRICING.totebag || {};
+    specSummary = `${esc(d.totebagSize)||'—'} · ${esc(tbp.printMethod||'Sublimation')} on ${esc(tbp.material||'Canvas')} × ${d.totebagQty} pc(s)`;
+    if (d.totebagRush   === 'Yes') specSummary += ' · Rush';
+    if (d.totebagDesign === 'Yes') specSummary += ' · Design';
   }
 
   const dateLabel = d.dateNeeded
@@ -1646,6 +1735,11 @@ function nextStep() {
       if (d.signageTransport && !/Ormoc City/i.test(d.signageTransport) && !String(d.signageTransportLocation).trim()) {
         toast('Please specify the delivery location for the selected transport cluster.','error'); return;
       }
+    }
+    if (selectedProduct === 'totebag') {
+      d.totebagQty = parseInt(v('tb_qty')) || d.totebagQty;
+      if (!d.totebagSize) { toast('Please select a tote bag size.','error'); return; }
+      if (!d.totebagQty || d.totebagQty < 1) { toast('Quantity must be at least 1.','error'); return; }
     }
   }
   if (formStep === 2) { submitRequest(); return; }
@@ -1868,6 +1962,27 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'totebag') {
+    const p      = PRICING.totebag || {};
+    const tier   = getTotebagActiveTier() || { price: 0 };
+    const up     = tier.price || 0;
+    const qty    = parseInt(d.totebagQty) || 1;
+    const base   = up * qty;
+    const rush   = d.totebagRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des    = d.totebagDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      totebagSize:   d.totebagSize,
+      printMethod:   p.printMethod || 'Sublimation',
+      material:      p.material    || 'Canvas',
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.totebagRush,   rushFee:   rush,
+      designService: d.totebagDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   google.script.run
     .withSuccessHandler(function(qn) {
       screen = 'success';
@@ -1948,6 +2063,12 @@ function buildMessengerText(qn) {
     if ((d.signageElectrical||[]).length) specsLine += '\nElectrical Add-ons: ' + d.signageElectrical.join(', ');
     if (d.signageDesign === 'Yes') specsLine += '\nDesign Service: Yes';
     if (d.signageRush === 'Yes')   specsLine += '\nRush Order: Yes';
+  } else if (selectedProduct === 'totebag') {
+    const tbp = PRICING.totebag || {};
+    specsLine = 'Tote Bag · ' + (d.totebagSize || '—') + ' × ' + d.totebagQty + ' pc(s)';
+    specsLine += '\nPrint: ' + (tbp.printMethod || 'Sublimation') + ' · Material: ' + (tbp.material || 'Canvas');
+    if (d.totebagRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.totebagDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   }
 
   return [
@@ -2012,7 +2133,7 @@ function copyMsg() {
 
 function resetAll() {
   screen = 'products'; selectedProduct = ''; formStep = 0;
-  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty'];
+  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty'];
   Object.keys(d).forEach(k => {
     if (typeof d[k] === 'string') d[k] = '';
     else if (typeof d[k] === 'number') d[k] = k==='mugQty'?5:qty1.includes(k)?1:0;
@@ -2030,6 +2151,7 @@ function resetAll() {
   d.stickerType=''; d.stickerPreCut=''; d.stickerUnit='in'; d.stickerRush='No'; d.stickerDesign='No';
   d.risoPaperType=''; d.risoSize=''; d.risoService=''; d.risoSides='';
   d.risoSortStaple='No'; d.risoRush='No'; d.risoDesign='No';
+  d.totebagSize=''; d.totebagRush='No'; d.totebagDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });

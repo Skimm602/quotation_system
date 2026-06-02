@@ -15,6 +15,7 @@ const TSHIRT_SHEET            = 'Tshirt Quotations';
 const MUG_SHEET               = 'Mug Quotations';
 const STICKER_SHEET           = 'Sticker Quotations';
 const RISOGRAPH_SHEET         = 'Risograph Quotations';
+const TOTEBAG_SHEET           = 'Totebag Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
 
@@ -117,6 +118,9 @@ function doGet(e) {
   }
   if (page === 'risograph') {
     return serveWithToken_('Risograph', 'Quotation System — Risograph', token, appUrl);
+  }
+  if (page === 'totebag') {
+    return serveWithToken_('Totebag', 'Quotation System — Tote Bag', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -873,8 +877,56 @@ function getDashboardData(token) {
       });
     }
 
+    // ── TOTE BAG QUOTES ─────────────────────────────────────────
+    let totebagQuotes = [];
+    const tbSheet = ss.getSheetByName(TOTEBAG_SHEET);
+    if (tbSheet) {
+      const tdata  = tbSheet.getDataRange().getValues();
+      const tStart = tdata.length > 0 && String(tdata[0][0]).startsWith('TB-') ? 0 : 1;
+      totebagQuotes = tdata.slice(tStart).filter(r => r[0] && String(r[0]).startsWith('TB-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[16] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          totebagSize:      String(row[6]  || ''),
+          printMethod:      String(row[7]  || ''),
+          material:         String(row[8]  || ''),
+          quantity:         row[9]  || 0,
+          unitPrice:        parseFloat(row[10]) || 0,
+          baseAmount:       parseFloat(row[11]) || 0,
+          rushOrder:        String(row[12] || ''),
+          rushFee:          parseFloat(row[13]) || 0,
+          designService:    String(row[14] || ''),
+          designFee:        parseFloat(row[15]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[17]) || 0,
+          notes:            String(row[18] || ''),
+          salesStaff:       String(row[19] || ''),
+          status:           String(row[20] || 'Pending'),
+          approvedBy:       String(row[21] || ''),
+          taxType:          String(row[22] || 'non-vat'),
+          taxAmount:        parseFloat(row[23]) || 0,
+          quoteType:        'totebag',
+          signageType:      'Tote Bag — ' + String(row[6] || ''),
+          address: '', delivery: '', lighting: '', material2: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[14] || ''), addonDesignFee: parseFloat(row[15]) || 0,
+          addonRush:   String(row[12] || ''), addonRushFee:   parseFloat(row[13]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1234,6 +1286,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isMug       = String(quoteNum).startsWith('MUG-');
   const isSticker   = String(quoteNum).startsWith('STK-');
   const isRiso      = String(quoteNum).startsWith('RG-');
+  const isTotebag   = String(quoteNum).startsWith('TB-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -1345,6 +1398,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Risograph order not found: ' + quoteNum);
+  }
+
+  if (isTotebag) {
+    const sheet = ss.getSheetByName(TOTEBAG_SHEET);
+    if (!sheet) throw new Error('Totebag Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 21).setValue(status);  // col U = Status
+        sheet.getRange(i+1, 22).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col V = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 24).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Totebag order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -2011,6 +2080,7 @@ function getPublicPricing() {
     risograph:(function(){ try{ return getRisographPricing(); }catch(e){ return null; } })(),
     receipt:  (function(){ try{ return getReceiptPricing(); }catch(e){ return null; } })(),
     signage:  (function(){ try{ return getPricing(); }      catch(e){ return null; } })(),
+    totebag:  (function(){ try{ return getTotebagPricing();  }catch(e){ return null; } })(),
   };
 }
 
@@ -2096,6 +2166,9 @@ function submitCustomerRequest(data) {
       if (data.transport) specs += ' | Transport: ' + data.transport + (data.transportLocation ? ' (' + data.transportLocation + ')' : '');
       if (data.electrical) specs += ' | Electrical: ' + data.electrical;
       if (data.designService === 'Yes') specs += ' | Design';
+    } else if (data.productType === 'totebag') {
+      specs = 'Tote Bag · ' + (data.totebagSize || '—') + ' · ' + (data.printMethod || 'Sublimation')
+            + ' · ' + (data.material || 'Canvas') + ' × ' + (data.quantity || 1) + ' pc(s)';
     }
 
     sheet.appendRow([
@@ -2721,6 +2794,92 @@ function getRisographPricing() {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET TOTE BAG PRICING (live from the "Tote Bag" tab, gid=862123714)
+// ══════════════════════════════════════════════════════════════════
+//  Sheet shape expected:
+//    Column A : size label  (e.g. 10x12, 12"x14", 14 × 16)
+//    Column B+: price(s)    (one price per row, or tiered like "75pcs ₱180")
+//  Tiers (mug-style) are picked up automatically if any cell looks
+//  like "<qty> pcs ₱<price>". Otherwise the row collapses to a single
+//  tier of {minQty: 1, price: <first numeric value>}.
+function getTotebagPricing() {
+  const defaults = {
+    sizes: {
+      '10 × 12': [{ minQty: 1, price: 190 }],
+      '12 × 14': [{ minQty: 1, price: 210 }],
+      '14 × 16': [{ minQty: 1, price: 240 }],
+    },
+    material:    'Canvas',
+    printMethod: 'Sublimation',
+    rushFee:     150,
+    designFee:   250,
+  };
+
+  function normalizeSize(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return '';
+    // strip inches/quotes/spaces, normalize the separator to " × "
+    const m = s.match(/(\d+(?:\.\d+)?)\s*(?:["”'’]|in|inch|inches)?\s*[x×*by]\s*(\d+(?:\.\d+)?)\s*(?:["”'’]|in|inch|inches)?/i);
+    if (!m) return '';
+    return m[1] + ' × ' + m[2];
+  }
+
+  function parseTierCell(cell) {
+    const s = String(cell || '').trim();
+    if (!s) return null;
+    const qtyM   = s.match(/(\d+)\s*pcs?/i);
+    const priceM = s.match(/[P₱]\s*(\d+(?:\.\d+)?)/) || s.match(/(\d{2,}(?:\.\d+)?)\s*$/);
+    if (!priceM) return null;
+    return {
+      minQty: qtyM ? parseInt(qtyM[1]) : 1,
+      price:  parseFloat(priceM[1]) || 0,
+    };
+  }
+
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Tote Bag')
+               || ss.getSheetByName('TOTE BAG')
+               || ss.getSheetByName('ToteBag')
+               || ss.getSheetByName('Tote bag')
+               || ss.getSheetByName('Totebag')
+               || ss.getSheetByName('Tote');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) return defaults;
+
+    const sizes = {};
+    for (let i = 0; i < rows.length; i++) {
+      const sizeLabel = normalizeSize(rows[i][0]);
+      if (!sizeLabel) continue;
+
+      // Collect tiers from every non-empty cell on this row (columns B onward).
+      const tiers = [];
+      for (let c = 1; c < rows[i].length; c++) {
+        const t = parseTierCell(rows[i][c]);
+        if (t && t.price > 0) tiers.push(t);
+      }
+      if (!tiers.length) continue;
+      tiers.sort((a, b) => a.minQty - b.minQty);
+      sizes[sizeLabel] = tiers;
+    }
+
+    if (!Object.keys(sizes).length) return defaults;
+    return {
+      sizes:       sizes,
+      material:    defaults.material,
+      printMethod: defaults.printMethod,
+      rushFee:     defaults.rushFee,
+      designFee:   defaults.designFee,
+    };
+  } catch(e) {
+    Logger.log('getTotebagPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  SAVE RISOGRAPH ORDER
 // ══════════════════════════════════════════════════════════════════
 function saveRisographOrder(data) {
@@ -2794,6 +2953,78 @@ function saveRisographOrder(data) {
 
   sheet.getRange(sheet.getLastRow(), 12, 1, 10).setNumberFormat('₱#,##0.00');
   try { notifyQuoteSaved_(quoteNum, 'Risograph', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE TOTE BAG ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveTotebagOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(TOTEBAG_SHEET);
+  if (!sheet) sheet = ss.insertSheet(TOTEBAG_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Size', 'Print Method', 'Material', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('TB-')) {
+    if (firstCell.startsWith('TB-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'TB-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.totebagSize   || '',                   // G  - Size
+    data.printMethod   || 'Sublimation',        // H  - Print Method
+    data.material      || 'Canvas',             // I  - Material
+    qty,                                        // J  - Quantity
+    parseFloat(unitP.toFixed(2)),               // K  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // L  - Base Amount
+    data.rushOrder     || '',                   // M  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // N  - Rush Fee
+    data.designService || '',                   // O  - Design Service
+    parseFloat(designFee.toFixed(2)),           // P  - Design Fee
+    '',                                         // Q  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // R  - Total Amount
+    data.notes         || '',                   // S  - Special Instructions
+    staffName,                                  // T  - Sales Staff
+    data.status || 'Pending',                   // U  - Status
+    '',                                         // V  - Approved By
+    data.taxType       || 'non-vat',            // W  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // X  - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 11, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Tote Bag', data); } catch(_) {}
   return quoteNum;
 }
 
@@ -3224,6 +3455,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('MUG-')) sheetName = MUG_SHEET;
   else if (quoteNum.startsWith('STK-')) sheetName = STICKER_SHEET;
   else if (quoteNum.startsWith('RG-'))  sheetName = RISOGRAPH_SHEET;
+  else if (quoteNum.startsWith('TB-'))  sheetName = TOTEBAG_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -3242,6 +3474,7 @@ else if (quoteNum.startsWith('SH-')) ptCol = 30; // col AD
 else if (quoteNum.startsWith('MUG-')) ptCol = 24; // col X
 else if (quoteNum.startsWith('STK-')) ptCol = 23; // col W
 else if (quoteNum.startsWith('RG-'))  ptCol = 20; // col T
+else if (quoteNum.startsWith('TB-'))  ptCol = 17; // col Q
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
