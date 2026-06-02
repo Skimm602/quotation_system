@@ -2796,13 +2796,16 @@ function getRisographPricing() {
 // ══════════════════════════════════════════════════════════════════
 //  GET TOTE BAG PRICING (live from the "Tote Bag" tab, gid=862123714)
 // ══════════════════════════════════════════════════════════════════
-//  Sheet shape expected:
-//    Column A : size label  (e.g. 10x12, 12"x14", 14 × 16)
-//    Column B+: price(s)    (one price per row, or tiered like "75pcs ₱180")
-//  Tiers (mug-style) are picked up automatically if any cell looks
-//  like "<qty> pcs ₱<price>". Otherwise the row collapses to a single
-//  tier of {minQty: 1, price: <first numeric value>}.
+//  Sheet shape (flexible):
+//    Column A : size label   (e.g. 10x12, 12"x14", 14 × 16)
+//    Column B+: tier prices, one per column.
+//
+//  Tier-qty resolution (in order of preference):
+//    1) Header row markers — e.g. "1+", "25 pcs", "50+", "100 pcs"
+//    2) Embedded markers   — e.g. "25pcs ₱180" inside the cell
+//    3) Default ladder     — [1, 25, 50, 100] mapped to column order
 function getTotebagPricing() {
+  const DEFAULT_TIER_LADDER = [1, 25, 50, 100];
   const defaults = {
     sizes: {
       '10 × 12': [{ minQty: 1, price: 190 }],
@@ -2818,22 +2821,26 @@ function getTotebagPricing() {
   function normalizeSize(raw) {
     const s = String(raw || '').trim();
     if (!s) return '';
-    // strip inches/quotes/spaces, normalize the separator to " × "
     const m = s.match(/(\d+(?:\.\d+)?)\s*(?:["”'’]|in|inch|inches)?\s*[x×*by]\s*(\d+(?:\.\d+)?)\s*(?:["”'’]|in|inch|inches)?/i);
     if (!m) return '';
     return m[1] + ' × ' + m[2];
   }
 
-  function parseTierCell(cell) {
-    const s = String(cell || '').trim();
+  // Extract a tier-qty marker from a string like "25 pcs", "50+", "100pc".
+  function parseQtyMarker(raw) {
+    const s = String(raw || '').trim().toLowerCase();
     if (!s) return null;
-    const qtyM   = s.match(/(\d+)\s*pcs?/i);
-    const priceM = s.match(/[P₱]\s*(\d+(?:\.\d+)?)/) || s.match(/(\d{2,}(?:\.\d+)?)\s*$/);
-    if (!priceM) return null;
-    return {
-      minQty: qtyM ? parseInt(qtyM[1]) : 1,
-      price:  parseFloat(priceM[1]) || 0,
-    };
+    const m = s.match(/(\d+)\s*(?:\+|pcs?|pc)/) || s.match(/^(\d+)\s*$/);
+    return m ? parseInt(m[1]) : null;
+  }
+
+  // Pull a numeric price from a cell (handles "₱180", "180.00", "25pcs ₱180").
+  function parsePrice(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw > 0 ? raw : 0;
+    const s = String(raw).trim();
+    const m = s.match(/[P₱]\s*(\d+(?:\.\d+)?)/) || s.match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
   }
 
   try {
@@ -2849,16 +2856,43 @@ function getTotebagPricing() {
     const rows = sheet.getDataRange().getValues();
     if (rows.length < 2) return defaults;
 
-    const sizes = {};
+    // 1) Find a size row (column A matches our size pattern). The row BEFORE
+    //    the first size row is treated as the header (column B+ may contain
+    //    qty markers like "25 pcs" / "50+").
+    let firstSizeRow = -1;
     for (let i = 0; i < rows.length; i++) {
+      if (normalizeSize(rows[i][0])) { firstSizeRow = i; break; }
+    }
+    if (firstSizeRow < 0) return defaults;
+
+    // 2) Build a column → tier-qty map.
+    const colQty = {};
+    if (firstSizeRow > 0) {
+      const header = rows[firstSizeRow - 1] || [];
+      for (let c = 1; c < header.length; c++) {
+        const q = parseQtyMarker(header[c]);
+        if (q !== null) colQty[c] = q;
+      }
+    }
+
+    const sizes = {};
+    for (let i = firstSizeRow; i < rows.length; i++) {
       const sizeLabel = normalizeSize(rows[i][0]);
       if (!sizeLabel) continue;
 
-      // Collect tiers from every non-empty cell on this row (columns B onward).
       const tiers = [];
+      let priceColIndex = 0;
       for (let c = 1; c < rows[i].length; c++) {
-        const t = parseTierCell(rows[i][c]);
-        if (t && t.price > 0) tiers.push(t);
+        const cell  = rows[i][c];
+        const price = parsePrice(cell);
+        if (price <= 0) continue;
+
+        // Tier qty: header marker > embedded cell marker > default ladder
+        let qty = colQty[c];
+        if (qty == null) qty = parseQtyMarker(cell);
+        if (qty == null) qty = DEFAULT_TIER_LADDER[priceColIndex] || DEFAULT_TIER_LADDER[DEFAULT_TIER_LADDER.length - 1];
+        tiers.push({ minQty: qty, price: price });
+        priceColIndex++;
       }
       if (!tiers.length) continue;
       tiers.sort((a, b) => a.minQty - b.minQty);

@@ -452,11 +452,26 @@ function renderSpecs() {
 }
 
 // ── TOTE BAG SPECS ────────────────────────────────────────────────
+function getTotebagTiers(size) {
+  return ((PRICING.totebag||{}).sizes||{})[size || d.totebagSize] || [];
+}
+function getTotebagMinQty() {
+  const t = getTotebagTiers();
+  return t.length ? t[0].minQty : 1;
+}
 function getTotebagActiveTier() {
-  const tiers = ((PRICING.totebag||{}).sizes||{})[d.totebagSize] || [];
+  const tiers = getTotebagTiers();
   let active = null;
   for (const t of tiers) { if (d.totebagQty >= t.minQty) active = t; }
   return active;
+}
+
+function selectTotebagSize(size) {
+  d.totebagSize = size;
+  const tiers = getTotebagTiers();
+  const minQ  = tiers.length ? tiers[0].minQty : 1;
+  if (d.totebagQty < minQ) d.totebagQty = minQ;
+  renderForm();
 }
 
 function renderTotebagSpecs() {
@@ -467,19 +482,23 @@ function renderTotebagSpecs() {
   const sizeCards = sizeKeys.map(k => {
     const tiers = sizes[k] || [];
     const startPrice = tiers.length ? tiers[0].price : 0;
+    const startQty   = tiers.length ? tiers[0].minQty : 1;
     const sel = d.totebagSize === k;
-    return `<div class="opt-card${sel?' active':''}" onclick="d.totebagSize='${k.replace(/'/g,"\\'")}';renderForm();">
+    return `<div class="opt-card${sel?' active':''}" onclick="selectTotebagSize('${k.replace(/'/g,"\\'")}')">
       <input type="radio" ${sel?'checked':''} readonly>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:600;">👜 ${esc(k)}</div>
-        ${startPrice ? `<div style="font-size:11px;color:#888;margin-top:1px;">From ₱${startPrice.toLocaleString('en-PH')}/pc</div>` : ''}
+        ${startPrice ? `<div style="font-size:11px;color:#888;margin-top:1px;">From ₱${startPrice.toLocaleString('en-PH')}/pc · min ${startQty} pcs</div>` : ''}
       </div>
     </div>`;
   }).join('');
 
   const active = getTotebagActiveTier();
-  const tierHint = active && d.totebagSize
-    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Current tier: ${active.minQty}+ pcs @ ₱${active.price.toLocaleString('en-PH')}/pc</div>`
+  const minQ   = d.totebagSize ? getTotebagMinQty() : 1;
+  const tierHint = d.totebagSize
+    ? (active
+        ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Current tier: ${active.minQty}+ pcs @ ₱${active.price.toLocaleString('en-PH')}/pc</div>`
+        : `<div style="font-size:11px;color:#B00E12;margin-top:6px;">Minimum order is ${minQ} pcs for ${esc(d.totebagSize)}.</div>`)
     : '';
 
   return `
@@ -495,10 +514,10 @@ function renderTotebagSpecs() {
         </div>
       </div>
       <div>
-        <label class="field-label">Quantity</label>
-        <input type="number" class="field-input" id="tb_qty" value="${d.totebagQty}" min="1"
+        <label class="field-label">Quantity${d.totebagSize ? ` (min. ${minQ} pcs)` : ''}</label>
+        <input type="number" class="field-input" id="tb_qty" value="${d.totebagQty}" min="${minQ}"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
-          oninput="d.totebagQty=parseInt(this.value)||1;renderForm();" inputmode="numeric">
+          oninput="d.totebagQty=parseInt(this.value)||0;renderForm();" inputmode="numeric">
         ${tierHint}
       </div>
       <div>
@@ -1739,7 +1758,8 @@ function nextStep() {
     if (selectedProduct === 'totebag') {
       d.totebagQty = parseInt(v('tb_qty')) || d.totebagQty;
       if (!d.totebagSize) { toast('Please select a tote bag size.','error'); return; }
-      if (!d.totebagQty || d.totebagQty < 1) { toast('Quantity must be at least 1.','error'); return; }
+      const minQ = getTotebagMinQty();
+      if (!d.totebagQty || d.totebagQty < minQ) { toast('Minimum order is '+minQ+' pcs for '+d.totebagSize+'.','error'); return; }
     }
   }
   if (formStep === 2) { submitRequest(); return; }
