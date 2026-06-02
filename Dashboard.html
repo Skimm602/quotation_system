@@ -153,6 +153,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
             <span class="nq-icon">👜</span>
             <span>Tote Bag Quote</span>
           </div>
+          <div class="nq-option" onclick="goToTicket()">
+            <span class="nq-icon">🎫</span>
+            <span>Tickets Quote</span>
+          </div>
         </div>
       </div>
       <!-- END NEW QUOTE DROPDOWN -->
@@ -213,6 +217,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
         <button onclick="switchTab('totebag')" id="tab-totebag"
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
           TOTE BAG
+        </button>
+        <button onclick="switchTab('ticket')" id="tab-ticket"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          TICKETS
         </button>
       </div>
 
@@ -591,6 +599,17 @@ function goToTotebag() {
   }).getAppUrl();
 }
 
+function goToTicket() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=ticket&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
 function setupDashboard() {
   const u = currentUser, role = (u.role||'').toLowerCase();
   document.getElementById('sidebarName').textContent = u.name;
@@ -639,13 +658,13 @@ let currentTab = 'all';
 
 function switchTab(tab) {
   currentTab = tab;
-  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','totebag'].forEach(t => {
+  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','totebag','ticket'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
     btn.style.borderBottom = t === tab ? '3px solid #E8151B' : '3px solid transparent';
     btn.style.color        = t === tab ? '#0A0A0A' : '#999';
   });
-  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', totebag:'TOTE BAG' };
+  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', totebag:'TOTE BAG', ticket:'TICKETS' };
   const el = document.getElementById('recentLabel');
   if (el) el.textContent = labels[tab] || 'QUOTATIONS';
   renderStats(); renderRecentTable();
@@ -662,6 +681,7 @@ function getFilteredByTab() {
   if (currentTab === 'sticker')   return allQuotes.filter(q => String(q.quoteNum).startsWith('STK-'));
   if (currentTab === 'risograph') return allQuotes.filter(q => String(q.quoteNum).startsWith('RG-'));
   if (currentTab === 'totebag')   return allQuotes.filter(q => String(q.quoteNum).startsWith('TB-'));
+  if (currentTab === 'ticket')    return allQuotes.filter(q => String(q.quoteNum).startsWith('TKT-'));
   return allQuotes;
 }
 
@@ -694,6 +714,7 @@ function renderRecentTable() {
     const isSticker  = String(q.quoteNum).startsWith('STK-');
     const isRiso     = String(q.quoteNum).startsWith('RG-');
     const isTotebag  = String(q.quoteNum).startsWith('TB-');
+    const isTicket   = String(q.quoteNum).startsWith('TKT-');
     const typeLabel = isTarp
       ? `<span style="color:#888;">Tarpaulin</span>`
       : isReceipt
@@ -710,6 +731,8 @@ function renderRecentTable() {
       ? `<span style="color:#888;">${q.signageType||'Risograph'}</span>`
       : isTotebag
       ? `<span style="color:#888;">${q.signageType||'Tote Bag'}</span>`
+      : isTicket
+      ? `<span style="color:#888;">${q.signageType||'Tickets'}</span>`
       : `<span style="color:#888;">${q.signageType||'—'}</span>`;
     html += `<tr>
       <td style="font-weight:600;color:#0A0A0A;">${q.quoteNum}</td>
@@ -741,7 +764,7 @@ function renderAllQuotes() {
     let actions=`<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button>`;
     if (canApprove&&q.status==='Pending') actions+=` <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓</button> <button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕</button>`;
     const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : String(q.quoteNum).startsWith('MUG-') ? ('Mug — '+(q.mugType||'')) : String(q.quoteNum).startsWith('STK-') ? ('Sticker — '+(q.stickerType||'')+(q.layout==='Pre-cut'?' (Pre-cut)':''))
-      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : String(q.quoteNum).startsWith('TB-') ? ('Tote Bag — '+(q.totebagSize||'')) : (q.signageType||'—');
+      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : String(q.quoteNum).startsWith('TB-') ? ('Tote Bag — '+(q.totebagSize||'')) : String(q.quoteNum).startsWith('TKT-') ? ('Tickets — '+(q.ticketType||'')) : (q.signageType||'—');
     html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${qTypeLabel}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
   });
   html+='</tbody></table>';
@@ -1205,6 +1228,7 @@ const PORTAL_PRODUCTS = [
   { id:'bookbind', icon:'📚', label:'Bookbinding',   active:true,  page:'customer-bookbind', shortUrl:'https://tinyurl.com/bddsed6j' },
   { id:'frame',    icon:'🖼️', label:'Photo Frame',   active:true,  page:'customer-frame',    shortUrl:'https://tinyurl.com/3nbyftjs' },
   { id:'totebag',  icon:'👜', label:'Tote Bag',      active:true,  page:'customer-totebag'                                          },
+  { id:'ticket',   icon:'🎫', label:'Tickets',       active:true,  page:'customer-ticket'                                           },
 ];
 let selectedPortalProduct = null;
 

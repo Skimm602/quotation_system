@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -107,6 +107,7 @@ const PRODUCTS = [
   { id:'bookbind', icon:'📚', label:'Bookbinding',   sub:'Hardbound / Softbound' },
   { id:'frame',    icon:'🖼️', label:'Photo Frame',   sub:'With / Without Matting'},
   { id:'totebag',  icon:'👜', label:'Tote Bag',      sub:'Sublimation on Canvas' },
+  { id:'ticket',   icon:'🎫', label:'Tickets',       sub:'Calling Card / Custom' },
 ];
 
 const d = {
@@ -143,6 +144,8 @@ const d = {
   risoQty:1, risoSortStaple:'No', risoRush:'No', risoDesign:'No',
   // totebag
   totebagSize:'', totebagQty:1, totebagRush:'No', totebagDesign:'No',
+  // ticket
+  ticketType:'', ticketQty:1, ticketRush:'No', ticketDesign:'No',
   // proof of payment (optional, sent as email attachment)
   proofFile: { name: '', mime: '', base64: '' },
 };
@@ -331,6 +334,17 @@ function calcTotebagTotal() {
   return (active.price * d.totebagQty) + rush + des;
 }
 
+function calcTicketTotal() {
+  const p = PRICING.ticket || {};
+  if (!d.ticketType || !d.ticketQty) return 0;
+  const t = (p.types || {})[d.ticketType];
+  if (!t) return 0;
+  const qty  = parseInt(d.ticketQty) || 0;
+  const rush = d.ticketRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.ticketDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return (t.price * qty) + rush + des;
+}
+
 function calcTotal() {
   if (selectedProduct === 'mug')      return calcMugTotal();
   if (selectedProduct === 'tshirt')   return calcTshirtTotal();
@@ -342,6 +356,7 @@ function calcTotal() {
   if (selectedProduct === 'sticker')  return calcStickerTotal();
   if (selectedProduct === 'risograph')return calcRisoTotal();
   if (selectedProduct === 'totebag')  return calcTotebagTotal();
+  if (selectedProduct === 'ticket')   return calcTicketTotal();
   return 0;
 }
 
@@ -448,7 +463,55 @@ function renderSpecs() {
   if (selectedProduct === 'sticker')  return renderStickerSpecs();
   if (selectedProduct === 'risograph')return renderRisoSpecs();
   if (selectedProduct === 'totebag')  return renderTotebagSpecs();
+  if (selectedProduct === 'ticket')   return renderTicketSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
+}
+
+// ── TICKETS SPECS ─────────────────────────────────────────────────
+function renderTicketSpecs() {
+  const p     = PRICING.ticket || {};
+  const types = p.types || {};
+  const keys  = Object.keys(types).length ? Object.keys(types) : ['Calling Card Size','4" x 5"','3" x 6"'];
+
+  const cards = keys.map(k => {
+    const t   = types[k] || { price: 0 };
+    const sel = d.ticketType === k;
+    return `<div class="opt-card${sel?' active':''}" onclick="d.ticketType='${k.replace(/"/g,'&quot;').replace(/'/g,"\\'")}';renderForm();">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">🎫 ${esc(k)}</div>
+        ${t.price ? `<div style="font-size:11px;color:#888;margin-top:1px;">₱${t.price.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}/pc</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Ticket Type / Size *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${cards}</div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="tk_qty" value="${d.ticketQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.ticketQty=parseInt(this.value)||0;renderForm();" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.ticketRush==='Yes'?' on':''}" onclick="d.ticketRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.ticketRush==='No'?' on':''}"  onclick="d.ticketRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.ticketDesign==='Yes'?' on':''}" onclick="d.ticketDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.ticketDesign==='No'?' on':''}"  onclick="d.ticketDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 // ── TOTE BAG SPECS ────────────────────────────────────────────────
@@ -1558,6 +1621,10 @@ function renderReview() {
     specSummary = `${esc(d.totebagSize)||'—'} · ${esc(tbp.printMethod||'Sublimation')} on ${esc(tbp.material||'Canvas')} × ${d.totebagQty} pc(s)`;
     if (d.totebagRush   === 'Yes') specSummary += ' · Rush';
     if (d.totebagDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'ticket') {
+    specSummary = `${esc(d.ticketType)||'—'} × ${d.ticketQty} pc(s)`;
+    if (d.ticketRush   === 'Yes') specSummary += ' · Rush';
+    if (d.ticketDesign === 'Yes') specSummary += ' · Design';
   }
 
   const dateLabel = d.dateNeeded
@@ -1760,6 +1827,11 @@ function nextStep() {
       if (!d.totebagSize) { toast('Please select a tote bag size.','error'); return; }
       const minQ = getTotebagMinQty();
       if (!d.totebagQty || d.totebagQty < minQ) { toast('Minimum order is '+minQ+' pcs for '+d.totebagSize+'.','error'); return; }
+    }
+    if (selectedProduct === 'ticket') {
+      d.ticketQty = parseInt(v('tk_qty')) || d.ticketQty;
+      if (!d.ticketType) { toast('Please select a ticket type.','error'); return; }
+      if (!d.ticketQty || d.ticketQty < 1) { toast('Quantity must be at least 1.','error'); return; }
     }
   }
   if (formStep === 2) { submitRequest(); return; }
@@ -2003,6 +2075,25 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'ticket') {
+    const p    = PRICING.ticket || {};
+    const t    = (p.types || {})[d.ticketType] || { price: 0 };
+    const up   = t.price || 0;
+    const qty  = parseInt(d.ticketQty) || 1;
+    const base = up * qty;
+    const rush = d.ticketRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des  = d.ticketDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      ticketType:    d.ticketType,
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.ticketRush,   rushFee:   rush,
+      designService: d.ticketDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   google.script.run
     .withSuccessHandler(function(qn) {
       screen = 'success';
@@ -2089,6 +2180,10 @@ function buildMessengerText(qn) {
     specsLine += '\nPrint: ' + (tbp.printMethod || 'Sublimation') + ' · Material: ' + (tbp.material || 'Canvas');
     if (d.totebagRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.totebagDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'ticket') {
+    specsLine = 'Tickets · ' + (d.ticketType || '—') + ' × ' + d.ticketQty + ' pc(s)';
+    if (d.ticketRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.ticketDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   }
 
   return [
@@ -2153,7 +2248,7 @@ function copyMsg() {
 
 function resetAll() {
   screen = 'products'; selectedProduct = ''; formStep = 0;
-  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty'];
+  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty','ticketQty'];
   Object.keys(d).forEach(k => {
     if (typeof d[k] === 'string') d[k] = '';
     else if (typeof d[k] === 'number') d[k] = k==='mugQty'?5:qty1.includes(k)?1:0;
@@ -2172,6 +2267,7 @@ function resetAll() {
   d.risoPaperType=''; d.risoSize=''; d.risoService=''; d.risoSides='';
   d.risoSortStaple='No'; d.risoRush='No'; d.risoDesign='No';
   d.totebagSize=''; d.totebagRush='No'; d.totebagDesign='No';
+  d.ticketType=''; d.ticketRush='No'; d.ticketDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });

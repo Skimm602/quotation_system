@@ -16,6 +16,7 @@ const MUG_SHEET               = 'Mug Quotations';
 const STICKER_SHEET           = 'Sticker Quotations';
 const RISOGRAPH_SHEET         = 'Risograph Quotations';
 const TOTEBAG_SHEET           = 'Totebag Quotations';
+const TICKET_SHEET            = 'Ticket Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
 
@@ -121,6 +122,9 @@ function doGet(e) {
   }
   if (page === 'totebag') {
     return serveWithToken_('Totebag', 'Quotation System — Tote Bag', token, appUrl);
+  }
+  if (page === 'ticket') {
+    return serveWithToken_('Ticket', 'Quotation System — Tickets', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -925,8 +929,54 @@ function getDashboardData(token) {
       });
     }
 
+    // ── TICKET QUOTES ───────────────────────────────────────────
+    let ticketQuotes = [];
+    const tkSheet = ss.getSheetByName(TICKET_SHEET);
+    if (tkSheet) {
+      const kdata  = tkSheet.getDataRange().getValues();
+      const kStart = kdata.length > 0 && String(kdata[0][0]).startsWith('TKT-') ? 0 : 1;
+      ticketQuotes = kdata.slice(kStart).filter(r => r[0] && String(r[0]).startsWith('TKT-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[14] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          ticketType:       String(row[6]  || ''),
+          quantity:         row[7]  || 0,
+          unitPrice:        parseFloat(row[8])  || 0,
+          baseAmount:       parseFloat(row[9])  || 0,
+          rushOrder:        String(row[10] || ''),
+          rushFee:          parseFloat(row[11]) || 0,
+          designService:    String(row[12] || ''),
+          designFee:        parseFloat(row[13]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[15]) || 0,
+          notes:            String(row[16] || ''),
+          salesStaff:       String(row[17] || ''),
+          status:           String(row[18] || 'Pending'),
+          approvedBy:       String(row[19] || ''),
+          taxType:          String(row[20] || 'non-vat'),
+          taxAmount:        parseFloat(row[21]) || 0,
+          quoteType:        'ticket',
+          signageType:      'Tickets — ' + String(row[6] || ''),
+          address: '', delivery: '', lighting: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[12] || ''), addonDesignFee: parseFloat(row[13]) || 0,
+          addonRush:   String(row[10] || ''), addonRushFee:   parseFloat(row[11]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes, ...ticketQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1287,6 +1337,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isSticker   = String(quoteNum).startsWith('STK-');
   const isRiso      = String(quoteNum).startsWith('RG-');
   const isTotebag   = String(quoteNum).startsWith('TB-');
+  const isTicket    = String(quoteNum).startsWith('TKT-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -1414,6 +1465,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Totebag order not found: ' + quoteNum);
+  }
+
+  if (isTicket) {
+    const sheet = ss.getSheetByName(TICKET_SHEET);
+    if (!sheet) throw new Error('Ticket Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 19).setValue(status);  // col S = Status
+        sheet.getRange(i+1, 20).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col T = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 22).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Ticket order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -2081,6 +2148,7 @@ function getPublicPricing() {
     receipt:  (function(){ try{ return getReceiptPricing(); }catch(e){ return null; } })(),
     signage:  (function(){ try{ return getPricing(); }      catch(e){ return null; } })(),
     totebag:  (function(){ try{ return getTotebagPricing();  }catch(e){ return null; } })(),
+    ticket:   (function(){ try{ return getTicketPricing();   }catch(e){ return null; } })(),
   };
 }
 
@@ -2169,6 +2237,8 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'totebag') {
       specs = 'Tote Bag · ' + (data.totebagSize || '—') + ' · ' + (data.printMethod || 'Sublimation')
             + ' · ' + (data.material || 'Canvas') + ' × ' + (data.quantity || 1) + ' pc(s)';
+    } else if (data.productType === 'ticket') {
+      specs = 'Tickets · ' + (data.ticketType || '—') + ' × ' + (data.quantity || 1) + ' pc(s)';
     }
 
     sheet.appendRow([
@@ -3063,6 +3133,142 @@ function saveTotebagOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET TICKET PRICING (live from the "Tickets" tab)
+// ══════════════════════════════════════════════════════════════════
+//  Sheet shape (very simple):
+//    Column A : ticket type / size label (e.g. "Calling Card Size", "4" x 5"")
+//    Column B : per-piece price (e.g. ₱4.50, ₱10, ₱9)
+//  No tiers — single price per type. Header row optional.
+function getTicketPricing() {
+  const defaults = {
+    types: {
+      'Calling Card Size': { price: 4.50 },
+      '4" x 5"':           { price: 10 },
+      '3" x 6"':           { price: 9 },
+    },
+    rushFee:   150,
+    designFee: 250,
+  };
+
+  function parsePrice(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw > 0 ? raw : 0;
+    const s = String(raw).trim();
+    const m = s.match(/[P₱]\s*(\d+(?:\.\d+)?)/) || s.match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+
+  function isHeaderRow(label, price) {
+    const s = String(label || '').trim().toLowerCase();
+    // Treat rows like "Type | Price" or "Size | Price" as headers.
+    if (!s) return true;
+    if (price > 0) return false;
+    return /^(type|size|name|item|product|ticket)$/i.test(s);
+  }
+
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Tickets')
+               || ss.getSheetByName('Ticket')
+               || ss.getSheetByName('TICKETS');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 1) return defaults;
+
+    const types = {};
+    for (let i = 0; i < rows.length; i++) {
+      const label = String(rows[i][0] || '').trim();
+      const price = parsePrice(rows[i][1]);
+      if (!label) continue;
+      if (isHeaderRow(label, price)) continue;
+      if (price <= 0) continue;
+      types[label] = { price: price };
+    }
+
+    if (!Object.keys(types).length) return defaults;
+    return {
+      types:     types,
+      rushFee:   defaults.rushFee,
+      designFee: defaults.designFee,
+    };
+  } catch(e) {
+    Logger.log('getTicketPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE TICKET ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveTicketOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(TICKET_SHEET);
+  if (!sheet) sheet = ss.insertSheet(TICKET_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Ticket Type', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('TKT-')) {
+    if (firstCell.startsWith('TKT-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'TKT-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.ticketType    || '',                   // G  - Ticket Type
+    qty,                                        // H  - Quantity
+    parseFloat(unitP.toFixed(2)),               // I  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // J  - Base Amount
+    data.rushOrder     || '',                   // K  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // L  - Rush Fee
+    data.designService || '',                   // M  - Design Service
+    parseFloat(designFee.toFixed(2)),           // N  - Design Fee
+    '',                                         // O  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // P  - Total Amount
+    data.notes         || '',                   // Q  - Special Instructions
+    staffName,                                  // R  - Sales Staff
+    data.status || 'Pending',                   // S  - Status
+    '',                                         // T  - Approved By
+    data.taxType       || 'non-vat',            // U  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // V  - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 9, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Tickets', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -3490,6 +3696,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('STK-')) sheetName = STICKER_SHEET;
   else if (quoteNum.startsWith('RG-'))  sheetName = RISOGRAPH_SHEET;
   else if (quoteNum.startsWith('TB-'))  sheetName = TOTEBAG_SHEET;
+  else if (quoteNum.startsWith('TKT-')) sheetName = TICKET_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -3509,6 +3716,7 @@ else if (quoteNum.startsWith('MUG-')) ptCol = 24; // col X
 else if (quoteNum.startsWith('STK-')) ptCol = 23; // col W
 else if (quoteNum.startsWith('RG-'))  ptCol = 20; // col T
 else if (quoteNum.startsWith('TB-'))  ptCol = 17; // col Q
+else if (quoteNum.startsWith('TKT-')) ptCol = 15; // col O
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
