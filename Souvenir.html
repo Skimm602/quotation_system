@@ -164,6 +164,22 @@ function selectMaterial(idx) {
   if (PRICING.materials && PRICING.materials[idx]) { d.material = PRICING.materials[idx]; renderBody(); }
 }
 
+// Short buyer's guide per material (matched case-insensitively, spaces ignored)
+const MATERIAL_GUIDE = {
+  'foldcote':   { icon:'📘', desc:'Thick rigid board — premium & sturdy. Best for covers / hardcover-feel programs.' },
+  'mirrorkote': { icon:'✨', desc:'Glossy cast-coated — shiny surface, vivid colors that pop. Great for photos.' },
+  'c2s200':     { icon:'📄', desc:'Coated 2 sides · 200gsm cardstock — smooth, durable. Good all-around inner pages.' },
+  'c2s':        { icon:'📄', desc:'Coated 2 sides — smooth coated cardstock, gloss or matte finish.' },
+  'matte':      { icon:'🗒️', desc:'Matte coated — soft, non-glare finish. Easy to read, elegant look.' },
+  'glossy':     { icon:'✨', desc:'Glossy coated — high shine, makes colors and photos vibrant.' },
+};
+function matGuide(name) {
+  const key = String(name || '').toLowerCase().replace(/\s+/g, '');
+  if (MATERIAL_GUIDE[key]) return MATERIAL_GUIDE[key];
+  for (const k in MATERIAL_GUIDE) { if (key.indexOf(k) >= 0) return MATERIAL_GUIDE[k]; }
+  return { icon:'📄', desc:'' };
+}
+
 // ─── CALCULATIONS ─────────────────────────────────────────────────
 function unitPrice()    { return PRICING.pricePerPage || 80; }
 function baseAmt()      { return unitPrice() * (parseInt(d.pages) || 0) * (parseInt(d.quantity) || 0); }
@@ -259,9 +275,13 @@ function renderBody() {
 
     const matCards = (PRICING.materials || []).map(function(m, idx) {
       const sel = d.material === m;
-      return `<div class="opt-card ${sel?'selected':''}" onclick="selectMaterial(${idx})">
-        <input type="radio" ${sel?'checked':''} readonly style="accent-color:#E8151B;">
-        <span style="font-size:13px;font-weight:600;">📄 ${esc(m)}</span>
+      const g = matGuide(m);
+      return `<div class="opt-card ${sel?'selected':''}" onclick="selectMaterial(${idx})" style="align-items:flex-start;">
+        <input type="radio" ${sel?'checked':''} readonly style="accent-color:#E8151B;margin-top:2px;">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:${sel?'#E8151B':'#0A0A0A'};">${g.icon} ${esc(m)}</div>
+          ${g.desc ? `<div style="font-size:11px;color:#888;margin-top:2px;line-height:1.4;">${esc(g.desc)}</div>` : ''}
+        </div>
       </div>`;
     }).join('');
 

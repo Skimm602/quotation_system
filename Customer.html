@@ -511,6 +511,21 @@ function renderSpecs() {
 }
 
 // ── SOUVENIR PROGRAM SPECS ────────────────────────────────────────
+const SOUVENIR_MATERIAL_GUIDE = {
+  'foldcote':   { icon:'📘', desc:'Thick rigid board — premium & sturdy. Best for covers.' },
+  'mirrorkote': { icon:'✨', desc:'Glossy, shiny finish — vivid colors that pop. Great for photos.' },
+  'c2s200':     { icon:'📄', desc:'Coated 2 sides · 200gsm — smooth, durable cardstock.' },
+  'c2s':        { icon:'📄', desc:'Coated 2 sides — smooth coated cardstock.' },
+  'matte':      { icon:'🗒️', desc:'Matte — soft, non-glare finish. Easy to read.' },
+  'glossy':     { icon:'✨', desc:'Glossy — high shine, vibrant colors and photos.' },
+};
+function souvenirMatGuide(name) {
+  const key = String(name || '').toLowerCase().replace(/\s+/g, '');
+  if (SOUVENIR_MATERIAL_GUIDE[key]) return SOUVENIR_MATERIAL_GUIDE[key];
+  for (const k in SOUVENIR_MATERIAL_GUIDE) { if (key.indexOf(k) >= 0) return SOUVENIR_MATERIAL_GUIDE[k]; }
+  return { icon:'📄', desc:'' };
+}
+
 function renderSouvenirSpecs() {
   const p    = PRICING.souvenir || {};
   const rate = p.pricePerPage || 80;
@@ -519,9 +534,13 @@ function renderSouvenirSpecs() {
 
   const matCards = mats.map((m, idx) => {
     const sel = d.souvenirMaterial === m;
-    return `<div class="opt-card${sel?' active':''}" onclick="d.souvenirMaterial=(PRICING.souvenir&&PRICING.souvenir.materials?PRICING.souvenir.materials[${idx}]:'${m.replace(/'/g,"\\'")}');renderForm();">
-      <input type="radio" ${sel?'checked':''} readonly>
-      <span style="font-size:13px;font-weight:600;">📄 ${esc(m)}</span>
+    const g = souvenirMatGuide(m);
+    return `<div class="opt-card${sel?' active':''}" onclick="d.souvenirMaterial=(PRICING.souvenir&&PRICING.souvenir.materials?PRICING.souvenir.materials[${idx}]:'${m.replace(/'/g,"\\'")}');renderForm();" style="align-items:flex-start;">
+      <input type="radio" ${sel?'checked':''} readonly style="margin-top:2px;">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${g.icon} ${esc(m)}</div>
+        ${g.desc ? `<div style="font-size:11px;color:#888;margin-top:2px;line-height:1.4;">${esc(g.desc)}</div>` : ''}
+      </div>
     </div>`;
   }).join('');
 
