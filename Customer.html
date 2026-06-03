@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -109,6 +109,7 @@ const PRODUCTS = [
   { id:'totebag',  icon:'👜', label:'Tote Bag',      sub:'Sublimation on Canvas' },
   { id:'ticket',   icon:'🎫', label:'Tickets',       sub:'Calling Card / Custom' },
   { id:'newsprint',icon:'📰', label:'Newsletter',    sub:'Newsletter / Newspaper'},
+  { id:'souvenir', icon:'📖', label:'Souvenir',      sub:'Program (A3 / Laser)'  },
 ];
 
 const d = {
@@ -149,6 +150,8 @@ const d = {
   ticketType:'', ticketQty:1, ticketRush:'No', ticketDesign:'No',
   // newsprint (newsletter / newspaper)
   newsCategory:'', newsOption:'', newsQty:200, newsRush:'No', newsDesign:'No',
+  // souvenir program
+  souvenirMaterial:'', souvenirPages:'', souvenirQty:1, souvenirRush:'No', souvenirDesign:'No',
   // proof of payment (optional, sent as email attachment)
   proofFile: { name: '', mime: '', base64: '' },
 };
@@ -370,6 +373,17 @@ function calcNewsprintTotal() {
   return (opt.price * qty) + rush + des;
 }
 
+function calcSouvenirTotal() {
+  const p = PRICING.souvenir || {};
+  const pages = parseInt(d.souvenirPages) || 0;
+  const qty   = parseInt(d.souvenirQty)   || 0;
+  if (!d.souvenirMaterial || !pages || !qty) return 0;
+  const rate = p.pricePerPage || 80;
+  const rush = d.souvenirRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.souvenirDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return (rate * pages * qty) + rush + des;
+}
+
 function calcTotal() {
   if (selectedProduct === 'mug')      return calcMugTotal();
   if (selectedProduct === 'tshirt')   return calcTshirtTotal();
@@ -383,6 +397,7 @@ function calcTotal() {
   if (selectedProduct === 'totebag')  return calcTotebagTotal();
   if (selectedProduct === 'ticket')   return calcTicketTotal();
   if (selectedProduct === 'newsprint')return calcNewsprintTotal();
+  if (selectedProduct === 'souvenir') return calcSouvenirTotal();
   return 0;
 }
 
@@ -491,7 +506,71 @@ function renderSpecs() {
   if (selectedProduct === 'totebag')  return renderTotebagSpecs();
   if (selectedProduct === 'ticket')   return renderTicketSpecs();
   if (selectedProduct === 'newsprint')return renderNewsprintSpecs();
+  if (selectedProduct === 'souvenir') return renderSouvenirSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
+}
+
+// ── SOUVENIR PROGRAM SPECS ────────────────────────────────────────
+function renderSouvenirSpecs() {
+  const p    = PRICING.souvenir || {};
+  const rate = p.pricePerPage || 80;
+  const size = p.pageSize || 'A3';
+  const mats = (p.materials && p.materials.length) ? p.materials : ['Foldcote','Mirrorkote','C2S200'];
+
+  const matCards = mats.map((m, idx) => {
+    const sel = d.souvenirMaterial === m;
+    return `<div class="opt-card${sel?' active':''}" onclick="d.souvenirMaterial=(PRICING.souvenir&&PRICING.souvenir.materials?PRICING.souvenir.materials[${idx}]:'${m.replace(/'/g,"\\'")}');renderForm();">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <span style="font-size:13px;font-weight:600;">📄 ${esc(m)}</span>
+    </div>`;
+  }).join('');
+
+  const pages = parseInt(d.souvenirPages) || 0;
+  const qty   = parseInt(d.souvenirQty)   || 0;
+  const estLine = (d.souvenirMaterial && pages && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${pages} pages × ${qty} copies × ₱${rate.toLocaleString('en-PH')}/page = ₱${(rate*pages*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div style="background:#FAFAFA;border:1px solid #EEE;border-radius:4px;padding:12px 14px;">
+        <div style="font-size:11px;color:#888;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;">Specifications</div>
+        <div style="font-size:13px;color:#444;margin-top:4px;">
+          Page Size: <strong>${esc(size)}</strong> · Print: <strong>${esc(p.method || 'Laser')}</strong> · <strong>₱${rate.toLocaleString('en-PH')}/page</strong>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Material *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${matCards}</div>
+      </div>
+      <div>
+        <label class="field-label">Pages per Copy (${esc(size)}) *</label>
+        <input type="number" class="field-input" id="sv_pages" value="${esc(d.souvenirPages||'')}" min="1" placeholder="e.g. 8"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.souvenirPages=this.value;renderForm();" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label">Number of Copies *</label>
+        <input type="number" class="field-input" id="sv_qty" value="${d.souvenirQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.souvenirQty=parseInt(this.value)||0;renderForm();" inputmode="numeric">
+        ${estLine}
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.souvenirRush==='Yes'?' on':''}" onclick="d.souvenirRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.souvenirRush==='No'?' on':''}"  onclick="d.souvenirRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Layout?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.souvenirDesign==='Yes'?' on':''}" onclick="d.souvenirDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.souvenirDesign==='No'?' on':''}"  onclick="d.souvenirDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 // ── NEWSLETTER / NEWSPAPER SPECS ──────────────────────────────────
@@ -1747,6 +1826,11 @@ function renderReview() {
     specSummary += ` × ${d.newsQty} copies`;
     if (d.newsRush   === 'Yes') specSummary += ' · Rush';
     if (d.newsDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'souvenir') {
+    const sp = PRICING.souvenir || {};
+    specSummary = `${esc(d.souvenirMaterial)||'—'} · ${esc(d.souvenirPages)||'?'} pages (${esc(sp.pageSize||'A3')}) × ${d.souvenirQty} copies`;
+    if (d.souvenirRush   === 'Yes') specSummary += ' · Rush';
+    if (d.souvenirDesign === 'Yes') specSummary += ' · Design';
   }
 
   const dateLabel = d.dateNeeded
@@ -1962,6 +2046,13 @@ function nextStep() {
       const sec  = newsActiveSection() || {};
       const minQ = sec.minOrder || 200;
       if (!d.newsQty || d.newsQty < minQ) { toast('Minimum order is '+minQ+' copies.','error'); return; }
+    }
+    if (selectedProduct === 'souvenir') {
+      d.souvenirPages = v('sv_pages') || d.souvenirPages;
+      d.souvenirQty   = parseInt(v('sv_qty')) || d.souvenirQty;
+      if (!d.souvenirMaterial) { toast('Please select a material.','error'); return; }
+      if (!d.souvenirPages || parseInt(d.souvenirPages) < 1) { toast('Please enter the number of pages.','error'); return; }
+      if (!d.souvenirQty || d.souvenirQty < 1) { toast('Please enter the number of copies.','error'); return; }
     }
   }
   if (formStep === 2) { submitRequest(); return; }
@@ -2247,6 +2338,28 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'souvenir') {
+    const p     = PRICING.souvenir || {};
+    const rate  = p.pricePerPage || 80;
+    const pages = parseInt(d.souvenirPages) || 1;
+    const qty   = parseInt(d.souvenirQty)   || 1;
+    const base  = rate * pages * qty;
+    const rush  = d.souvenirRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des   = d.souvenirDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      material:      d.souvenirMaterial,
+      pageSize:      p.pageSize || 'A3',
+      method:        p.method   || 'Laser',
+      pages:         pages,
+      quantity:      qty,
+      pricePerPage:  rate,
+      baseAmount:    base,
+      rushOrder:     d.souvenirRush,   rushFee:   rush,
+      designService: d.souvenirDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   google.script.run
     .withSuccessHandler(function(qn) {
       screen = 'success';
@@ -2345,6 +2458,13 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + d.newsQty + ' copies';
     if (d.newsRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.newsDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'souvenir') {
+    const sp = PRICING.souvenir || {};
+    specsLine = 'Souvenir Program · ' + (d.souvenirMaterial || '—');
+    specsLine += '\nPages: ' + (d.souvenirPages || '?') + ' (' + (sp.pageSize || 'A3') + ') · ' + (sp.method || 'Laser');
+    specsLine += '\nQuantity: ' + d.souvenirQty + ' copies';
+    if (d.souvenirRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.souvenirDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   }
 
   return [
@@ -2409,7 +2529,7 @@ function copyMsg() {
 
 function resetAll() {
   screen = 'products'; selectedProduct = ''; formStep = 0;
-  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty','ticketQty'];
+  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty','ticketQty','souvenirQty'];
   Object.keys(d).forEach(k => {
     if (typeof d[k] === 'string') d[k] = '';
     else if (typeof d[k] === 'number') d[k] = k==='mugQty'?5:qty1.includes(k)?1:0;
@@ -2430,6 +2550,7 @@ function resetAll() {
   d.totebagSize=''; d.totebagRush='No'; d.totebagDesign='No';
   d.ticketType=''; d.ticketRush='No'; d.ticketDesign='No';
   d.newsCategory=''; d.newsOption=''; d.newsQty=200; d.newsRush='No'; d.newsDesign='No';
+  d.souvenirMaterial=''; d.souvenirPages=''; d.souvenirRush='No'; d.souvenirDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });

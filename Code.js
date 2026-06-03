@@ -18,6 +18,7 @@ const RISOGRAPH_SHEET         = 'Risograph Quotations';
 const TOTEBAG_SHEET           = 'Totebag Quotations';
 const TICKET_SHEET            = 'Ticket Quotations';
 const NEWSPRINT_SHEET         = 'Newsprint Quotations';
+const SOUVENIR_SHEET          = 'Souvenir Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
 
@@ -129,6 +130,9 @@ function doGet(e) {
   }
   if (page === 'newsprint') {
     return serveWithToken_('Newsprint', 'Quotation System — Newsletter & Newspaper', token, appUrl);
+  }
+  if (page === 'souvenir') {
+    return serveWithToken_('Souvenir', 'Quotation System — Souvenir Program', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1028,8 +1032,57 @@ function getDashboardData(token) {
       });
     }
 
+    // ── SOUVENIR PROGRAM QUOTES ─────────────────────────────────
+    let souvenirQuotes = [];
+    const spSheet = ss.getSheetByName(SOUVENIR_SHEET);
+    if (spSheet) {
+      const sdata2  = spSheet.getDataRange().getValues();
+      const sStart2 = sdata2.length > 0 && String(sdata2[0][0]).startsWith('SP-') ? 0 : 1;
+      souvenirQuotes = sdata2.slice(sStart2).filter(r => r[0] && String(r[0]).startsWith('SP-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[17] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          souvenirMaterial: String(row[6]  || ''),
+          souvenirPageSize: String(row[7]  || ''),
+          souvenirMethod:   String(row[8]  || ''),
+          souvenirPages:    row[9]  || 0,
+          quantity:         row[10] || 0,
+          unitPrice:        parseFloat(row[11]) || 0,
+          baseAmount:       parseFloat(row[12]) || 0,
+          rushOrder:        String(row[13] || ''),
+          rushFee:          parseFloat(row[14]) || 0,
+          designService:    String(row[15] || ''),
+          designFee:        parseFloat(row[16]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[18]) || 0,
+          notes:            String(row[19] || ''),
+          salesStaff:       String(row[20] || ''),
+          status:           String(row[21] || 'Pending'),
+          approvedBy:       String(row[22] || ''),
+          taxType:          String(row[23] || 'non-vat'),
+          taxAmount:        parseFloat(row[24]) || 0,
+          quoteType:        'souvenir',
+          signageType:      'Souvenir Program — ' + String(row[6] || ''),
+          address: '', delivery: '', lighting: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[15] || ''), addonDesignFee: parseFloat(row[16]) || 0,
+          addonRush:   String(row[13] || ''), addonRushFee:   parseFloat(row[14]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1392,6 +1445,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isTotebag   = String(quoteNum).startsWith('TB-');
   const isTicket    = String(quoteNum).startsWith('TKT-');
   const isNewsprint = String(quoteNum).startsWith('NL-');
+  const isSouvenir  = String(quoteNum).startsWith('SP-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -1551,6 +1605,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Newsprint order not found: ' + quoteNum);
+  }
+
+  if (isSouvenir) {
+    const sheet = ss.getSheetByName(SOUVENIR_SHEET);
+    if (!sheet) throw new Error('Souvenir Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 22).setValue(status);  // col V = Status
+        sheet.getRange(i+1, 23).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col W = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 25).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Souvenir order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -2220,6 +2290,7 @@ function getPublicPricing() {
     totebag:  (function(){ try{ return getTotebagPricing();  }catch(e){ return null; } })(),
     ticket:   (function(){ try{ return getTicketPricing();   }catch(e){ return null; } })(),
     newsprint:(function(){ try{ return getNewsprintPricing();}catch(e){ return null; } })(),
+    souvenir: (function(){ try{ return getSouvenirPricing(); }catch(e){ return null; } })(),
   };
 }
 
@@ -2313,6 +2384,9 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'newsprint') {
       specs = (data.category || 'Newsprint') + ' · ' + (data.optionLabel || '—')
             + (data.size ? ' · ' + data.size : '') + ' × ' + (data.quantity || 1) + ' copies';
+    } else if (data.productType === 'souvenir') {
+      specs = 'Souvenir Program · ' + (data.material || '—') + ' · ' + (data.pages || '?') + ' pages ('
+            + (data.pageSize || 'A3') + ') × ' + (data.quantity || 1) + ' copies';
     }
 
     sheet.appendRow([
@@ -3536,6 +3610,155 @@ function saveNewsprintOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET SOUVENIR PROGRAM PRICING (live from "Souvenir Program" tab)
+// ══════════════════════════════════════════════════════════════════
+//  Sheet shape (single column A):
+//    Per page of A3            ← header (page size)
+//    ₱80                       ← price per page
+//    print method: laser
+//    Material: foldcote / mirrorkote / C2S200
+function getSouvenirPricing() {
+  const defaults = {
+    pricePerPage: 80,
+    pageSize:     'A3',
+    method:       'Laser',
+    materials:    ['Foldcote', 'Mirrorkote', 'C2S200'],
+    rushFee:      150,
+    designFee:    250,
+  };
+
+  function parsePrice(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw > 0 ? raw : 0;
+    const m = String(raw).match(/[P₱]?\s*(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  function afterColon(s) { return String(s || '').replace(/^[^:]*:\s*/, '').trim(); }
+
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Souvenir Program')
+               || ss.getSheetByName('Souvenir')
+               || ss.getSheetByName('Souvenir Programs');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 1) return defaults;
+
+    const result = {
+      pricePerPage: 0, pageSize: defaults.pageSize, method: defaults.method,
+      materials: [], rushFee: defaults.rushFee, designFee: defaults.designFee,
+    };
+
+    // Scan every cell on every row (label may be in col A or B depending on table layout)
+    for (let i = 0; i < rows.length; i++) {
+      for (let c = 0; c < rows[i].length; c++) {
+        const cell = String(rows[i][c] || '').trim();
+        if (!cell) continue;
+        const lc = cell.toLowerCase();
+
+        if (/per\s*page/i.test(cell)) {
+          const m = cell.match(/of\s+(A\d|[\d.]+\s*["x×].*)/i);
+          if (m) result.pageSize = m[1].trim();
+          // a price may sit in the next column on the same row
+          const inlinePrice = parsePrice(rows[i][c + 1]);
+          if (inlinePrice > 0 && !result.pricePerPage) result.pricePerPage = inlinePrice;
+        } else if (lc.indexOf('method') === 0 || /print\s*method/i.test(cell)) {
+          result.method = afterColon(cell) || result.method;
+        } else if (lc.indexOf('material') === 0) {
+          const list = afterColon(cell).split(/[\/,]/).map(s => s.trim()).filter(Boolean);
+          if (list.length) result.materials = list;
+        } else if (/^[P₱]?\s*\d+(\.\d+)?$/.test(cell) && !result.pricePerPage) {
+          // a lone price cell (e.g. "₱80")
+          result.pricePerPage = parsePrice(cell);
+        }
+      }
+    }
+
+    if (!result.pricePerPage)        result.pricePerPage = defaults.pricePerPage;
+    if (!result.materials.length)    result.materials    = defaults.materials;
+    return result;
+  } catch(e) {
+    Logger.log('getSouvenirPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE SOUVENIR PROGRAM ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveSouvenirOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(SOUVENIR_SHEET);
+  if (!sheet) sheet = ss.insertSheet(SOUVENIR_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Material', 'Page Size', 'Method', 'Pages/Copy', 'Quantity',
+    'Price/Page', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('SP-')) {
+    if (firstCell.startsWith('SP-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'SP-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const pages     = parseInt(data.pages)       || 1;
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.pricePerPage) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * pages * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.material      || '',                   // G  - Material
+    data.pageSize      || 'A3',                 // H  - Page Size
+    data.method        || 'Laser',             // I  - Method
+    pages,                                      // J  - Pages/Copy
+    qty,                                        // K  - Quantity
+    parseFloat(unitP.toFixed(2)),               // L  - Price/Page
+    parseFloat(baseAmt.toFixed(2)),             // M  - Base Amount
+    data.rushOrder     || '',                   // N  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // O  - Rush Fee
+    data.designService || '',                   // P  - Design Service
+    parseFloat(designFee.toFixed(2)),           // Q  - Design Fee
+    '',                                         // R  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // S  - Total Amount
+    data.notes         || '',                   // T  - Special Instructions
+    staffName,                                  // U  - Sales Staff
+    data.status || 'Pending',                   // V  - Status
+    '',                                         // W  - Approved By
+    data.taxType       || 'non-vat',            // X  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // Y  - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 12, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Souvenir Program', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -3965,6 +4188,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('TB-'))  sheetName = TOTEBAG_SHEET;
   else if (quoteNum.startsWith('TKT-')) sheetName = TICKET_SHEET;
   else if (quoteNum.startsWith('NL-'))  sheetName = NEWSPRINT_SHEET;
+  else if (quoteNum.startsWith('SP-'))  sheetName = SOUVENIR_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -3986,6 +4210,7 @@ else if (quoteNum.startsWith('RG-'))  ptCol = 20; // col T
 else if (quoteNum.startsWith('TB-'))  ptCol = 17; // col Q
 else if (quoteNum.startsWith('TKT-')) ptCol = 15; // col O
 else if (quoteNum.startsWith('NL-'))  ptCol = 18; // col R
+else if (quoteNum.startsWith('SP-'))  ptCol = 18; // col R
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
