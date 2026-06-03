@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -108,6 +108,7 @@ const PRODUCTS = [
   { id:'frame',    icon:'🖼️', label:'Photo Frame',   sub:'With / Without Matting'},
   { id:'totebag',  icon:'👜', label:'Tote Bag',      sub:'Sublimation on Canvas' },
   { id:'ticket',   icon:'🎫', label:'Tickets',       sub:'Calling Card / Custom' },
+  { id:'newsprint',icon:'📰', label:'Newsletter',    sub:'Newsletter / Newspaper'},
 ];
 
 const d = {
@@ -146,6 +147,8 @@ const d = {
   totebagSize:'', totebagQty:1, totebagRush:'No', totebagDesign:'No',
   // ticket
   ticketType:'', ticketQty:1, ticketRush:'No', ticketDesign:'No',
+  // newsprint (newsletter / newspaper)
+  newsCategory:'', newsOption:'', newsQty:200, newsRush:'No', newsDesign:'No',
   // proof of payment (optional, sent as email attachment)
   proofFile: { name: '', mime: '', base64: '' },
 };
@@ -345,6 +348,28 @@ function calcTicketTotal() {
   return (t.price * qty) + rush + des;
 }
 
+function newsActiveSection() {
+  const p = PRICING.newsprint || {};
+  if (d.newsCategory === 'Newspaper') return p.newspaper || null;
+  if (d.newsCategory === 'Newsletter') return p.newsletter || null;
+  return null;
+}
+function newsActiveOption() {
+  const sec = newsActiveSection();
+  if (!sec || !sec.options) return null;
+  return sec.options.find(o => o.label === d.newsOption) || null;
+}
+function calcNewsprintTotal() {
+  const p   = PRICING.newsprint || {};
+  const opt = newsActiveOption();
+  if (!opt) return 0;
+  const qty  = parseInt(d.newsQty) || 0;
+  if (!qty) return 0;
+  const rush = d.newsRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.newsDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return (opt.price * qty) + rush + des;
+}
+
 function calcTotal() {
   if (selectedProduct === 'mug')      return calcMugTotal();
   if (selectedProduct === 'tshirt')   return calcTshirtTotal();
@@ -357,6 +382,7 @@ function calcTotal() {
   if (selectedProduct === 'risograph')return calcRisoTotal();
   if (selectedProduct === 'totebag')  return calcTotebagTotal();
   if (selectedProduct === 'ticket')   return calcTicketTotal();
+  if (selectedProduct === 'newsprint')return calcNewsprintTotal();
   return 0;
 }
 
@@ -464,7 +490,96 @@ function renderSpecs() {
   if (selectedProduct === 'risograph')return renderRisoSpecs();
   if (selectedProduct === 'totebag')  return renderTotebagSpecs();
   if (selectedProduct === 'ticket')   return renderTicketSpecs();
+  if (selectedProduct === 'newsprint')return renderNewsprintSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
+}
+
+// ── NEWSLETTER / NEWSPAPER SPECS ──────────────────────────────────
+function selectNewsCategory(cat) {
+  d.newsCategory = cat;
+  d.newsOption = '';
+  const sec = newsActiveSection();
+  const minQ = sec && sec.minOrder ? sec.minOrder : 200;
+  if (d.newsQty < minQ) d.newsQty = minQ;
+  renderForm();
+}
+
+function renderNewsprintSpecs() {
+  const p = PRICING.newsprint || {};
+  const cats = [
+    { key:'Newsletter', icon:'📰', sub:(p.newsletter&&p.newsletter.size)?p.newsletter.size+' · '+(p.newsletter.material||''):'Glossy, full color' },
+    { key:'Newspaper',  icon:'🗞️', sub:(p.newspaper&&p.newspaper.size)?p.newspaper.size+' · '+(p.newspaper.material||''):'Newsprint' },
+  ];
+  const catCards = cats.map(c => {
+    const sel = d.newsCategory === c.key;
+    return `<div class="opt-card${sel?' active':''}" onclick="selectNewsCategory('${c.key}')">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${c.icon} ${c.key}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">${esc(c.sub)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const sec  = newsActiveSection();
+  const minQ = sec && sec.minOrder ? sec.minOrder : 200;
+
+  const optionCards = (sec && sec.options) ? sec.options.map((o, idx) => {
+    const sel = d.newsOption === o.label;
+    return `<div class="opt-card${sel?' active':''}" onclick="d.newsOption=PRICING.newsprint['${d.newsCategory==='Newspaper'?'newspaper':'newsletter'}'].options[${idx}].label;renderForm();">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${esc(o.label)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">₱${(o.price||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}/copy</div>
+      </div>
+    </div>`;
+  }).join('') : '';
+
+  const specBox = sec ? `
+    <div style="background:#FAFAFA;border:1px solid #EEE;border-radius:4px;padding:12px 14px;">
+      <div style="font-size:11px;color:#888;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;">Specifications</div>
+      <div style="font-size:13px;color:#444;margin-top:4px;line-height:1.6;">
+        ${sec.size ? `Size: <strong>${esc(sec.size)}</strong><br>` : ''}
+        ${sec.method ? `Method: <strong>${esc(sec.method)}</strong><br>` : ''}
+        ${sec.material ? `Material: <strong>${esc(sec.material)}</strong><br>` : ''}
+        Minimum Order: <strong>${minQ} copies</strong>
+      </div>
+    </div>` : '';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Publication Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${catCards}</div>
+      </div>
+      ${d.newsCategory ? `
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">${d.newsCategory==='Newspaper'?'Pages (Color + B/W)':'Number of Pages'} *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${optionCards}</div>
+      </div>` : ''}
+      ${specBox}
+      ${d.newsCategory ? `
+      <div>
+        <label class="field-label">Quantity (min. ${minQ} copies)</label>
+        <input type="number" class="field-input" id="np_qty" value="${d.newsQty}" min="${minQ}"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.newsQty=parseInt(this.value)||0;renderForm();" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.newsRush==='Yes'?' on':''}" onclick="d.newsRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.newsRush==='No'?' on':''}"  onclick="d.newsRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Layout?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.newsDesign==='Yes'?' on':''}" onclick="d.newsDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.newsDesign==='No'?' on':''}"  onclick="d.newsDesign='No';renderForm();">No</button>
+        </div>
+      </div>` : ''}
+    </div>`;
 }
 
 // ── TICKETS SPECS ─────────────────────────────────────────────────
@@ -1625,6 +1740,13 @@ function renderReview() {
     specSummary = `${esc(d.ticketType)||'—'} × ${d.ticketQty} pc(s)`;
     if (d.ticketRush   === 'Yes') specSummary += ' · Rush';
     if (d.ticketDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'newsprint') {
+    const sec = newsActiveSection() || {};
+    specSummary = `${esc(d.newsCategory)||'—'} · ${esc(d.newsOption)||'—'}`;
+    if (sec.size) specSummary += ` · ${esc(sec.size)}`;
+    specSummary += ` × ${d.newsQty} copies`;
+    if (d.newsRush   === 'Yes') specSummary += ' · Rush';
+    if (d.newsDesign === 'Yes') specSummary += ' · Design';
   }
 
   const dateLabel = d.dateNeeded
@@ -1832,6 +1954,14 @@ function nextStep() {
       d.ticketQty = parseInt(v('tk_qty')) || d.ticketQty;
       if (!d.ticketType) { toast('Please select a ticket type.','error'); return; }
       if (!d.ticketQty || d.ticketQty < 1) { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'newsprint') {
+      d.newsQty = parseInt(v('np_qty')) || d.newsQty;
+      if (!d.newsCategory) { toast('Please select Newsletter or Newspaper.','error'); return; }
+      if (!d.newsOption)   { toast('Please select a page option.','error'); return; }
+      const sec  = newsActiveSection() || {};
+      const minQ = sec.minOrder || 200;
+      if (!d.newsQty || d.newsQty < minQ) { toast('Minimum order is '+minQ+' copies.','error'); return; }
     }
   }
   if (formStep === 2) { submitRequest(); return; }
@@ -2094,6 +2224,29 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'newsprint') {
+    const p    = PRICING.newsprint || {};
+    const sec  = newsActiveSection() || {};
+    const opt  = newsActiveOption() || { price: 0 };
+    const up   = opt.price || 0;
+    const qty  = parseInt(d.newsQty) || 1;
+    const base = up * qty;
+    const rush = d.newsRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des  = d.newsDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      category:      d.newsCategory,
+      optionLabel:   d.newsOption,
+      size:          sec.size     || '',
+      material:      sec.material || '',
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.newsRush,   rushFee:   rush,
+      designService: d.newsDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   google.script.run
     .withSuccessHandler(function(qn) {
       screen = 'success';
@@ -2184,6 +2337,14 @@ function buildMessengerText(qn) {
     specsLine = 'Tickets · ' + (d.ticketType || '—') + ' × ' + d.ticketQty + ' pc(s)';
     if (d.ticketRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.ticketDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'newsprint') {
+    const sec = newsActiveSection() || {};
+    specsLine = (d.newsCategory || '—') + ' · ' + (d.newsOption || '—');
+    if (sec.size)     specsLine += '\nSize: ' + sec.size;
+    if (sec.material) specsLine += ' · Material: ' + sec.material;
+    specsLine += '\nQuantity: ' + d.newsQty + ' copies';
+    if (d.newsRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.newsDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   }
 
   return [
@@ -2268,6 +2429,7 @@ function resetAll() {
   d.risoSortStaple='No'; d.risoRush='No'; d.risoDesign='No';
   d.totebagSize=''; d.totebagRush='No'; d.totebagDesign='No';
   d.ticketType=''; d.ticketRush='No'; d.ticketDesign='No';
+  d.newsCategory=''; d.newsOption=''; d.newsQty=200; d.newsRush='No'; d.newsDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });

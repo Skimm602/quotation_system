@@ -17,6 +17,7 @@ const STICKER_SHEET           = 'Sticker Quotations';
 const RISOGRAPH_SHEET         = 'Risograph Quotations';
 const TOTEBAG_SHEET           = 'Totebag Quotations';
 const TICKET_SHEET            = 'Ticket Quotations';
+const NEWSPRINT_SHEET         = 'Newsprint Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
 
@@ -125,6 +126,9 @@ function doGet(e) {
   }
   if (page === 'ticket') {
     return serveWithToken_('Ticket', 'Quotation System — Tickets', token, appUrl);
+  }
+  if (page === 'newsprint') {
+    return serveWithToken_('Newsprint', 'Quotation System — Newsletter & Newspaper', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -975,8 +979,57 @@ function getDashboardData(token) {
       });
     }
 
+    // ── NEWSLETTER / NEWSPAPER QUOTES ───────────────────────────
+    let newsprintQuotes = [];
+    const npSheet = ss.getSheetByName(NEWSPRINT_SHEET);
+    if (npSheet) {
+      const ndata  = npSheet.getDataRange().getValues();
+      const nStart = ndata.length > 0 && String(ndata[0][0]).startsWith('NL-') ? 0 : 1;
+      newsprintQuotes = ndata.slice(nStart).filter(r => r[0] && String(r[0]).startsWith('NL-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[17] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          newsCategory:     String(row[6]  || ''),
+          newsOption:       String(row[7]  || ''),
+          newsSize:         String(row[8]  || ''),
+          newsMaterial:     String(row[9]  || ''),
+          quantity:         row[10] || 0,
+          unitPrice:        parseFloat(row[11]) || 0,
+          baseAmount:       parseFloat(row[12]) || 0,
+          rushOrder:        String(row[13] || ''),
+          rushFee:          parseFloat(row[14]) || 0,
+          designService:    String(row[15] || ''),
+          designFee:        parseFloat(row[16]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[18]) || 0,
+          notes:            String(row[19] || ''),
+          salesStaff:       String(row[20] || ''),
+          status:           String(row[21] || 'Pending'),
+          approvedBy:       String(row[22] || ''),
+          taxType:          String(row[23] || 'non-vat'),
+          taxAmount:        parseFloat(row[24]) || 0,
+          quoteType:        'newsprint',
+          signageType:      (String(row[6] || 'Newsprint')) + ' — ' + String(row[7] || ''),
+          address: '', delivery: '', lighting: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[15] || ''), addonDesignFee: parseFloat(row[16]) || 0,
+          addonRush:   String(row[13] || ''), addonRushFee:   parseFloat(row[14]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes, ...ticketQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1338,6 +1391,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isRiso      = String(quoteNum).startsWith('RG-');
   const isTotebag   = String(quoteNum).startsWith('TB-');
   const isTicket    = String(quoteNum).startsWith('TKT-');
+  const isNewsprint = String(quoteNum).startsWith('NL-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -1481,6 +1535,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Ticket order not found: ' + quoteNum);
+  }
+
+  if (isNewsprint) {
+    const sheet = ss.getSheetByName(NEWSPRINT_SHEET);
+    if (!sheet) throw new Error('Newsprint Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 22).setValue(status);  // col V = Status
+        sheet.getRange(i+1, 23).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col W = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 25).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Newsprint order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -2149,6 +2219,7 @@ function getPublicPricing() {
     signage:  (function(){ try{ return getPricing(); }      catch(e){ return null; } })(),
     totebag:  (function(){ try{ return getTotebagPricing();  }catch(e){ return null; } })(),
     ticket:   (function(){ try{ return getTicketPricing();   }catch(e){ return null; } })(),
+    newsprint:(function(){ try{ return getNewsprintPricing();}catch(e){ return null; } })(),
   };
 }
 
@@ -2239,6 +2310,9 @@ function submitCustomerRequest(data) {
             + ' · ' + (data.material || 'Canvas') + ' × ' + (data.quantity || 1) + ' pc(s)';
     } else if (data.productType === 'ticket') {
       specs = 'Tickets · ' + (data.ticketType || '—') + ' × ' + (data.quantity || 1) + ' pc(s)';
+    } else if (data.productType === 'newsprint') {
+      specs = (data.category || 'Newsprint') + ' · ' + (data.optionLabel || '—')
+            + (data.size ? ' · ' + data.size : '') + ' × ' + (data.quantity || 1) + ' copies';
     }
 
     sheet.appendRow([
@@ -3269,6 +3343,199 @@ function saveTicketOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET NEWSLETTER / NEWSPAPER PRICING (live from "NewsLetter/NewPaper" tab)
+// ══════════════════════════════════════════════════════════════════
+//  Sheet shape — two tables side by side:
+//    Cols A,B : NewsLetter | Price   (12 pages → 75/copy, etc., then spec rows)
+//    Cols C,D : NewsPaper  | Price   (2 pages COLOR → 50/copy, paired with a
+//                                     "N pages BW" row underneath, then specs)
+function getNewsprintPricing() {
+  const defaults = {
+    newsletter: {
+      options: [
+        { label: '12 pages', price: 75 },
+        { label: '18 pages', price: 90 },
+        { label: '20 pages', price: 110 },
+      ],
+      size: '11" x 17"', method: 'Offset printing (full color)',
+      material: 'Glossy paper', minOrder: 200,
+    },
+    newspaper: {
+      options: [
+        { label: '2 pages COLOR + 4 pages BW', price: 50 },
+        { label: '2 pages COLOR + 6 pages BW', price: 58 },
+        { label: '2 pages COLOR + 8 pages BW', price: 72 },
+      ],
+      size: '18" x 24"', method: 'Offset printing',
+      material: 'Newsprint', minOrder: 200,
+    },
+    rushFee: 150, designFee: 250,
+  };
+
+  function parsePrice(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw > 0 ? raw : 0;
+    const m = String(raw).match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  function isPageRow(label) { return /\d+\s*pages?/i.test(String(label || '')); }
+  function metaVal(label) {  // strip a leading "size/method/material" keyword, with or without a colon
+    return String(label || '')
+      .replace(/^\s*(size|method|material|minimum\s*order)\s*:?\s*/i, '')
+      .trim();
+  }
+  function minOrderNum(label) {
+    const m = String(label || '').match(/(\d+)/);
+    return m ? parseInt(m[1]) : 0;
+  }
+
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('NewsLetter/NewPaper')
+               || ss.getSheetByName('NewsLetter/NewsPaper')
+               || ss.getSheetByName('Newsletter/Newspaper')
+               || ss.getSheetByName('NewsLetter')
+               || ss.getSheetByName('Newsprint');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) return defaults;
+
+    const newsletter = { options: [], size: '', method: '', material: '', minOrder: defaults.newsletter.minOrder };
+    const newspaper  = { options: [], size: '', method: '', material: '', minOrder: defaults.newspaper.minOrder };
+
+    // Start at row 1 to skip the header row (NewsLetter | Price | NewsPaper | Price)
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+
+      // ── NewsLetter side (cols A=0, B=1) ──
+      const aLabel = String(r[0] || '').trim();
+      const aPrice = parsePrice(r[1]);
+      if (aLabel) {
+        const lc = aLabel.toLowerCase();
+        if (isPageRow(aLabel) && aPrice > 0) {
+          newsletter.options.push({ label: aLabel.replace(/\bpage\b/i, 'pages'), price: aPrice });
+        } else if (lc.indexOf('size') === 0)     newsletter.size = metaVal(aLabel);
+        else if (lc.indexOf('method') === 0)     newsletter.method = metaVal(aLabel);
+        else if (lc.indexOf('material') === 0)   newsletter.material = metaVal(aLabel);
+        else if (lc.indexOf('minimum') === 0)    newsletter.minOrder = minOrderNum(aLabel) || newsletter.minOrder;
+      }
+
+      // ── NewsPaper side (cols C=2, D=3) ──
+      const cLabel = String(r[2] || '').trim();
+      const dPrice = parsePrice(r[3]);
+      if (cLabel) {
+        const lc = cLabel.toLowerCase();
+        if (/colou?r/i.test(cLabel) && dPrice > 0) {
+          // Pair with the next row's "N pages BW" descriptor if present.
+          let label = cLabel;
+          const nextC = String((rows[i + 1] || [])[2] || '').trim();
+          if (/\bbw\b|black/i.test(nextC) && parsePrice((rows[i + 1] || [])[3]) === 0) {
+            label = cLabel + ' + ' + nextC;
+          }
+          newspaper.options.push({ label: label, price: dPrice });
+        } else if (lc.indexOf('size') === 0)     newspaper.size = metaVal(cLabel);
+        else if (lc.indexOf('method') === 0)     newspaper.method = metaVal(cLabel);
+        else if (lc.indexOf('material') === 0)   newspaper.material = metaVal(cLabel);
+        else if (lc.indexOf('minimum') === 0)    newspaper.minOrder = minOrderNum(cLabel) || newspaper.minOrder;
+      }
+    }
+
+    if (!newsletter.options.length) { newsletter.options = defaults.newsletter.options; }
+    if (!newsletter.size)     newsletter.size     = defaults.newsletter.size;
+    if (!newsletter.method)   newsletter.method   = defaults.newsletter.method;
+    if (!newsletter.material) newsletter.material = defaults.newsletter.material;
+    if (!newspaper.options.length)  { newspaper.options = defaults.newspaper.options; }
+    if (!newspaper.size)      newspaper.size      = defaults.newspaper.size;
+    if (!newspaper.method)    newspaper.method    = defaults.newspaper.method;
+    if (!newspaper.material)  newspaper.material  = defaults.newspaper.material;
+
+    return {
+      newsletter: newsletter,
+      newspaper:  newspaper,
+      rushFee:    defaults.rushFee,
+      designFee:  defaults.designFee,
+    };
+  } catch(e) {
+    Logger.log('getNewsprintPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE NEWSLETTER / NEWSPAPER ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveNewsprintOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(NEWSPRINT_SHEET);
+  if (!sheet) sheet = ss.insertSheet(NEWSPRINT_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Category', 'Option', 'Size', 'Material', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('NL-')) {
+    if (firstCell.startsWith('NL-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'NL-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.category      || '',                   // G  - Category (Newsletter/Newspaper)
+    data.optionLabel   || '',                   // H  - Option
+    data.size          || '',                   // I  - Size
+    data.material      || '',                   // J  - Material
+    qty,                                        // K  - Quantity
+    parseFloat(unitP.toFixed(2)),               // L  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // M  - Base Amount
+    data.rushOrder     || '',                   // N  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // O  - Rush Fee
+    data.designService || '',                   // P  - Design Service
+    parseFloat(designFee.toFixed(2)),           // Q  - Design Fee
+    '',                                         // R  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // S  - Total Amount
+    data.notes         || '',                   // T  - Special Instructions
+    staffName,                                  // U  - Sales Staff
+    data.status || 'Pending',                   // V  - Status
+    '',                                         // W  - Approved By
+    data.taxType       || 'non-vat',            // X  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // Y  - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 12, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, (data.category || 'Newsprint'), data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -3697,6 +3964,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('RG-'))  sheetName = RISOGRAPH_SHEET;
   else if (quoteNum.startsWith('TB-'))  sheetName = TOTEBAG_SHEET;
   else if (quoteNum.startsWith('TKT-')) sheetName = TICKET_SHEET;
+  else if (quoteNum.startsWith('NL-'))  sheetName = NEWSPRINT_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -3717,6 +3985,7 @@ else if (quoteNum.startsWith('STK-')) ptCol = 23; // col W
 else if (quoteNum.startsWith('RG-'))  ptCol = 20; // col T
 else if (quoteNum.startsWith('TB-'))  ptCol = 17; // col Q
 else if (quoteNum.startsWith('TKT-')) ptCol = 15; // col O
+else if (quoteNum.startsWith('NL-'))  ptCol = 18; // col R
 
 // Find the row
 for (let i = 1; i < data.length; i++) {

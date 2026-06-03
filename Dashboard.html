@@ -157,6 +157,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
             <span class="nq-icon">🎫</span>
             <span>Tickets Quote</span>
           </div>
+          <div class="nq-option" onclick="goToNewsprint()">
+            <span class="nq-icon">📰</span>
+            <span>Newsletter / Newspaper Quote</span>
+          </div>
         </div>
       </div>
       <!-- END NEW QUOTE DROPDOWN -->
@@ -221,6 +225,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
         <button onclick="switchTab('ticket')" id="tab-ticket"
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
           TICKETS
+        </button>
+        <button onclick="switchTab('newsprint')" id="tab-newsprint"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          NEWS
         </button>
       </div>
 
@@ -610,6 +618,17 @@ function goToTicket() {
   }).getAppUrl();
 }
 
+function goToNewsprint() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=newsprint&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
 function setupDashboard() {
   const u = currentUser, role = (u.role||'').toLowerCase();
   document.getElementById('sidebarName').textContent = u.name;
@@ -658,13 +677,13 @@ let currentTab = 'all';
 
 function switchTab(tab) {
   currentTab = tab;
-  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','totebag','ticket'].forEach(t => {
+  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','totebag','ticket','newsprint'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
     btn.style.borderBottom = t === tab ? '3px solid #E8151B' : '3px solid transparent';
     btn.style.color        = t === tab ? '#0A0A0A' : '#999';
   });
-  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', totebag:'TOTE BAG', ticket:'TICKETS' };
+  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', totebag:'TOTE BAG', ticket:'TICKETS', newsprint:'NEWSLETTER / NEWSPAPER' };
   const el = document.getElementById('recentLabel');
   if (el) el.textContent = labels[tab] || 'QUOTATIONS';
   renderStats(); renderRecentTable();
@@ -682,6 +701,7 @@ function getFilteredByTab() {
   if (currentTab === 'risograph') return allQuotes.filter(q => String(q.quoteNum).startsWith('RG-'));
   if (currentTab === 'totebag')   return allQuotes.filter(q => String(q.quoteNum).startsWith('TB-'));
   if (currentTab === 'ticket')    return allQuotes.filter(q => String(q.quoteNum).startsWith('TKT-'));
+  if (currentTab === 'newsprint') return allQuotes.filter(q => String(q.quoteNum).startsWith('NL-'));
   return allQuotes;
 }
 
@@ -715,6 +735,7 @@ function renderRecentTable() {
     const isRiso     = String(q.quoteNum).startsWith('RG-');
     const isTotebag  = String(q.quoteNum).startsWith('TB-');
     const isTicket   = String(q.quoteNum).startsWith('TKT-');
+    const isNewsprint= String(q.quoteNum).startsWith('NL-');
     const typeLabel = isTarp
       ? `<span style="color:#888;">Tarpaulin</span>`
       : isReceipt
@@ -733,6 +754,8 @@ function renderRecentTable() {
       ? `<span style="color:#888;">${q.signageType||'Tote Bag'}</span>`
       : isTicket
       ? `<span style="color:#888;">${q.signageType||'Tickets'}</span>`
+      : isNewsprint
+      ? `<span style="color:#888;">${q.signageType||'Newsletter'}</span>`
       : `<span style="color:#888;">${q.signageType||'—'}</span>`;
     html += `<tr>
       <td style="font-weight:600;color:#0A0A0A;">${q.quoteNum}</td>
@@ -764,7 +787,7 @@ function renderAllQuotes() {
     let actions=`<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button>`;
     if (canApprove&&q.status==='Pending') actions+=` <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓</button> <button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕</button>`;
     const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : String(q.quoteNum).startsWith('MUG-') ? ('Mug — '+(q.mugType||'')) : String(q.quoteNum).startsWith('STK-') ? ('Sticker — '+(q.stickerType||'')+(q.layout==='Pre-cut'?' (Pre-cut)':''))
-      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : String(q.quoteNum).startsWith('TB-') ? ('Tote Bag — '+(q.totebagSize||'')) : String(q.quoteNum).startsWith('TKT-') ? ('Tickets — '+(q.ticketType||'')) : (q.signageType||'—');
+      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : String(q.quoteNum).startsWith('TB-') ? ('Tote Bag — '+(q.totebagSize||'')) : String(q.quoteNum).startsWith('TKT-') ? ('Tickets — '+(q.ticketType||'')) : String(q.quoteNum).startsWith('NL-') ? ((q.newsCategory||'News')+' — '+(q.newsOption||'')) : (q.signageType||'—');
     html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${qTypeLabel}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
   });
   html+='</tbody></table>';
@@ -958,6 +981,21 @@ function buildQuoteMessage(q) {
       q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
       q.designService === 'Yes' ? 'Design Service: Yes' : '',
       q.designFee>0 ? 'Design / Artwork Fee: ' + php(q.designFee) : '',
+    ];
+  } else if (qn.startsWith('NL-')) {
+    title = '📰 ' + (q.newsCategory ? q.newsCategory.toUpperCase() : 'NEWSLETTER / NEWSPAPER') + ' QUOTATION';
+    specs = [
+      'Type: ' + (q.newsCategory || '—'),
+      'Pages / Option: ' + (q.newsOption || (q.signageType||'').replace(/^.*— /,'') || '—'),
+      q.newsSize ? 'Size: ' + q.newsSize : '',
+      q.newsMaterial ? 'Material: ' + q.newsMaterial : '',
+      'Quantity: ' + (q.quantity||0) + ' copies',
+      q.unitPrice  ? 'Unit Price: '  + php(q.unitPrice) + ' / copy' : '',
+      q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+      q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
+      q.designService === 'Yes' ? 'Design Service: Yes' : '',
+      q.designFee>0 ? 'Design / Layout Fee: ' + php(q.designFee) : '',
     ];
   } else {
     title = '🪧 SIGNAGE QUOTATION';
@@ -1168,6 +1206,18 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
   ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
   ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
   ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
+` : String(q.quoteNum).startsWith('NL-') ? `
+  ${row('Publication', '<span style="font-weight:600;">'+(q.newsCategory || 'Newsletter / Newspaper')+'</span>')}
+  ${row('Pages / Option', q.newsOption || (q.signageType||'').replace(/^.*— /,'') || '—')}
+  ${q.newsSize?row('Size', q.newsSize):''}
+  ${q.newsMaterial?row('Material', q.newsMaterial):''}
+  ${row('Quantity', (q.quantity||0)+' copies')}
+  ${q.unitPrice>0?row('Unit Price', php(q.unitPrice)+' / copy'):''}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+  ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
+  ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+  ${q.designFee>0?row('Design / Layout Fee',php(q.designFee)):''}
 ` : `
   ${row('Signage Type', '<span style="font-weight:500;">'+(q.signageType||'—')+'</span>')}
   ${row('Dimensions', (q.width||'?')+' × '+(q.height||'?')+' ft = '+(q.sqft||'?')+' sqft')}
@@ -1275,6 +1325,7 @@ const PORTAL_PRODUCTS = [
   { id:'frame',    icon:'🖼️', label:'Photo Frame',   active:true,  page:'customer-frame',    shortUrl:'https://tinyurl.com/3nbyftjs' },
   { id:'totebag',  icon:'👜', label:'Tote Bag',      active:true,  page:'customer-totebag'                                          },
   { id:'ticket',   icon:'🎫', label:'Tickets',       active:true,  page:'customer-ticket'                                           },
+  { id:'newsprint',icon:'📰', label:'Newsletter / Newspaper', active:true, page:'customer-newsprint'                                },
 ];
 let selectedPortalProduct = null;
 
