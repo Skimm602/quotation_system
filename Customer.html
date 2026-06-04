@@ -606,6 +606,16 @@ function renderKeychainSpecs() {
         <label class="field-label">Design File / Reference <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
         <input class="field-input" id="kc_ref" value="${esc(d.keychainDesignRef||'')}" placeholder="Google Drive link or file name"
           oninput="d.keychainDesignRef=this.value;">
+        <div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:14px;margin-top:8px;">
+          <div style="font-size:11px;color:#7A5500;margin-bottom:10px;line-height:1.5;">
+            📎 Have your design ready? Attach it here — we'll send it directly to <strong>ormocprintshoppe@gmail.com</strong> as an <strong>Acrylic Keychain request</strong>. (max 5 MB)
+          </div>
+          <button type="button" onclick="pickKeychainDesignFile()"
+            style="width:100%;padding:11px;background:#fff;border:1px dashed #E0A020;border-radius:4px;color:#7A5500;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
+            📁 Choose File to Attach
+          </button>
+          <div id="kc_design_status" style="font-size:11px;margin-top:8px;text-align:center;color:#999;"></div>
+        </div>
       </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
@@ -1185,6 +1195,65 @@ function handleStickerDesignFile(input) {
             mimeType:    file.type || 'application/octet-stream',
             base64:      base64,
             productType: 'sticker',
+            clientName:  d.name,
+            contact:     d.contact,
+            email:       d.email,
+            notes:       d.notes,
+          });
+      } catch (err2) { setStatus('⚠ ' + (err2 && err2.message || 'Send failed.'), '#B00E12'); }
+    };
+    reader.onerror = function() { setStatus('⚠ Could not read the file.', '#B00E12'); };
+    reader.readAsDataURL(file);
+  } catch (e) { /* swallow */ }
+}
+
+// ── KEYCHAIN DESIGN FILE — emailed directly to Ormoc Printshoppe ──
+function pickKeychainDesignFile() {
+  try {
+    const input = document.createElement('input');
+    input.type   = 'file';
+    input.accept = 'image/*,application/pdf,.psd,.ai,.eps,.svg,.cdr,.zip';
+    input.style.display = 'none';
+    input.onchange = function() { handleKeychainDesignFile(input); };
+    document.body.appendChild(input);
+    input.click();
+    setTimeout(function(){ try{ input.remove(); }catch(_){} }, 60000);
+  } catch (e) {
+    const statusEl = document.getElementById('kc_design_status');
+    if (statusEl) { statusEl.textContent = '⚠ Could not open file picker.'; statusEl.style.color = '#B00E12'; }
+  }
+}
+
+function handleKeychainDesignFile(input) {
+  try {
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('kc_design_status');
+    const setStatus = function(msg, color) {
+      if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || '#999'; }
+    };
+    const MAX = 5 * 1024 * 1024;
+    if (file.size > MAX) { setStatus('⚠ File too large (max 5 MB).', '#B00E12'); input.value = ''; return; }
+    setStatus('⏳ Sending ' + file.name + '…', '#7A5500');
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const dataUrl = String((e && e.target && e.target.result) || '');
+        const base64  = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',')[1] : dataUrl;
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success) setStatus('✓ Sent to Ormoc Printshoppe — ' + file.name, '#1A6A3A');
+            else setStatus('⚠ ' + ((res && res.message) || 'Upload failed.'), '#B00E12');
+          })
+          .withFailureHandler(function(err) {
+            setStatus('⚠ ' + ((err && err.message) || 'Upload failed.'), '#B00E12');
+          })
+          .uploadCustomerDesign({
+            filename:    file.name,
+            mimeType:    file.type || 'application/octet-stream',
+            base64:      base64,
+            productType: 'Acrylic Keychain',
             clientName:  d.name,
             contact:     d.contact,
             email:       d.email,
