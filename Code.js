@@ -1161,6 +1161,21 @@ function getQuoteForPDF(token, quoteNum) {
   const qn = String(quoteNum || '').trim();
   if (!qn) return null;
 
+  // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
+  //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
+  //     data builder, which already returns a render-ready quote object. ──
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-'];
+  if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
+    try {
+      const dash = getDashboardData(token);
+      if (dash && dash.quotes && dash.quotes.length) {
+        const found = dash.quotes.find(function(x){ return String(x.quoteNum).trim() === qn; });
+        if (found) return found;
+      }
+    } catch(e) { Logger.log('getQuoteForPDF dashboard fallback error: ' + e); }
+    return null;
+  }
+
   // ── Receipt ─────────────────────────────────────────────────────
   if (qn.startsWith('RQ-')) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
