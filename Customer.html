@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -111,6 +111,7 @@ const PRODUCTS = [
   { id:'newsprint',icon:'📰', label:'Newsletter',    sub:'Newsletter / Newspaper'},
   { id:'souvenir', icon:'📖', label:'Souvenir',      sub:'Program (A3 / Laser)'  },
   { id:'keychain', icon:'🔑', label:'Keychain',      sub:'Acrylic + Vinyl'       },
+  { id:'acrylicsign', icon:'🪧', label:'Acrylic Sign', sub:'Per sq.ft · 1 layer' },
 ];
 
 const d = {
@@ -155,6 +156,8 @@ const d = {
   souvenirMaterial:'', souvenirPages:'', souvenirQty:1, souvenirRush:'No', souvenirDesign:'No',
   // acrylic keychain
   keychainSize:'', keychainCutType:'Standard', keychainQty:'', keychainDesignRef:'', keychainRush:'No', keychainDesign:'No',
+  // acrylic signage
+  acsignType:'', acsignWidth:'', acsignHeight:'', acsignQty:1, acsignRush:'No', acsignDesign:'No',
   // proof of payment (optional, sent as email attachment)
   proofFile: { name: '', mime: '', base64: '' },
 };
@@ -407,6 +410,36 @@ function calcKeychainTotal() {
   return base + rush + des;
 }
 
+function acsignTypeObj() {
+  const list = (PRICING.acrylicsign || {}).types || [];
+  return list.find(t => t.name === d.acsignType) || null;
+}
+function acsignBilledSqft() {
+  const t = acsignTypeObj();
+  const w = parseFloat(d.acsignWidth)  || 0;
+  const h = parseFloat(d.acsignHeight) || 0;
+  const area = w * h;
+  const minSqft = t ? (t.minSqft || 1) : 1;
+  return Math.max(minSqft, area);
+}
+function acsignUnitPrice() {
+  const t = acsignTypeObj();
+  if (!t) return 0;
+  return (t.pricePerSqft || 0) * acsignBilledSqft();
+}
+function calcAcrylicSignTotal() {
+  const p   = PRICING.acrylicsign || {};
+  const t   = acsignTypeObj();
+  const w   = parseFloat(d.acsignWidth)  || 0;
+  const h   = parseFloat(d.acsignHeight) || 0;
+  const qty = parseInt(d.acsignQty) || 0;
+  if (!t || !w || !h || !qty) return 0;
+  const base = acsignUnitPrice() * qty;
+  const rush = d.acsignRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.acsignDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
+
 function calcTotal() {
   if (selectedProduct === 'mug')      return calcMugTotal();
   if (selectedProduct === 'tshirt')   return calcTshirtTotal();
@@ -422,6 +455,7 @@ function calcTotal() {
   if (selectedProduct === 'newsprint')return calcNewsprintTotal();
   if (selectedProduct === 'souvenir') return calcSouvenirTotal();
   if (selectedProduct === 'keychain') return calcKeychainTotal();
+  if (selectedProduct === 'acrylicsign') return calcAcrylicSignTotal();
   return 0;
 }
 
@@ -532,7 +566,90 @@ function renderSpecs() {
   if (selectedProduct === 'newsprint')return renderNewsprintSpecs();
   if (selectedProduct === 'souvenir') return renderSouvenirSpecs();
   if (selectedProduct === 'keychain') return renderKeychainSpecs();
+  if (selectedProduct === 'acrylicsign') return renderAcrylicSignSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
+}
+
+// ── ACRYLIC SIGNAGE SPECS ─────────────────────────────────────────
+function selectAcsignType(idx) {
+  const list = (PRICING.acrylicsign || {}).types || [];
+  if (list[idx]) d.acsignType = list[idx].name;
+  renderForm();
+}
+
+function renderAcrylicSignSpecs() {
+  const p     = PRICING.acrylicsign || {};
+  const types = p.types || [];
+  // Auto-select if only one type
+  if (!d.acsignType && types.length === 1) d.acsignType = types[0].name;
+
+  const typeCards = types.map((t, idx) => {
+    const sel = d.acsignType === t.name;
+    return `<div class="opt-card${sel?' active':''}" onclick="selectAcsignType(${idx})">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">🪧 ${esc(t.name)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">₱${(t.pricePerSqft||0).toLocaleString('en-PH')}/sq.ft · min ${esc(t.minSize||'1x1 ft')}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const t    = acsignTypeObj();
+  const w    = parseFloat(d.acsignWidth)  || 0;
+  const h    = parseFloat(d.acsignHeight) || 0;
+  const qty  = parseInt(d.acsignQty) || 0;
+  const billed = (t && w && h) ? acsignBilledSqft() : 0;
+  const estLine = (t && w && h && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Billed: ${billed} sq.ft × ₱${(t.pricePerSqft||0).toLocaleString('en-PH')} × ${qty} pc(s) = ₱${(acsignUnitPrice()*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+  const remarkBox = (t && t.remarks)
+    ? `<div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:10px 12px;font-size:11px;color:#7A5500;line-height:1.5;">ℹ️ ${esc(t.remarks)}</div>`
+    : '';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      ${types.length > 1 ? `
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Signage Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${typeCards}</div>
+      </div>` : (t ? `
+      <div style="background:#FAFAFA;border:1px solid #EEE;border-radius:4px;padding:12px 14px;">
+        <div style="font-size:13px;color:#444;">🪧 <strong>${esc(t.name)}</strong> · ₱${(t.pricePerSqft||0).toLocaleString('en-PH')}/sq.ft · min ${esc(t.minSize||'1x1 ft')}</div>
+      </div>` : '')}
+      <div>
+        <label class="field-label">Size (in feet) *</label>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:2px;">
+          <input type="number" class="field-input" id="as_w" value="${esc(String(d.acsignWidth||''))}" placeholder="Width" min="0.1" step="0.1"
+            oninput="d.acsignWidth=this.value;renderForm();" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
+          <input type="number" class="field-input" id="as_h" value="${esc(String(d.acsignHeight||''))}" placeholder="Height" min="0.1" step="0.1"
+            oninput="d.acsignHeight=this.value;renderForm();" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:13px;">ft</span>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="as_qty" value="${d.acsignQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.acsignQty=parseInt(this.value)||1;renderForm();" inputmode="numeric">
+        ${estLine}
+      </div>
+      ${remarkBox}
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.acsignRush==='Yes'?' on':''}" onclick="d.acsignRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.acsignRush==='No'?' on':''}"  onclick="d.acsignRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.acsignDesign==='Yes'?' on':''}" onclick="d.acsignDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.acsignDesign==='No'?' on':''}"  onclick="d.acsignDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 // ── ACRYLIC KEYCHAIN SPECS ────────────────────────────────────────
@@ -2038,6 +2155,10 @@ function renderReview() {
     if (d.keychainDesignRef) specSummary += ` · Ref: ${esc(d.keychainDesignRef)}`;
     if (d.keychainRush   === 'Yes') specSummary += ' · Rush';
     if (d.keychainDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'acrylicsign') {
+    specSummary = `${esc(d.acsignType)||'Acrylic Signage'} · ${d.acsignWidth||'?'} × ${d.acsignHeight||'?'} ft × ${d.acsignQty||0} pc(s)`;
+    if (d.acsignRush   === 'Yes') specSummary += ' · Rush';
+    if (d.acsignDesign === 'Yes') specSummary += ' · Design';
   }
 
   const dateLabel = d.dateNeeded
@@ -2268,6 +2389,14 @@ function nextStep() {
       if (!d.keychainCutType)       { toast('Please select a design type.','error'); return; }
       const minQ = sObj.minOrder || 1;
       if (!parseInt(d.keychainQty) || parseInt(d.keychainQty) < minQ) { toast('Minimum order for '+d.keychainSize+' is '+minQ+' pcs.','error'); return; }
+    }
+    if (selectedProduct === 'acrylicsign') {
+      d.acsignWidth  = v('as_w') || d.acsignWidth;
+      d.acsignHeight = v('as_h') || d.acsignHeight;
+      d.acsignQty    = parseInt(v('as_qty')) || d.acsignQty;
+      if (!d.acsignType || !acsignTypeObj()) { toast('Please select a signage type.','error'); return; }
+      if (!d.acsignWidth || !d.acsignHeight) { toast('Please enter the size (width × height).','error'); return; }
+      if (!d.acsignQty || d.acsignQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
     }
   }
   if (formStep === 2) { submitRequest(); return; }
@@ -2598,6 +2727,32 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'acrylicsign') {
+    const p     = PRICING.acrylicsign || {};
+    const t     = acsignTypeObj() || {};
+    const w     = parseFloat(d.acsignWidth)  || 0;
+    const h     = parseFloat(d.acsignHeight) || 0;
+    const qty   = parseInt(d.acsignQty) || 1;
+    const billed= acsignBilledSqft();
+    const up    = acsignUnitPrice();
+    const base  = up * qty;
+    const rush  = d.acsignRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des   = d.acsignDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      signageType:   d.acsignType,
+      width:         w, height: h,
+      sqft:          w * h,
+      billedSqft:    billed,
+      quantity:      qty,
+      ratePerSqft:   t.pricePerSqft || 0,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.acsignRush,   rushFee:   rush,
+      designService: d.acsignDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   google.script.run
     .withSuccessHandler(function(qn) {
       screen = 'success';
@@ -2711,6 +2866,12 @@ function buildMessengerText(qn) {
     if (d.keychainDesignRef) specsLine += '\nDesign Ref: ' + d.keychainDesignRef;
     if (d.keychainRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.keychainDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'acrylicsign') {
+    specsLine = 'Acrylic Signage · ' + (d.acsignType || '—');
+    specsLine += '\nSize: ' + (d.acsignWidth || '?') + ' × ' + (d.acsignHeight || '?') + ' ft';
+    specsLine += '\nQuantity: ' + (d.acsignQty || 0) + ' pc(s)';
+    if (d.acsignRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.acsignDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   }
 
   return [
@@ -2775,7 +2936,7 @@ function copyMsg() {
 
 function resetAll() {
   screen = 'products'; selectedProduct = ''; formStep = 0;
-  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty','ticketQty','souvenirQty'];
+  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty','ticketQty','souvenirQty','acsignQty'];
   Object.keys(d).forEach(k => {
     if (typeof d[k] === 'string') d[k] = '';
     else if (typeof d[k] === 'number') d[k] = k==='mugQty'?5:qty1.includes(k)?1:0;
@@ -2798,6 +2959,7 @@ function resetAll() {
   d.newsCategory=''; d.newsOption=''; d.newsQty=200; d.newsRush='No'; d.newsDesign='No';
   d.souvenirMaterial=''; d.souvenirPages=''; d.souvenirRush='No'; d.souvenirDesign='No';
   d.keychainSize=''; d.keychainCutType='Standard'; d.keychainQty=''; d.keychainDesignRef=''; d.keychainRush='No'; d.keychainDesign='No';
+  d.acsignType=''; d.acsignWidth=''; d.acsignHeight=''; d.acsignRush='No'; d.acsignDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
