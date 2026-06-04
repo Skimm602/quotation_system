@@ -532,21 +532,21 @@ function renderSouvenirSpecs() {
   const size = p.pageSize || 'A3';
   const mats = (p.materials && p.materials.length) ? p.materials : ['Foldcote','Mirrorkote','C2S200'];
 
-  const matCards = mats.map((m, idx) => {
-    const sel = d.souvenirMaterial === m;
+  // Materials are a GUIDE only (what we use) — not a selectable choice.
+  const matGuideRows = mats.map(m => {
     const g = souvenirMatGuide(m);
-    return `<div class="opt-card${sel?' active':''}" onclick="d.souvenirMaterial=(PRICING.souvenir&&PRICING.souvenir.materials?PRICING.souvenir.materials[${idx}]:'${m.replace(/'/g,"\\'")}');renderForm();" style="align-items:flex-start;">
-      <input type="radio" ${sel?'checked':''} readonly style="margin-top:2px;">
+    return `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;">
+      <span style="font-size:14px;flex-shrink:0;">${g.icon}</span>
       <div style="flex:1;">
-        <div style="font-size:13px;font-weight:600;">${g.icon} ${esc(m)}</div>
-        ${g.desc ? `<div style="font-size:11px;color:#888;margin-top:2px;line-height:1.4;">${esc(g.desc)}</div>` : ''}
+        <span style="font-size:12px;font-weight:600;color:#444;">${esc(m)}</span>
+        ${g.desc ? `<span style="font-size:11px;color:#999;"> — ${esc(g.desc)}</span>` : ''}
       </div>
     </div>`;
   }).join('');
 
   const pages = parseInt(d.souvenirPages) || 0;
   const qty   = parseInt(d.souvenirQty)   || 0;
-  const estLine = (d.souvenirMaterial && pages && qty)
+  const estLine = (pages && qty)
     ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${pages} pages × ${qty} copies × ₱${rate.toLocaleString('en-PH')}/page = ₱${(rate*pages*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
     : '';
 
@@ -558,9 +558,9 @@ function renderSouvenirSpecs() {
           Page Size: <strong>${esc(size)}</strong> · Print: <strong>${esc(p.method || 'Laser')}</strong> · <strong>₱${rate.toLocaleString('en-PH')}/page</strong>
         </div>
       </div>
-      <div>
-        <label class="field-label" style="margin-bottom:8px;">Material *</label>
-        <div style="display:flex;flex-direction:column;gap:6px;">${matCards}</div>
+      <div style="background:#F0F7FF;border:1px solid #CFE3FA;border-radius:4px;padding:12px 14px;">
+        <div style="font-size:11px;color:#1A4A9A;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;margin-bottom:4px;">📋 Materials We Use</div>
+        ${matGuideRows}
       </div>
       <div>
         <label class="field-label">Pages per Copy (${esc(size)}) *</label>
@@ -1847,7 +1847,7 @@ function renderReview() {
     if (d.newsDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'souvenir') {
     const sp = PRICING.souvenir || {};
-    specSummary = `${esc(d.souvenirMaterial)||'—'} · ${esc(d.souvenirPages)||'?'} pages (${esc(sp.pageSize||'A3')}) × ${d.souvenirQty} copies`;
+    specSummary = `Souvenir Program · ${esc(d.souvenirPages)||'?'} pages (${esc(sp.pageSize||'A3')}) × ${d.souvenirQty} copies`;
     if (d.souvenirRush   === 'Yes') specSummary += ' · Rush';
     if (d.souvenirDesign === 'Yes') specSummary += ' · Design';
   }
@@ -2069,7 +2069,6 @@ function nextStep() {
     if (selectedProduct === 'souvenir') {
       d.souvenirPages = v('sv_pages') || d.souvenirPages;
       d.souvenirQty   = parseInt(v('sv_qty')) || d.souvenirQty;
-      if (!d.souvenirMaterial) { toast('Please select a material.','error'); return; }
       if (!d.souvenirPages || parseInt(d.souvenirPages) < 1) { toast('Please enter the number of pages.','error'); return; }
       if (!d.souvenirQty || d.souvenirQty < 1) { toast('Please enter the number of copies.','error'); return; }
     }
@@ -2366,7 +2365,7 @@ function submitRequest() {
     const rush  = d.souvenirRush   === 'Yes' ? (p.rushFee   || 150) : 0;
     const des   = d.souvenirDesign === 'Yes' ? (p.designFee || 250) : 0;
     Object.assign(payload, {
-      material:      d.souvenirMaterial,
+      material:      (p.materials && p.materials.length) ? p.materials.join(' / ') : '',
       pageSize:      p.pageSize || 'A3',
       method:        p.method   || 'Laser',
       pages:         pages,
@@ -2479,7 +2478,7 @@ function buildMessengerText(qn) {
     if (d.newsDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'souvenir') {
     const sp = PRICING.souvenir || {};
-    specsLine = 'Souvenir Program · ' + (d.souvenirMaterial || '—');
+    specsLine = 'Souvenir Program';
     specsLine += '\nPages: ' + (d.souvenirPages || '?') + ' (' + (sp.pageSize || 'A3') + ') · ' + (sp.method || 'Laser');
     specsLine += '\nQuantity: ' + d.souvenirQty + ' copies';
     if (d.souvenirRush   === 'Yes') specsLine += '\nRush Order: Yes';

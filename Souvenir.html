@@ -273,19 +273,19 @@ function renderBody() {
     const qty   = parseInt(d.quantity) || 1;
     const rate  = unitPrice();
 
-    const matCards = (PRICING.materials || []).map(function(m, idx) {
-      const sel = d.material === m;
+    // Materials are a GUIDE only (what we use) — not a selectable choice.
+    const matGuideRows = (PRICING.materials || []).map(function(m) {
       const g = matGuide(m);
-      return `<div class="opt-card ${sel?'selected':''}" onclick="selectMaterial(${idx})" style="align-items:flex-start;">
-        <input type="radio" ${sel?'checked':''} readonly style="accent-color:#E8151B;margin-top:2px;">
+      return `<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;">
+        <span style="font-size:14px;flex-shrink:0;">${g.icon}</span>
         <div style="flex:1;">
-          <div style="font-size:13px;font-weight:600;color:${sel?'#E8151B':'#0A0A0A'};">${g.icon} ${esc(m)}</div>
-          ${g.desc ? `<div style="font-size:11px;color:#888;margin-top:2px;line-height:1.4;">${esc(g.desc)}</div>` : ''}
+          <span style="font-size:12px;font-weight:600;color:#444;">${esc(m)}</span>
+          ${g.desc ? `<span style="font-size:11px;color:#999;"> — ${esc(g.desc)}</span>` : ''}
         </div>
       </div>`;
     }).join('');
 
-    const canPreview = d.material && pages > 0 && qty > 0;
+    const canPreview = pages > 0 && qty > 0;
     const costPreview = canPreview
       ? `<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">
           <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Program Cost</div>
@@ -303,9 +303,9 @@ function renderBody() {
           <strong>${php(rate)} / page</strong>
         </div>
 
-        <div>
-          <label class="field-label" style="margin-bottom:10px;">Material</label>
-          <div style="display:flex;flex-direction:column;gap:8px;">${matCards}</div>
+        <div style="background:#F0F7FF;border:1px solid #CFE3FA;border-radius:3px;padding:12px 14px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1A4A9A;margin-bottom:4px;">📋 Materials We Use</div>
+          ${matGuideRows}
         </div>
 
         <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
@@ -372,7 +372,7 @@ function renderBody() {
 
       <table class="q-table">
         <tr><td colspan="2" class="sec-label">SOUVENIR PROGRAM SPECIFICATIONS</td></tr>
-        <tr><td>Material</td><td>${esc(d.material) || '—'}</td></tr>
+        <tr><td>Materials</td><td>${esc((PRICING.materials||[]).join(' / ')) || '—'}</td></tr>
         <tr><td>Page Size</td><td>${esc(PRICING.pageSize || 'A3')}</td></tr>
         <tr><td>Print Method</td><td>${esc(PRICING.method || 'Laser')}</td></tr>
         <tr><td>Pages per Copy</td><td>${pages || '—'}</td></tr>
@@ -461,7 +461,6 @@ function next() {
     }
   }
   if (step === 1) {
-    if (!d.material)   { showToast('⚠ Please select a Material.', 'error'); return; }
     if (!d.pages || parseInt(d.pages) < 1) { showToast('⚠ Please enter the number of pages.', 'error'); return; }
     if (!d.quantity || d.quantity < 1)     { showToast('⚠ Please enter the number of copies.', 'error'); return; }
     if (!d.rushOrder)     { showToast('⚠ Please indicate if this is a Rush Order.', 'error');     return; }
@@ -522,7 +521,7 @@ function buildMessengerText() {
   lines.push('📅 Date Needed: ' + dateStr);
   lines.push('');
   lines.push('📐 SPECIFICATIONS');
-  lines.push('• Material: ' + (d.material || '—'));
+  lines.push('• Materials: ' + ((PRICING.materials||[]).join(' / ') || '—'));
   lines.push('• Page Size: ' + (PRICING.pageSize || 'A3'));
   lines.push('• Print Method: ' + (PRICING.method || 'Laser'));
   lines.push('• Pages per Copy: ' + (pages || '—'));
@@ -577,7 +576,7 @@ function saveToSheet() {
     contact:       d.contact,
     email:         d.email,
     dateNeeded:    d.dateNeeded,
-    material:      d.material,
+    material:      (PRICING.materials || []).join(' / '),
     pageSize:      PRICING.pageSize || 'A3',
     method:        PRICING.method   || 'Laser',
     pages:         pages,
