@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -110,6 +110,7 @@ const PRODUCTS = [
   { id:'ticket',   icon:'🎫', label:'Tickets',       sub:'Calling Card / Custom' },
   { id:'newsprint',icon:'📰', label:'Newsletter',    sub:'Newsletter / Newspaper'},
   { id:'souvenir', icon:'📖', label:'Souvenir',      sub:'Program (A3 / Laser)'  },
+  { id:'keychain', icon:'🔑', label:'Keychain',      sub:'Acrylic + Vinyl'       },
 ];
 
 const d = {
@@ -152,6 +153,8 @@ const d = {
   newsCategory:'', newsOption:'', newsQty:200, newsRush:'No', newsDesign:'No',
   // souvenir program
   souvenirMaterial:'', souvenirPages:'', souvenirQty:1, souvenirRush:'No', souvenirDesign:'No',
+  // acrylic keychain
+  keychainSize:'', keychainCutType:'Standard', keychainQty:'', keychainDesignRef:'', keychainRush:'No', keychainDesign:'No',
   // proof of payment (optional, sent as email attachment)
   proofFile: { name: '', mime: '', base64: '' },
 };
@@ -377,11 +380,31 @@ function calcSouvenirTotal() {
   const p = PRICING.souvenir || {};
   const pages = parseInt(d.souvenirPages) || 0;
   const qty   = parseInt(d.souvenirQty)   || 0;
-  if (!d.souvenirMaterial || !pages || !qty) return 0;
+  if (!pages || !qty) return 0;
   const rate = p.pricePerPage || 80;
   const rush = d.souvenirRush   === 'Yes' ? (p.rushFee   || 150) : 0;
   const des  = d.souvenirDesign === 'Yes' ? (p.designFee || 250) : 0;
   return (rate * pages * qty) + rush + des;
+}
+
+function keychainSizeObj() {
+  const list = (PRICING.keychain || {}).sizes || [];
+  return list.find(s => s.label === d.keychainSize) || null;
+}
+function keychainUnitPrice() {
+  const s = keychainSizeObj();
+  if (!s) return 0;
+  return d.keychainCutType === 'Die-cut' ? (s.diecut || 0) : (s.standard || 0);
+}
+function calcKeychainTotal() {
+  const p   = PRICING.keychain || {};
+  const up  = keychainUnitPrice();
+  const qty = parseInt(d.keychainQty) || 0;
+  if (!up || !qty) return 0;
+  const base = up * qty;
+  const rush = d.keychainRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+  const des  = d.keychainDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
 }
 
 function calcTotal() {
@@ -398,6 +421,7 @@ function calcTotal() {
   if (selectedProduct === 'ticket')   return calcTicketTotal();
   if (selectedProduct === 'newsprint')return calcNewsprintTotal();
   if (selectedProduct === 'souvenir') return calcSouvenirTotal();
+  if (selectedProduct === 'keychain') return calcKeychainTotal();
   return 0;
 }
 
@@ -507,7 +531,97 @@ function renderSpecs() {
   if (selectedProduct === 'ticket')   return renderTicketSpecs();
   if (selectedProduct === 'newsprint')return renderNewsprintSpecs();
   if (selectedProduct === 'souvenir') return renderSouvenirSpecs();
+  if (selectedProduct === 'keychain') return renderKeychainSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
+}
+
+// ── ACRYLIC KEYCHAIN SPECS ────────────────────────────────────────
+function selectKeychainSize(idx) {
+  const list = (PRICING.keychain || {}).sizes || [];
+  if (list[idx]) {
+    d.keychainSize = list[idx].label;
+    const minQ = list[idx].minOrder || 1;
+    if (!d.keychainQty || parseInt(d.keychainQty) < minQ) d.keychainQty = minQ;
+  }
+  renderForm();
+}
+
+function renderKeychainSpecs() {
+  const p     = PRICING.keychain || {};
+  const sizes = p.sizes || [];
+  const sObj  = keychainSizeObj();
+  const minQ  = sObj ? (sObj.minOrder || 1) : 1;
+  const up    = keychainUnitPrice();
+
+  const sizeOpts = sizes.map((s, idx) => {
+    const sel = d.keychainSize === s.label;
+    return `<option value="${idx}" ${sel?'selected':''}>${esc(s.label)} — ₱${(s.standard||0).toLocaleString('en-PH')} (min ${s.minOrder} pcs)</option>`;
+  }).join('');
+
+  const cutTypes = [
+    { key:'Standard', desc:'Rectangular / square cut' },
+    { key:'Die-cut',  desc:'Cut to follow your design outline (+20%)' },
+  ];
+  const cutCards = cutTypes.map(c => {
+    const sel = d.keychainCutType === c.key;
+    return `<div class="opt-card${sel?' active':''}" onclick="d.keychainCutType='${c.key}';renderForm();">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${c.key}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">${esc(c.desc)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const qty = parseInt(d.keychainQty) || 0;
+  const estLine = (up && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pcs × ₱${up.toLocaleString('en-PH')}/pc = ₱${(up*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label">Size *</label>
+        <select class="field-input" id="kc_size" onchange="selectKeychainSize(this.value)" style="font-weight:600;">
+          <option value="" ${!d.keychainSize?'selected':''} disabled>— Select size —</option>
+          ${sizeOpts}
+        </select>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Design Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${cutCards}</div>
+      </div>
+      <div style="background:#FAFAFA;border:1px solid #EEE;border-radius:4px;padding:12px 14px;">
+        <div style="font-size:11px;color:#888;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;">Material</div>
+        <div style="font-size:13px;color:#444;margin-top:4px;">${esc(p.material || 'Acrylic + Vinyl Sticker')}</div>
+      </div>
+      <div>
+        <label class="field-label">Quantity (pcs)${sObj?` (min. ${minQ})`:''} *</label>
+        <input type="number" class="field-input" id="kc_qty" value="${esc(String(d.keychainQty||''))}" min="${minQ}" placeholder="${sObj?('min. '+minQ):'min. 20'}"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.keychainQty=this.value;renderForm();" inputmode="numeric">
+        ${estLine}
+      </div>
+      <div>
+        <label class="field-label">Design File / Reference <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="kc_ref" value="${esc(d.keychainDesignRef||'')}" placeholder="Google Drive link or file name"
+          oninput="d.keychainDesignRef=this.value;">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.keychainRush==='Yes'?' on':''}" onclick="d.keychainRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.keychainRush==='No'?' on':''}"  onclick="d.keychainRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.keychainDesign==='Yes'?' on':''}" onclick="d.keychainDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.keychainDesign==='No'?' on':''}"  onclick="d.keychainDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 // ── SOUVENIR PROGRAM SPECS ────────────────────────────────────────
@@ -1850,6 +1964,11 @@ function renderReview() {
     specSummary = `Souvenir Program · ${esc(d.souvenirPages)||'?'} pages (${esc(sp.pageSize||'A3')}) × ${d.souvenirQty} copies`;
     if (d.souvenirRush   === 'Yes') specSummary += ' · Rush';
     if (d.souvenirDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'keychain') {
+    specSummary = `${esc(d.keychainSize)||'—'} · ${esc(d.keychainCutType)} × ${d.keychainQty||0} pc(s)`;
+    if (d.keychainDesignRef) specSummary += ` · Ref: ${esc(d.keychainDesignRef)}`;
+    if (d.keychainRush   === 'Yes') specSummary += ' · Rush';
+    if (d.keychainDesign === 'Yes') specSummary += ' · Design';
   }
 
   const dateLabel = d.dateNeeded
@@ -2071,6 +2190,15 @@ function nextStep() {
       d.souvenirQty   = parseInt(v('sv_qty')) || d.souvenirQty;
       if (!d.souvenirPages || parseInt(d.souvenirPages) < 1) { toast('Please enter the number of pages.','error'); return; }
       if (!d.souvenirQty || d.souvenirQty < 1) { toast('Please enter the number of copies.','error'); return; }
+    }
+    if (selectedProduct === 'keychain') {
+      d.keychainQty       = v('kc_qty') || d.keychainQty;
+      d.keychainDesignRef = v('kc_ref') || d.keychainDesignRef;
+      const sObj = keychainSizeObj();
+      if (!d.keychainSize || !sObj) { toast('Please select a size.','error'); return; }
+      if (!d.keychainCutType)       { toast('Please select a design type.','error'); return; }
+      const minQ = sObj.minOrder || 1;
+      if (!parseInt(d.keychainQty) || parseInt(d.keychainQty) < minQ) { toast('Minimum order for '+d.keychainSize+' is '+minQ+' pcs.','error'); return; }
     }
   }
   if (formStep === 2) { submitRequest(); return; }
@@ -2378,6 +2506,29 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'keychain') {
+    const p    = PRICING.keychain || {};
+    const sObj = keychainSizeObj() || {};
+    const up   = keychainUnitPrice();
+    const qty  = parseInt(d.keychainQty) || 1;
+    const base = up * qty;
+    const rush = d.keychainRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+    const des  = d.keychainDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      size:          d.keychainSize,
+      sqin:          sObj.sqin || 0,
+      cutType:       d.keychainCutType,
+      material:      p.material || 'Acrylic + Vinyl Sticker',
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.keychainRush,   rushFee:   rush,
+      designService: d.keychainDesign, designFee: des,
+      designRef:     d.keychainDesignRef,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   google.script.run
     .withSuccessHandler(function(qn) {
       screen = 'success';
@@ -2483,6 +2634,14 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + d.souvenirQty + ' copies';
     if (d.souvenirRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.souvenirDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'keychain') {
+    const kp = PRICING.keychain || {};
+    specsLine = 'Acrylic Keychain · ' + (d.keychainSize || '—') + ' · ' + (d.keychainCutType || 'Standard');
+    specsLine += '\nMaterial: ' + (kp.material || 'Acrylic + Vinyl Sticker');
+    specsLine += '\nQuantity: ' + (d.keychainQty || 0) + ' pc(s)';
+    if (d.keychainDesignRef) specsLine += '\nDesign Ref: ' + d.keychainDesignRef;
+    if (d.keychainRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.keychainDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   }
 
   return [
@@ -2569,6 +2728,7 @@ function resetAll() {
   d.ticketType=''; d.ticketRush='No'; d.ticketDesign='No';
   d.newsCategory=''; d.newsOption=''; d.newsQty=200; d.newsRush='No'; d.newsDesign='No';
   d.souvenirMaterial=''; d.souvenirPages=''; d.souvenirRush='No'; d.souvenirDesign='No';
+  d.keychainSize=''; d.keychainCutType='Standard'; d.keychainQty=''; d.keychainDesignRef=''; d.keychainRush='No'; d.keychainDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });

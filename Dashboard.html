@@ -165,6 +165,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
             <span class="nq-icon">📖</span>
             <span>Souvenir Program Quote</span>
           </div>
+          <div class="nq-option" onclick="goToKeychain()">
+            <span class="nq-icon">🔑</span>
+            <span>Acrylic Keychain Quote</span>
+          </div>
         </div>
       </div>
       <!-- END NEW QUOTE DROPDOWN -->
@@ -237,6 +241,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
         <button onclick="switchTab('souvenir')" id="tab-souvenir"
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
           SOUVENIR
+        </button>
+        <button onclick="switchTab('keychain')" id="tab-keychain"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          KEYCHAIN
         </button>
       </div>
 
@@ -648,6 +656,17 @@ function goToSouvenir() {
   }).getAppUrl();
 }
 
+function goToKeychain() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=keychain&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
 function setupDashboard() {
   const u = currentUser, role = (u.role||'').toLowerCase();
   document.getElementById('sidebarName').textContent = u.name;
@@ -696,13 +715,13 @@ let currentTab = 'all';
 
 function switchTab(tab) {
   currentTab = tab;
-  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','totebag','ticket','newsprint','souvenir'].forEach(t => {
+  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','totebag','ticket','newsprint','souvenir','keychain'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
     btn.style.borderBottom = t === tab ? '3px solid #E8151B' : '3px solid transparent';
     btn.style.color        = t === tab ? '#0A0A0A' : '#999';
   });
-  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', totebag:'TOTE BAG', ticket:'TICKETS', newsprint:'NEWSLETTER / NEWSPAPER', souvenir:'SOUVENIR PROGRAM' };
+  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', totebag:'TOTE BAG', ticket:'TICKETS', newsprint:'NEWSLETTER / NEWSPAPER', souvenir:'SOUVENIR PROGRAM', keychain:'ACRYLIC KEYCHAIN' };
   const el = document.getElementById('recentLabel');
   if (el) el.textContent = labels[tab] || 'QUOTATIONS';
   renderStats(); renderRecentTable();
@@ -722,6 +741,7 @@ function getFilteredByTab() {
   if (currentTab === 'ticket')    return allQuotes.filter(q => String(q.quoteNum).startsWith('TKT-'));
   if (currentTab === 'newsprint') return allQuotes.filter(q => String(q.quoteNum).startsWith('NL-'));
   if (currentTab === 'souvenir')  return allQuotes.filter(q => String(q.quoteNum).startsWith('SP-'));
+  if (currentTab === 'keychain')  return allQuotes.filter(q => String(q.quoteNum).startsWith('KC-'));
   return allQuotes;
 }
 
@@ -757,6 +777,7 @@ function renderRecentTable() {
     const isTicket   = String(q.quoteNum).startsWith('TKT-');
     const isNewsprint= String(q.quoteNum).startsWith('NL-');
     const isSouvenir = String(q.quoteNum).startsWith('SP-');
+    const isKeychain = String(q.quoteNum).startsWith('KC-');
     const typeLabel = isTarp
       ? `<span style="color:#888;">Tarpaulin</span>`
       : isReceipt
@@ -779,6 +800,8 @@ function renderRecentTable() {
       ? `<span style="color:#888;">${q.signageType||'Newsletter'}</span>`
       : isSouvenir
       ? `<span style="color:#888;">${q.signageType||'Souvenir Program'}</span>`
+      : isKeychain
+      ? `<span style="color:#888;">${q.signageType||'Acrylic Keychain'}</span>`
       : `<span style="color:#888;">${q.signageType||'—'}</span>`;
     html += `<tr>
       <td style="font-weight:600;color:#0A0A0A;">${q.quoteNum}</td>
@@ -810,7 +833,7 @@ function renderAllQuotes() {
     let actions=`<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button>`;
     if (canApprove&&q.status==='Pending') actions+=` <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓</button> <button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕</button>`;
     const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : String(q.quoteNum).startsWith('MUG-') ? ('Mug — '+(q.mugType||'')) : String(q.quoteNum).startsWith('STK-') ? ('Sticker — '+(q.stickerType||'')+(q.layout==='Pre-cut'?' (Pre-cut)':''))
-      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : String(q.quoteNum).startsWith('TB-') ? ('Tote Bag — '+(q.totebagSize||'')) : String(q.quoteNum).startsWith('TKT-') ? ('Tickets — '+(q.ticketType||'')) : String(q.quoteNum).startsWith('NL-') ? ((q.newsCategory||'News')+' — '+(q.newsOption||'')) : String(q.quoteNum).startsWith('SP-') ? ('Souvenir — '+(q.souvenirMaterial||'')) : (q.signageType||'—');
+      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : String(q.quoteNum).startsWith('TB-') ? ('Tote Bag — '+(q.totebagSize||'')) : String(q.quoteNum).startsWith('TKT-') ? ('Tickets — '+(q.ticketType||'')) : String(q.quoteNum).startsWith('NL-') ? ((q.newsCategory||'News')+' — '+(q.newsOption||'')) : String(q.quoteNum).startsWith('SP-') ? ('Souvenir — '+(q.souvenirMaterial||'')) : String(q.quoteNum).startsWith('KC-') ? ('Keychain — '+(q.keychainSize||'')+' '+(q.keychainCutType||'')) : (q.signageType||'—');
     html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${qTypeLabel}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
   });
   html+='</tbody></table>';
@@ -1034,6 +1057,21 @@ function buildQuoteMessage(q) {
       q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
       q.designService === 'Yes' ? 'Design Service: Yes' : '',
       q.designFee>0 ? 'Design / Layout Fee: ' + php(q.designFee) : '',
+    ];
+  } else if (qn.startsWith('KC-')) {
+    title = '🔑 ACRYLIC KEYCHAIN QUOTATION';
+    specs = [
+      'Size: ' + (q.keychainSize || (q.signageType||'').replace('Acrylic Keychain — ','') || '—') + (q.keychainSqin ? ' (' + q.keychainSqin + ' sq.in.)' : ''),
+      'Design Type: ' + (q.keychainCutType || '—'),
+      q.keychainMaterial ? 'Material: ' + q.keychainMaterial : '',
+      'Quantity: ' + (q.quantity||0) + ' pc(s)',
+      q.unitPrice  ? 'Unit Price: ' + php(q.unitPrice) + ' / pc' : '',
+      q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
+      q.keychainDesignRef ? 'Design Ref: ' + q.keychainDesignRef : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+      q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
+      q.designService === 'Yes' ? 'Design Service: Yes' : '',
+      q.designFee>0 ? 'Design / Artwork Fee: ' + php(q.designFee) : '',
     ];
   } else {
     title = '🪧 SIGNAGE QUOTATION';
@@ -1268,6 +1306,18 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
   ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
   ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
   ${q.designFee>0?row('Design / Layout Fee',php(q.designFee)):''}
+` : String(q.quoteNum).startsWith('KC-') ? `
+  ${row('Size', '<span style="font-weight:600;">'+(q.keychainSize || (q.signageType||'').replace('Acrylic Keychain — ','') || '—')+'</span>'+(q.keychainSqin?' ('+q.keychainSqin+' sq.in.)':''))}
+  ${row('Design Type', q.keychainCutType || '—')}
+  ${q.keychainMaterial?row('Material', q.keychainMaterial):''}
+  ${row('Quantity', (q.quantity||0)+' pc(s)')}
+  ${q.unitPrice>0?row('Unit Price', php(q.unitPrice)+' / pc'):''}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.keychainDesignRef?row('Design Reference', q.keychainDesignRef):''}
+  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+  ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
+  ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+  ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
 ` : `
   ${row('Signage Type', '<span style="font-weight:500;">'+(q.signageType||'—')+'</span>')}
   ${row('Dimensions', (q.width||'?')+' × '+(q.height||'?')+' ft = '+(q.sqft||'?')+' sqft')}
@@ -1377,6 +1427,7 @@ const PORTAL_PRODUCTS = [
   { id:'ticket',   icon:'🎫', label:'Tickets',       active:true,  page:'customer-ticket'                                           },
   { id:'newsprint',icon:'📰', label:'Newsletter / Newspaper', active:true, page:'customer-newsprint'                                },
   { id:'souvenir', icon:'📖', label:'Souvenir Program', active:true, page:'customer-souvenir'                                       },
+  { id:'keychain', icon:'🔑', label:'Acrylic Keychain', active:true, page:'customer-keychain'                                       },
 ];
 let selectedPortalProduct = null;
 

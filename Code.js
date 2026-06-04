@@ -19,6 +19,7 @@ const TOTEBAG_SHEET           = 'Totebag Quotations';
 const TICKET_SHEET            = 'Ticket Quotations';
 const NEWSPRINT_SHEET         = 'Newsprint Quotations';
 const SOUVENIR_SHEET          = 'Souvenir Quotations';
+const KEYCHAIN_SHEET          = 'Keychain Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
 
@@ -133,6 +134,9 @@ function doGet(e) {
   }
   if (page === 'souvenir') {
     return serveWithToken_('Souvenir', 'Quotation System — Souvenir Program', token, appUrl);
+  }
+  if (page === 'keychain') {
+    return serveWithToken_('Keychain', 'Quotation System — Acrylic Keychain', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1081,8 +1085,58 @@ function getDashboardData(token) {
       });
     }
 
+    // ── ACRYLIC KEYCHAIN QUOTES ─────────────────────────────────
+    let keychainQuotes = [];
+    const kcSheet = ss.getSheetByName(KEYCHAIN_SHEET);
+    if (kcSheet) {
+      const cdata  = kcSheet.getDataRange().getValues();
+      const cStart = cdata.length > 0 && String(cdata[0][0]).startsWith('KC-') ? 0 : 1;
+      keychainQuotes = cdata.slice(cStart).filter(r => r[0] && String(r[0]).startsWith('KC-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[18] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          keychainSize:     String(row[6]  || ''),
+          keychainSqin:     parseFloat(row[7]) || 0,
+          keychainCutType:  String(row[8]  || ''),
+          keychainMaterial: String(row[9]  || ''),
+          quantity:         row[10] || 0,
+          unitPrice:        parseFloat(row[11]) || 0,
+          baseAmount:       parseFloat(row[12]) || 0,
+          rushOrder:        String(row[13] || ''),
+          rushFee:          parseFloat(row[14]) || 0,
+          designService:    String(row[15] || ''),
+          designFee:        parseFloat(row[16]) || 0,
+          keychainDesignRef:String(row[17] || ''),
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[19]) || 0,
+          notes:            String(row[20] || ''),
+          salesStaff:       String(row[21] || ''),
+          status:           String(row[22] || 'Pending'),
+          approvedBy:       String(row[23] || ''),
+          taxType:          String(row[24] || 'non-vat'),
+          taxAmount:        parseFloat(row[25]) || 0,
+          quoteType:        'keychain',
+          signageType:      'Acrylic Keychain — ' + String(row[6] || ''),
+          address: '', delivery: '', lighting: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[15] || ''), addonDesignFee: parseFloat(row[16]) || 0,
+          addonRush:   String(row[13] || ''), addonRushFee:   parseFloat(row[14]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1446,6 +1500,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isTicket    = String(quoteNum).startsWith('TKT-');
   const isNewsprint = String(quoteNum).startsWith('NL-');
   const isSouvenir  = String(quoteNum).startsWith('SP-');
+  const isKeychain  = String(quoteNum).startsWith('KC-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -1621,6 +1676,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Souvenir order not found: ' + quoteNum);
+  }
+
+  if (isKeychain) {
+    const sheet = ss.getSheetByName(KEYCHAIN_SHEET);
+    if (!sheet) throw new Error('Keychain Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 23).setValue(status);  // col W = Status
+        sheet.getRange(i+1, 24).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col X = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 26).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Keychain order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -2291,6 +2362,7 @@ function getPublicPricing() {
     ticket:   (function(){ try{ return getTicketPricing();   }catch(e){ return null; } })(),
     newsprint:(function(){ try{ return getNewsprintPricing();}catch(e){ return null; } })(),
     souvenir: (function(){ try{ return getSouvenirPricing(); }catch(e){ return null; } })(),
+    keychain: (function(){ try{ return getKeychainPricing(); }catch(e){ return null; } })(),
   };
 }
 
@@ -2387,6 +2459,10 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'souvenir') {
       specs = 'Souvenir Program · ' + (data.material || '—') + ' · ' + (data.pages || '?') + ' pages ('
             + (data.pageSize || 'A3') + ') × ' + (data.quantity || 1) + ' copies';
+    } else if (data.productType === 'keychain') {
+      specs = 'Acrylic Keychain · ' + (data.size || '—') + ' · ' + (data.cutType || 'Standard')
+            + ' × ' + (data.quantity || 1) + ' pc(s)';
+      if (data.designRef) specs += ' | Ref: ' + data.designRef;
     }
 
     sheet.appendRow([
@@ -3759,6 +3835,188 @@ function saveSouvenirOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET ACRYLIC KEYCHAIN PRICING (live from "Acrylic Keychains" tab)
+// ══════════════════════════════════════════════════════════════════
+//  Sheet shape:
+//    Rate: ₱25.00 per sq. in.   ·   Min combined: 80 sq.in.
+//    Header: Size | Sq. In. | Min. Order | Standard / pc | Die-cut / pc
+//    Rows:   2×2" ★ | 4 | 20 pcs | ₱100 | ₱120  ...
+//    Rush | 250   ·   Rush more than 250 | 5% ...   ·   Design Fee | 250
+function getKeychainPricing() {
+  const defaults = {
+    ratePerSqIn: 25,
+    material: 'Acrylic + Vinyl Sticker',
+    minCombinedSqIn: 80,
+    diecutMultiplier: 1.2,
+    rushFlat: 250,
+    rushPct: 0.05,
+    designFee: 250,
+    sizes: [
+      { label: '2×2"', sqin: 4,  minOrder: 20, standard: 100, diecut: 120 },
+      { label: '2×3"', sqin: 6,  minOrder: 14, standard: 150, diecut: 180 },
+      { label: '3×3"', sqin: 9,  minOrder: 9,  standard: 225, diecut: 270 },
+      { label: '2×4"', sqin: 8,  minOrder: 10, standard: 200, diecut: 240 },
+      { label: '3×4"', sqin: 12, minOrder: 7,  standard: 300, diecut: 360 },
+      { label: '4×4"', sqin: 16, minOrder: 5,  standard: 400, diecut: 480 },
+      { label: '2×5"', sqin: 10, minOrder: 8,  standard: 250, diecut: 300 },
+      { label: '3×5"', sqin: 15, minOrder: 6,  standard: 375, diecut: 450 },
+      { label: '4×5"', sqin: 20, minOrder: 4,  standard: 500, diecut: 600 },
+    ],
+  };
+
+  function num(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  function isSizeLabel(s) { return /\d+\s*[x×]\s*\d+/i.test(String(s || '')); }
+  function cleanSize(s) {
+    return String(s || '').replace(/[★*]/g, '').replace(/\s+/g, '').replace(/x/i, '×').trim();
+  }
+
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Acrylic Keychains')
+               || ss.getSheetByName('Acrylic Keychain')
+               || ss.getSheetByName('Keychain')
+               || ss.getSheetByName('Keychains');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 3) return defaults;
+
+    const result = {
+      ratePerSqIn: defaults.ratePerSqIn, material: defaults.material,
+      minCombinedSqIn: defaults.minCombinedSqIn, diecutMultiplier: defaults.diecutMultiplier,
+      rushFlat: defaults.rushFlat, rushPct: defaults.rushPct, designFee: defaults.designFee,
+      sizes: [],
+    };
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const joined = r.map(c => String(c || '')).join(' ');
+
+      // Rate per sq.in.
+      if (/per\s*sq/i.test(joined)) {
+        const m = joined.match(/[P₱]?\s*(\d+(?:\.\d+)?)\s*per\s*sq/i) || joined.match(/rate[^0-9]*(\d+(?:\.\d+)?)/i);
+        if (m) result.ratePerSqIn = parseFloat(m[1]) || result.ratePerSqIn;
+      }
+      // Min combined sq.in.
+      if (/min[^.]*combined|combined\s*order/i.test(joined)) {
+        const m = joined.match(/(\d+)\s*sq/i);
+        if (m) result.minCombinedSqIn = parseInt(m[1]) || result.minCombinedSqIn;
+      }
+
+      const a = String(r[0] || '').trim();
+      const lcA = a.toLowerCase();
+
+      // Size data row
+      if (isSizeLabel(a)) {
+        const sqin     = num(r[1]);
+        const minOrder = parseInt(num(r[2])) || (sqin ? Math.ceil(result.minCombinedSqIn / sqin) : 1);
+        const standard = num(r[3]) || (sqin * result.ratePerSqIn);
+        const diecut   = num(r[4]) || Math.round(standard * result.diecutMultiplier / 5) * 5;
+        if (standard > 0) {
+          result.sizes.push({ label: cleanSize(a), sqin: sqin, minOrder: minOrder, standard: standard, diecut: diecut });
+        }
+        continue;
+      }
+
+      // Fee rows (Rush / Design Fee)
+      if (/^rush\b/i.test(lcA) && !/more than/i.test(lcA)) {
+        const f = num(r[1]); if (f > 0) result.rushFlat = f;
+      } else if (/rush more than|whichever/i.test(joined)) {
+        const pm = joined.match(/(\d+(?:\.\d+)?)\s*%/);
+        if (pm) result.rushPct = (parseFloat(pm[1]) || 5) / 100;
+      } else if (/design\s*fee/i.test(lcA)) {
+        const f = num(r[1]); if (f > 0) result.designFee = f;
+      }
+    }
+
+    if (!result.sizes.length) return defaults;
+    return result;
+  } catch(e) {
+    Logger.log('getKeychainPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE ACRYLIC KEYCHAIN ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveKeychainOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(KEYCHAIN_SHEET);
+  if (!sheet) sheet = ss.insertSheet(KEYCHAIN_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Size', 'Sq. In.', 'Cut Type', 'Material', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Design Reference', 'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('KC-')) {
+    if (firstCell.startsWith('KC-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'KC-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.size          || '',                   // G  - Size
+    parseFloat(data.sqin) || 0,                 // H  - Sq. In.
+    data.cutType       || 'Standard',          // I  - Cut Type
+    data.material      || 'Acrylic + Vinyl Sticker', // J - Material
+    qty,                                        // K  - Quantity
+    parseFloat(unitP.toFixed(2)),               // L  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // M  - Base Amount
+    data.rushOrder     || '',                   // N  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // O  - Rush Fee
+    data.designService || '',                   // P  - Design Service
+    parseFloat(designFee.toFixed(2)),           // Q  - Design Fee
+    data.designRef     || '',                   // R  - Design Reference
+    '',                                         // S  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // T  - Total Amount
+    data.notes         || '',                   // U  - Special Instructions
+    staffName,                                  // V  - Sales Staff
+    data.status || 'Pending',                   // W  - Status
+    '',                                         // X  - Approved By
+    data.taxType       || 'non-vat',            // Y  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // Z  - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 12, 1, 9).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Acrylic Keychain', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -4189,6 +4447,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('TKT-')) sheetName = TICKET_SHEET;
   else if (quoteNum.startsWith('NL-'))  sheetName = NEWSPRINT_SHEET;
   else if (quoteNum.startsWith('SP-'))  sheetName = SOUVENIR_SHEET;
+  else if (quoteNum.startsWith('KC-'))  sheetName = KEYCHAIN_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -4211,6 +4470,7 @@ else if (quoteNum.startsWith('TB-'))  ptCol = 17; // col Q
 else if (quoteNum.startsWith('TKT-')) ptCol = 15; // col O
 else if (quoteNum.startsWith('NL-'))  ptCol = 18; // col R
 else if (quoteNum.startsWith('SP-'))  ptCol = 18; // col R
+else if (quoteNum.startsWith('KC-'))  ptCol = 19; // col S
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
