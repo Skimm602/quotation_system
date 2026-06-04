@@ -340,6 +340,15 @@
     const isBookbind  = String(q.quoteNum || '').startsWith('BQ-');
     const isFrame     = String(q.quoteNum || '').startsWith('FQ-');
     const isTshirt    = String(q.quoteNum || '').startsWith('SH-');
+    const isMug       = String(q.quoteNum || '').startsWith('MUG-');
+    const isSticker   = String(q.quoteNum || '').startsWith('STK-');
+    const isRiso      = String(q.quoteNum || '').startsWith('RG-');
+    const isTotebag   = String(q.quoteNum || '').startsWith('TB-');
+    const isTicket    = String(q.quoteNum || '').startsWith('TKT-');
+    const isNewsprint = String(q.quoteNum || '').startsWith('NL-');
+    const isSouvenir  = String(q.quoteNum || '').startsWith('SP-');
+    const isKeychain  = String(q.quoteNum || '').startsWith('KC-');
+    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain;
 
     if (isTarpMulti) {
       // One row per item in the cart
@@ -468,6 +477,55 @@
           <td class="right">${php(tDesign)}</td>
         </tr>`;
       }
+    } else if (isSimpleUnit) {
+      // Per-unit products (mug, sticker, riso, tote bag, tickets, newsletter/newspaper, souvenir, keychain)
+      const uQty  = parseInt(q.quantity) || 1;
+      const uBase = parseFloat(q.baseAmount) || (parseFloat(q.unitPrice) || 0) * uQty;
+      const uUnit = uQty > 0 ? (uBase / uQty) : (parseFloat(q.unitPrice) || 0);
+      let unitWord = 'pc';
+      let descParts = [];
+      if (isKeychain) {
+        descParts.push('<strong>Acrylic Keychain — ' + (q.keychainSize || '') + (q.keychainCutType ? ' (' + q.keychainCutType + ')' : '') + '</strong>');
+        if (q.keychainSqin)     descParts.push('Area: ' + q.keychainSqin + ' sq.in.');
+        if (q.keychainMaterial) descParts.push('Material: ' + q.keychainMaterial);
+        if (q.keychainDesignRef) descParts.push('Design Ref: ' + q.keychainDesignRef);
+      } else if (isMug) {
+        descParts.push('<strong>Mug — ' + (q.mugType || '') + '</strong>');
+      } else if (isSticker) {
+        descParts.push('<strong>Sticker — ' + (q.stickerType || '') + (q.layout === 'Pre-cut' ? ' (Pre-cut)' : '') + '</strong>');
+        if (q.width) descParts.push('Size: ' + q.width + ' × ' + q.height + ' ' + (q.unit || 'in'));
+      } else if (isRiso) {
+        descParts.push('<strong>Risograph — ' + (q.paperType || '') + ' ' + (q.paperSize || '') + '</strong>');
+        if (q.service) descParts.push('Service: ' + q.service);
+        if (q.sides)   descParts.push('Sides: ' + q.sides);
+        unitWord = 'ream';
+      } else if (isTotebag) {
+        descParts.push('<strong>Tote Bag — ' + (q.totebagSize || '') + '</strong>');
+        if (q.printMethod) descParts.push('Print: ' + q.printMethod);
+        if (q.material)    descParts.push('Material: ' + q.material);
+      } else if (isTicket) {
+        descParts.push('<strong>Tickets — ' + (q.ticketType || '') + '</strong>');
+      } else if (isNewsprint) {
+        descParts.push('<strong>' + (q.newsCategory || 'Newsletter') + ' — ' + (q.newsOption || '') + '</strong>');
+        if (q.newsSize)     descParts.push('Size: ' + q.newsSize);
+        if (q.newsMaterial) descParts.push('Material: ' + q.newsMaterial);
+        unitWord = 'copy';
+      } else if (isSouvenir) {
+        descParts.push('<strong>Souvenir Program' + (q.souvenirPages ? ' — ' + q.souvenirPages + ' pages' : '') + '</strong>');
+        if (q.souvenirMaterial) descParts.push('Material: ' + q.souvenirMaterial);
+        if (q.souvenirPageSize) descParts.push('Page Size: ' + q.souvenirPageSize);
+        if (q.souvenirMethod)   descParts.push('Print Method: ' + q.souvenirMethod);
+        unitWord = 'copy';
+      }
+      descParts.push('Quantity: ' + uQty + ' ' + unitWord + (uQty > 1 ? 's' : ''));
+      if (q.notes) descParts.push('Notes: ' + q.notes);
+      rows += `<tr>
+        <td class="center">${lineNum++}</td>
+        <td style="line-height:1.75;">${descParts.join('<br>')}</td>
+        <td class="center">${uQty}</td>
+        <td class="right">${php(uUnit)}</td>
+        <td class="right">${isQuotation ? '<em style="color:#888;">TBD</em>' : php(uBase)}</td>
+      </tr>`;
     } else {
       // Single-item (signage or single tarp or receipt)
       let descParts = [];

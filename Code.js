@@ -1170,7 +1170,13 @@ function getQuoteForPDF(token, quoteNum) {
       const dash = getDashboardData(token);
       if (dash && dash.quotes && dash.quotes.length) {
         const found = dash.quotes.find(function(x){ return String(x.quoteNum).trim() === qn; });
-        if (found) return found;
+        if (found) {
+          // The PDF renders Design Fee from `designFee` and Rush from the add-on
+          // section — clear the add-on Design mirror so it isn't billed twice.
+          found.addonDesignFee = 0;
+          found.addonDesign    = '';
+          return found;
+        }
       }
     } catch(e) { Logger.log('getQuoteForPDF dashboard fallback error: ' + e); }
     return null;
