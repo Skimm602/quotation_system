@@ -302,14 +302,6 @@ function renderBody() {
           </div>
         </div>
 
-        <div>
-          <label class="field-label" style="margin-bottom:10px;">Design / Artwork Service? <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(design fee applies if Yes)</span></label>
-          <div style="display:flex;gap:8px;">
-            <button class="yn-btn yes ${d.designService === 'Yes' ? 'active' : ''}" onclick="d.designService='Yes';renderBody();">Yes — ${php(PRICING.designFee || 250)}</button>
-            <button class="yn-btn no  ${d.designService === 'No'  ? 'active' : ''}" onclick="d.designService='No';renderBody();">No</button>
-          </div>
-        </div>
-
         <div id="cost-preview">${costPreview}</div>
 
         <div class="flex flex-col gap-1">
@@ -346,7 +338,6 @@ function renderBody() {
         ${d.plateText ? `<tr><td>Name / Plate Text</td><td>${esc(d.plateText)}</td></tr>` : ''}
         <tr><td>Quantity</td><td>${qty} pc(s)</td></tr>
         <tr><td>Rush Order</td><td>${d.rushOrder || '—'}</td></tr>
-        <tr><td>Design Service</td><td>${d.designService || '—'}</td></tr>
 
         <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
         <tr>
@@ -432,7 +423,6 @@ function next() {
     if (!d.plateType || !typeObj()) { showToast('⚠ Please select a Plate Type.', 'error'); return; }
     if (!d.quantity || d.quantity < 1){ showToast('⚠ Quantity must be at least 1.', 'error'); return; }
     if (!d.rushOrder)     { showToast('⚠ Please indicate if this is a Rush Order.', 'error');     return; }
-    if (!d.designService) { showToast('⚠ Please indicate if Design Service is needed.', 'error'); return; }
   }
   if (step < STEPS.length - 1) { step++; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 }
@@ -494,7 +484,6 @@ function buildMessengerText() {
   lines.push('• Quantity: ' + qty + ' pc(s)');
   lines.push('• Unit Price: ' + php(up) + ' / pc');
   lines.push('• Rush Order: ' + (d.rushOrder || 'No'));
-  lines.push('• Design Service: ' + (d.designService || 'No'));
   if (d.notes) lines.push('• Notes: ' + d.notes);
   lines.push('');
   lines.push('💰 COST BREAKDOWN');
