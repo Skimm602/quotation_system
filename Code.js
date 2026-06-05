@@ -1148,7 +1148,7 @@ function getDashboardData(token) {
       acrylicSignQuotes = adata.slice(aStart).filter(r => r[0] && String(r[0]).startsWith('AS-')).map(row => {
         let dateStr = '';
         try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
-        const ptLabel = String(row[19] || '');
+        const ptLabel = String(row[20] || '');
         const typeName = String(row[6] || '');
         return {
           quoteNum:         String(row[0]  || ''),
@@ -1160,31 +1160,32 @@ function getDashboardData(token) {
           acsignType:       typeName,
           width:            parseFloat(row[7]) || 0,
           height:           parseFloat(row[8]) || 0,
-          sqft:             parseFloat(row[9]) || 0,
-          acsignBilledSqft: parseFloat(row[10]) || 0,
-          quantity:         row[11] || 0,
-          ratePerSqft:      parseFloat(row[12]) || 0,
-          unitPrice:        parseFloat(row[13]) || 0,
-          baseAmount:       parseFloat(row[14]) || 0,
-          rushOrder:        String(row[15] || ''),
-          rushFee:          parseFloat(row[16]) || 0,
-          designService:    String(row[17] || ''),
-          designFee:        parseFloat(row[18]) || 0,
+          unit:             String(row[9] || 'ft'),
+          sqft:             parseFloat(row[10]) || 0,
+          acsignBilledSqft: parseFloat(row[11]) || 0,
+          quantity:         row[12] || 0,
+          ratePerSqft:      parseFloat(row[13]) || 0,
+          unitPrice:        parseFloat(row[14]) || 0,
+          baseAmount:       parseFloat(row[15]) || 0,
+          rushOrder:        String(row[16] || ''),
+          rushFee:          parseFloat(row[17]) || 0,
+          designService:    String(row[18] || ''),
+          designFee:        parseFloat(row[19]) || 0,
           paymentTermLabel: ptLabel,
           paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
-          totalAmount:      parseFloat(row[20]) || 0,
-          notes:            String(row[21] || ''),
-          salesStaff:       String(row[22] || ''),
-          status:           String(row[23] || 'Pending'),
-          approvedBy:       String(row[24] || ''),
-          taxType:          String(row[25] || 'non-vat'),
-          taxAmount:        parseFloat(row[26]) || 0,
+          totalAmount:      parseFloat(row[21]) || 0,
+          notes:            String(row[22] || ''),
+          salesStaff:       String(row[23] || ''),
+          status:           String(row[24] || 'Pending'),
+          approvedBy:       String(row[25] || ''),
+          taxType:          String(row[26] || 'non-vat'),
+          taxAmount:        parseFloat(row[27]) || 0,
           quoteType:        'acrylicsign',
           signageType:      /acrylic|signage/i.test(typeName) ? typeName : ('Acrylic Signage — ' + typeName),
-          unit: 'ft', address: '', delivery: '', lighting: '', material: '',
+          address: '', delivery: '', lighting: '', material: '',
           mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
-          addonDesign: String(row[17] || ''), addonDesignFee: parseFloat(row[18]) || 0,
-          addonRush:   String(row[15] || ''), addonRushFee:   parseFloat(row[16]) || 0,
+          addonDesign: String(row[18] || ''), addonDesignFee: parseFloat(row[19]) || 0,
+          addonRush:   String(row[16] || ''), addonRushFee:   parseFloat(row[17]) || 0,
           addonElec: '', addonElecFee: 0,
           addonTransport: '', addonTransportFee: 0,
         };
@@ -1778,10 +1779,10 @@ function updateQuoteStatus(token, quoteNum, status) {
     const data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === quoteNum) {
-        sheet.getRange(i+1, 24).setValue(status);  // col X = Status
-        sheet.getRange(i+1, 25).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col Y = Approved By
+        sheet.getRange(i+1, 25).setValue(status);  // col Y = Status
+        sheet.getRange(i+1, 26).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col Z = Approved By
         const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
-        sheet.getRange(i+1, 1, 1, 27).setBackground(color);
+        sheet.getRange(i+1, 1, 1, 28).setBackground(color);
         return { success: true };
       }
     }
@@ -4200,7 +4201,7 @@ function saveAcrylicSignOrder(data) {
 
   const headers = [
     'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
-    'Signage Type', 'Width (ft)', 'Height (ft)', 'Area (sqft)', 'Billed Sqft', 'Quantity',
+    'Signage Type', 'Width', 'Height', 'Unit', 'Area (sqft)', 'Billed Sqft', 'Quantity',
     'Rate/sqft', 'Unit Price', 'Base Amount',
     'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
     'Payment Term', 'Total Amount',
@@ -4239,29 +4240,30 @@ function saveAcrylicSignOrder(data) {
     data.email         || '',                   // E  - Email
     data.dateNeeded    || '',                   // F  - Date Needed
     data.signageType   || '',                   // G  - Signage Type
-    parseFloat(data.width)  || 0,               // H  - Width (ft)
-    parseFloat(data.height) || 0,               // I  - Height (ft)
-    parseFloat(data.sqft)   || 0,               // J  - Area (sqft)
-    parseFloat(data.billedSqft) || 0,           // K  - Billed Sqft
-    qty,                                        // L  - Quantity
-    parseFloat(rate.toFixed(2)),                // M  - Rate/sqft
-    parseFloat(unitP.toFixed(2)),               // N  - Unit Price
-    parseFloat(baseAmt.toFixed(2)),             // O  - Base Amount
-    data.rushOrder     || '',                   // P  - Rush Order
-    parseFloat(rushFee.toFixed(2)),             // Q  - Rush Fee
-    data.designService || '',                   // R  - Design Service
-    parseFloat(designFee.toFixed(2)),           // S  - Design Fee
-    '',                                         // T  - Payment Term
-    parseFloat(totalAmt.toFixed(2)),            // U  - Total Amount
-    data.notes         || '',                   // V  - Special Instructions
-    staffName,                                  // W  - Sales Staff
-    data.status || 'Pending',                   // X  - Status
-    '',                                         // Y  - Approved By
-    data.taxType       || 'non-vat',            // Z  - Tax Type
-    parseFloat(data.taxAmount) || 0,            // AA - Tax Amount
+    parseFloat(data.width)  || 0,               // H  - Width (entered)
+    parseFloat(data.height) || 0,               // I  - Height (entered)
+    data.unit          || 'ft',                 // J  - Unit
+    parseFloat(data.sqft)   || 0,               // K  - Area (sqft)
+    parseFloat(data.billedSqft) || 0,           // L  - Billed Sqft
+    qty,                                        // M  - Quantity
+    parseFloat(rate.toFixed(2)),                // N  - Rate/sqft
+    parseFloat(unitP.toFixed(2)),               // O  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // P  - Base Amount
+    data.rushOrder     || '',                   // Q  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // R  - Rush Fee
+    data.designService || '',                   // S  - Design Service
+    parseFloat(designFee.toFixed(2)),           // T  - Design Fee
+    '',                                         // U  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // V  - Total Amount
+    data.notes         || '',                   // W  - Special Instructions
+    staffName,                                  // X  - Sales Staff
+    data.status || 'Pending',                   // Y  - Status
+    '',                                         // Z  - Approved By
+    data.taxType       || 'non-vat',            // AA - Tax Type
+    parseFloat(data.taxAmount) || 0,            // AB - Tax Amount
   ]);
 
-  sheet.getRange(sheet.getLastRow(), 13, 1, 9).setNumberFormat('₱#,##0.00');
+  sheet.getRange(sheet.getLastRow(), 14, 1, 9).setNumberFormat('₱#,##0.00');
   try { notifyQuoteSaved_(quoteNum, 'Acrylic Signage', data); } catch(_) {}
   return quoteNum;
 }
@@ -4722,7 +4724,7 @@ else if (quoteNum.startsWith('TKT-')) ptCol = 15; // col O
 else if (quoteNum.startsWith('NL-'))  ptCol = 18; // col R
 else if (quoteNum.startsWith('SP-'))  ptCol = 18; // col R
 else if (quoteNum.startsWith('KC-'))  ptCol = 19; // col S
-else if (quoteNum.startsWith('AS-'))  ptCol = 20; // col T
+else if (quoteNum.startsWith('AS-'))  ptCol = 21; // col U
 
 // Find the row
 for (let i = 1; i < data.length; i++) {

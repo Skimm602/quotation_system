@@ -1100,8 +1100,8 @@ function buildQuoteMessage(q) {
     title = '🪧 ACRYLIC SIGNAGE QUOTATION';
     specs = [
       'Signage Type: ' + (q.acsignType || 'Acrylic Signage'),
-      'Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ft' + (q.sqft ? ' (' + Number(q.sqft).toFixed(2) + ' sq.ft)' : ''),
-      q.acsignBilledSqft ? 'Billed Area: ' + q.acsignBilledSqft + ' sq.ft' : '',
+      'Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ' + (q.unit||'ft') + (q.sqft ? ' (' + Number(q.sqft).toFixed(2) + ' sq.ft)' : ''),
+      q.acsignBilledSqft ? 'Billed Area: ' + Number(q.acsignBilledSqft).toFixed(2) + ' sq.ft' : '',
       q.ratePerSqft>0 ? 'Rate: ' + php(q.ratePerSqft) + ' / sq.ft' : '',
       'Quantity: ' + (q.quantity||0) + ' pc(s)',
       q.unitPrice  ? 'Unit Price: ' + php(q.unitPrice) + ' / pc' : '',
@@ -1358,8 +1358,8 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
   ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
 ` : String(q.quoteNum).startsWith('AS-') ? `
   ${row('Signage Type', '<span style="font-weight:600;">'+(q.acsignType || 'Acrylic Signage')+'</span>')}
-  ${row('Size', (q.width||'?')+' × '+(q.height||'?')+' ft'+(q.sqft?' ('+Number(q.sqft).toFixed(2)+' sq.ft)':''))}
-  ${q.acsignBilledSqft?row('Billed Area', q.acsignBilledSqft+' sq.ft'):''}
+  ${row('Size', (q.width||'?')+' × '+(q.height||'?')+' '+(q.unit||'ft')+(q.sqft?' ('+Number(q.sqft).toFixed(2)+' sq.ft)':''))}
+  ${q.acsignBilledSqft?row('Billed Area', Number(q.acsignBilledSqft).toFixed(2)+' sq.ft'):''}
   ${q.ratePerSqft>0?row('Rate', php(q.ratePerSqft)+' / sq.ft'):''}
   ${row('Quantity', (q.quantity||0)+' pc(s)')}
   ${q.unitPrice>0?row('Unit Price', php(q.unitPrice)+' / pc'):''}

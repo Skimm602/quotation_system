@@ -148,6 +148,7 @@ const d = {
   signageType:   '',
   width:         '',
   height:        '',
+  unit:          'ft',
   quantity:      1,
   rushOrder:     '',
   designService: '',
@@ -158,11 +159,18 @@ const d = {
 // ─── HELPERS ──────────────────────────────────────────────────────
 function typeObj() { return (PRICING.types || []).find(t => t.name === d.signageType) || null; }
 function selectType(idx) { const t = (PRICING.types || [])[idx]; if (t) d.signageType = t.name; renderBody(); }
+function toFeet(val) {
+  const n = parseFloat(val) || 0;
+  const u = d.unit || 'ft';
+  if (u === 'in') return n / 12;
+  if (u === 'cm') return n / 30.48;
+  if (u === 'm')  return n * 3.280839895;
+  return n; // ft
+}
+function areaSqft() { return toFeet(d.width) * toFeet(d.height); }
 function billedSqft() {
   const t = typeObj();
-  const w = parseFloat(d.width)  || 0;
-  const h = parseFloat(d.height) || 0;
-  return Math.max(t ? (t.minSqft || 1) : 1, w * h);
+  return Math.max(t ? (t.minSqft || 1) : 1, areaSqft());
 }
 
 // ─── CALCULATIONS ─────────────────────────────────────────────────
@@ -294,14 +302,16 @@ function renderBody() {
 
         <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
           <div class="flex flex-col gap-2">
-            <label class="field-label">Size (W × H, in feet)</label>
+            <label class="field-label">Size (Width × Height)</label>
             <div style="display:flex;gap:8px;align-items:center;">
-              <input type="number" class="field-input" id="f_w" value="${esc(String(d.width||''))}" placeholder="W" min="0.1" step="0.1"
+              <input type="number" class="field-input" id="f_w" value="${esc(String(d.width||''))}" placeholder="W" min="0.01" step="0.1"
                 style="text-align:center;" oninput="d.width=this.value;renderBody();">
               <span style="color:#999;font-size:18px;">×</span>
-              <input type="number" class="field-input" id="f_h" value="${esc(String(d.height||''))}" placeholder="H" min="0.1" step="0.1"
+              <input type="number" class="field-input" id="f_h" value="${esc(String(d.height||''))}" placeholder="H" min="0.01" step="0.1"
                 style="text-align:center;" oninput="d.height=this.value;renderBody();">
-              <span style="color:#999;font-size:13px;">ft</span>
+              <select class="field-input" id="f_unit" onchange="d.unit=this.value;renderBody();" style="max-width:72px;font-weight:700;">
+                ${['ft','in','cm','m'].map(u=>`<option ${d.unit===u?'selected':''}>${u}</option>`).join('')}
+              </select>
             </div>
           </div>
           <div class="flex flex-col gap-2">
@@ -345,6 +355,7 @@ function renderBody() {
     const t      = typeObj() || {};
     const w      = parseFloat(d.width)  || 0;
     const h      = parseFloat(d.height) || 0;
+    const area   = areaSqft();
     const qty    = parseInt(d.quantity) || 1;
     const billed = billedSqft();
     const up     = unitPrice();
@@ -367,8 +378,8 @@ function renderBody() {
       <table class="q-table">
         <tr><td colspan="2" class="sec-label">ACRYLIC SIGNAGE SPECIFICATIONS</td></tr>
         <tr><td>Signage Type</td><td>${esc(d.signageType) || '—'}</td></tr>
-        <tr><td>Size</td><td>${w} × ${h} ft (${(w*h).toFixed(2)} sq.ft)</td></tr>
-        <tr><td>Billed Area</td><td>${billed} sq.ft ${billed > (w*h) ? '(minimum)' : ''}</td></tr>
+        <tr><td>Size</td><td>${w} × ${h} ${esc(d.unit||'ft')} (${area.toFixed(2)} sq.ft)</td></tr>
+        <tr><td>Billed Area</td><td>${billed.toFixed(2)} sq.ft ${billed > area ? '(minimum)' : ''}</td></tr>
         <tr><td>Rate</td><td>${php(t.pricePerSqft || 0)} / sq.ft</td></tr>
         <tr><td>Quantity</td><td>${qty} pc(s)</td></tr>
         <tr><td>Rush Order</td><td>${d.rushOrder || '—'}</td></tr>
@@ -477,7 +488,7 @@ function render() {
 function resetForm() {
   if (!confirm('Start a new quotation? Current data will be cleared.')) return;
   d.clientName = ''; d.contact = ''; d.email = ''; d.dateNeeded = '';
-  d.signageType = ''; d.width = ''; d.height = ''; d.quantity = 1;
+  d.signageType = ''; d.width = ''; d.height = ''; d.unit = 'ft'; d.quantity = 1;
   d.rushOrder = ''; d.designService = '';
   d.notes = ''; d.taxType = 'non-vat';
   step = 0; render();
@@ -521,8 +532,8 @@ function buildMessengerText() {
   lines.push('');
   lines.push('📐 SPECIFICATIONS');
   lines.push('• Type: ' + (d.signageType || '—'));
-  lines.push('• Size: ' + w + ' × ' + h + ' ft (' + (w*h).toFixed(2) + ' sq.ft)');
-  lines.push('• Billed Area: ' + billed + ' sq.ft');
+  lines.push('• Size: ' + w + ' × ' + h + ' ' + (d.unit||'ft') + ' (' + areaSqft().toFixed(2) + ' sq.ft)');
+  lines.push('• Billed Area: ' + billed.toFixed(2) + ' sq.ft');
   lines.push('• Rate: ' + php(t.pricePerSqft || 0) + ' / sq.ft');
   lines.push('• Quantity: ' + qty + ' pc(s)');
   lines.push('• Rush Order: ' + (d.rushOrder || 'No'));
@@ -580,7 +591,8 @@ function saveToSheet() {
     signageType:   d.signageType,
     width:         w,
     height:        h,
-    sqft:          w * h,
+    unit:          d.unit || 'ft',
+    sqft:          areaSqft(),
     billedSqft:    billed,
     quantity:      qty,
     ratePerSqft:   t.pricePerSqft || 0,

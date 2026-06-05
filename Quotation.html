@@ -348,7 +348,8 @@
     const isNewsprint = String(q.quoteNum || '').startsWith('NL-');
     const isSouvenir  = String(q.quoteNum || '').startsWith('SP-');
     const isKeychain  = String(q.quoteNum || '').startsWith('KC-');
-    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain;
+    const isAcrylicSign = String(q.quoteNum || '').startsWith('AS-');
+    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign;
 
     if (isTarpMulti) {
       // One row per item in the cart
@@ -516,6 +517,10 @@
         if (q.souvenirPageSize) descParts.push('Page Size: ' + q.souvenirPageSize);
         if (q.souvenirMethod)   descParts.push('Print Method: ' + q.souvenirMethod);
         unitWord = 'copy';
+      } else if (isAcrylicSign) {
+        descParts.push('<strong>' + (q.acsignType || 'Acrylic Signage') + '</strong>');
+        descParts.push('Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ' + (q.unit||'ft') + (q.sqft ? ' (' + Number(q.sqft).toFixed(2) + ' sq.ft)' : ''));
+        if (q.acsignBilledSqft) descParts.push('Billed: ' + Number(q.acsignBilledSqft).toFixed(2) + ' sq.ft @ ' + php(q.ratePerSqft || 0) + '/sq.ft');
       }
       descParts.push('Quantity: ' + uQty + ' ' + unitWord + (uQty > 1 ? 's' : ''));
       if (q.notes) descParts.push('Notes: ' + q.notes);
