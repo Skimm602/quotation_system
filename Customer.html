@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -112,6 +112,7 @@ const PRODUCTS = [
   { id:'souvenir', icon:'📖', label:'Souvenir',      sub:'Program (A3 / Laser)'  },
   { id:'keychain', icon:'🔑', label:'Keychain',      sub:'Acrylic + Vinyl'       },
   { id:'acrylicsign', icon:'🪧', label:'Acrylic Sign', sub:'Per sq.ft · 1 layer' },
+  { id:'acrylicplate', icon:'🚗', label:'Plate Number', sub:'Motorcycle / Car'    },
 ];
 
 const d = {
@@ -158,6 +159,8 @@ const d = {
   keychainSize:'', keychainCutType:'Standard', keychainQty:'', keychainDesignRef:'', keychainRush:'No', keychainDesign:'No',
   // acrylic signage
   acsignType:'', acsignWidth:'', acsignHeight:'', acsignUnit:'ft', acsignQty:1, acsignRush:'No', acsignDesign:'No',
+  // acrylic plate number
+  plateType:'', plateText:'', plateQty:1, plateRush:'No', plateDesign:'No',
   // proof of payment (optional, sent as email attachment)
   proofFile: { name: '', mime: '', base64: '' },
 };
@@ -448,6 +451,21 @@ function calcAcrylicSignTotal() {
   return base + rush + des;
 }
 
+function plateTypeObj() {
+  const list = (PRICING.acrylicplate || {}).types || [];
+  return list.find(t => t.name === d.plateType) || null;
+}
+function calcAcrylicPlateTotal() {
+  const p   = PRICING.acrylicplate || {};
+  const t   = plateTypeObj();
+  const qty = parseInt(d.plateQty) || 0;
+  if (!t || !qty) return 0;
+  const base = (t.price || 0) * qty;
+  const rush = d.plateRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+  const des  = d.plateDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
+
 function calcTotal() {
   if (selectedProduct === 'mug')      return calcMugTotal();
   if (selectedProduct === 'tshirt')   return calcTshirtTotal();
@@ -464,6 +482,7 @@ function calcTotal() {
   if (selectedProduct === 'souvenir') return calcSouvenirTotal();
   if (selectedProduct === 'keychain') return calcKeychainTotal();
   if (selectedProduct === 'acrylicsign') return calcAcrylicSignTotal();
+  if (selectedProduct === 'acrylicplate') return calcAcrylicPlateTotal();
   return 0;
 }
 
@@ -575,7 +594,72 @@ function renderSpecs() {
   if (selectedProduct === 'souvenir') return renderSouvenirSpecs();
   if (selectedProduct === 'keychain') return renderKeychainSpecs();
   if (selectedProduct === 'acrylicsign') return renderAcrylicSignSpecs();
+  if (selectedProduct === 'acrylicplate') return renderAcrylicPlateSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
+}
+
+// ── ACRYLIC PLATE NUMBER SPECS ────────────────────────────────────
+const PLATE_ICONS = { 'Motorcycle':'🏍️', 'Car':'🚗' };
+function selectPlateType(idx) {
+  const list = (PRICING.acrylicplate || {}).types || [];
+  if (list[idx]) d.plateType = list[idx].name;
+  renderForm();
+}
+function renderAcrylicPlateSpecs() {
+  const p     = PRICING.acrylicplate || {};
+  const types = p.types || [];
+
+  const typeCards = types.map((t, idx) => {
+    const sel  = d.plateType === t.name;
+    const icon = PLATE_ICONS[t.name] || '🔖';
+    return `<div class="opt-card${sel?' active':''}" onclick="selectPlateType(${idx})">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${icon} ${esc(t.name)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">₱${(t.price||0).toLocaleString('en-PH')}/pc</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const t   = plateTypeObj();
+  const qty = parseInt(d.plateQty) || 0;
+  const estLine = (t && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Plate Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${typeCards}</div>
+      </div>
+      <div>
+        <label class="field-label">Name / Plate Text <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="ap_text" value="${esc(d.plateText||'')}" placeholder="e.g. JUAN D. / ABC 1234"
+          oninput="d.plateText=this.value;">
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="ap_qty" value="${d.plateQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.plateQty=parseInt(this.value)||1;renderForm();" inputmode="numeric">
+        ${estLine}
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.plateRush==='Yes'?' on':''}" onclick="d.plateRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.plateRush==='No'?' on':''}"  onclick="d.plateRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.plateDesign==='Yes'?' on':''}" onclick="d.plateDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.plateDesign==='No'?' on':''}"  onclick="d.plateDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 // ── ACRYLIC SIGNAGE SPECS ─────────────────────────────────────────
@@ -2170,6 +2254,11 @@ function renderReview() {
     specSummary = `${esc(d.acsignType)||'Acrylic Signage'} · ${d.acsignWidth||'?'} × ${d.acsignHeight||'?'} ${esc(d.acsignUnit||'ft')} × ${d.acsignQty||0} pc(s)`;
     if (d.acsignRush   === 'Yes') specSummary += ' · Rush';
     if (d.acsignDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'acrylicplate') {
+    specSummary = `Acrylic Plate · ${esc(d.plateType)||'—'} × ${d.plateQty||0} pc(s)`;
+    if (d.plateText) specSummary += ` · "${esc(d.plateText)}"`;
+    if (d.plateRush   === 'Yes') specSummary += ' · Rush';
+    if (d.plateDesign === 'Yes') specSummary += ' · Design';
   }
 
   const dateLabel = d.dateNeeded
@@ -2408,6 +2497,12 @@ function nextStep() {
       if (!d.acsignType || !acsignTypeObj()) { toast('Please select a signage type.','error'); return; }
       if (!d.acsignWidth || !d.acsignHeight) { toast('Please enter the size (width × height).','error'); return; }
       if (!d.acsignQty || d.acsignQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'acrylicplate') {
+      d.plateText = v('ap_text') || d.plateText;
+      d.plateQty  = parseInt(v('ap_qty')) || d.plateQty;
+      if (!d.plateType || !plateTypeObj()) { toast('Please select a plate type.','error'); return; }
+      if (!d.plateQty || d.plateQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
     }
   }
   if (formStep === 2) { submitRequest(); return; }
@@ -2764,6 +2859,26 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'acrylicplate') {
+    const p    = PRICING.acrylicplate || {};
+    const t    = plateTypeObj() || { price: 0 };
+    const up   = t.price || 0;
+    const qty  = parseInt(d.plateQty) || 1;
+    const base = up * qty;
+    const rush = d.plateRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+    const des  = d.plateDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      plateType:     d.plateType,
+      plateText:     d.plateText,
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.plateRush,   rushFee:   rush,
+      designService: d.plateDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   google.script.run
     .withSuccessHandler(function(qn) {
       screen = 'success';
@@ -2883,6 +2998,12 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + (d.acsignQty || 0) + ' pc(s)';
     if (d.acsignRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.acsignDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'acrylicplate') {
+    specsLine = 'Acrylic Plate Number · ' + (d.plateType || '—');
+    if (d.plateText) specsLine += '\nName / Plate Text: ' + d.plateText;
+    specsLine += '\nQuantity: ' + (d.plateQty || 0) + ' pc(s)';
+    if (d.plateRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.plateDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   }
 
   return [
@@ -2947,7 +3068,7 @@ function copyMsg() {
 
 function resetAll() {
   screen = 'products'; selectedProduct = ''; formStep = 0;
-  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty','ticketQty','souvenirQty','acsignQty'];
+  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty','ticketQty','souvenirQty','acsignQty','plateQty'];
   Object.keys(d).forEach(k => {
     if (typeof d[k] === 'string') d[k] = '';
     else if (typeof d[k] === 'number') d[k] = k==='mugQty'?5:qty1.includes(k)?1:0;
@@ -2971,6 +3092,7 @@ function resetAll() {
   d.souvenirMaterial=''; d.souvenirPages=''; d.souvenirRush='No'; d.souvenirDesign='No';
   d.keychainSize=''; d.keychainCutType='Standard'; d.keychainQty=''; d.keychainDesignRef=''; d.keychainRush='No'; d.keychainDesign='No';
   d.acsignType=''; d.acsignWidth=''; d.acsignHeight=''; d.acsignUnit='ft'; d.acsignRush='No'; d.acsignDesign='No';
+  d.plateType=''; d.plateText=''; d.plateRush='No'; d.plateDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });

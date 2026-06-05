@@ -173,6 +173,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
             <span class="nq-icon">🪧</span>
             <span>Acrylic Signage Quote</span>
           </div>
+          <div class="nq-option" onclick="goToAcrylicPlate()">
+            <span class="nq-icon">🚗</span>
+            <span>Acrylic Plate Number Quote</span>
+          </div>
         </div>
       </div>
       <!-- END NEW QUOTE DROPDOWN -->
@@ -253,6 +257,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
         <button onclick="switchTab('acrylicsign')" id="tab-acrylicsign"
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
           ACRYLIC SIGN
+        </button>
+        <button onclick="switchTab('acrylicplate')" id="tab-acrylicplate"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          PLATE NO.
         </button>
       </div>
 
@@ -686,6 +694,17 @@ function goToAcrylicSign() {
   }).getAppUrl();
 }
 
+function goToAcrylicPlate() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=acrylicplate&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
 function setupDashboard() {
   const u = currentUser, role = (u.role||'').toLowerCase();
   document.getElementById('sidebarName').textContent = u.name;
@@ -734,13 +753,13 @@ let currentTab = 'all';
 
 function switchTab(tab) {
   currentTab = tab;
-  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','totebag','ticket','newsprint','souvenir','keychain','acrylicsign'].forEach(t => {
+  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','totebag','ticket','newsprint','souvenir','keychain','acrylicsign','acrylicplate'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
     btn.style.borderBottom = t === tab ? '3px solid #E8151B' : '3px solid transparent';
     btn.style.color        = t === tab ? '#0A0A0A' : '#999';
   });
-  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', totebag:'TOTE BAG', ticket:'TICKETS', newsprint:'NEWSLETTER / NEWSPAPER', souvenir:'SOUVENIR PROGRAM', keychain:'ACRYLIC KEYCHAIN', acrylicsign:'ACRYLIC SIGNAGE' };
+  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', totebag:'TOTE BAG', ticket:'TICKETS', newsprint:'NEWSLETTER / NEWSPAPER', souvenir:'SOUVENIR PROGRAM', keychain:'ACRYLIC KEYCHAIN', acrylicsign:'ACRYLIC SIGNAGE', acrylicplate:'ACRYLIC PLATE NUMBER' };
   const el = document.getElementById('recentLabel');
   if (el) el.textContent = labels[tab] || 'QUOTATIONS';
   renderStats(); renderRecentTable();
@@ -762,6 +781,7 @@ function getFilteredByTab() {
   if (currentTab === 'souvenir')  return allQuotes.filter(q => String(q.quoteNum).startsWith('SP-'));
   if (currentTab === 'keychain')  return allQuotes.filter(q => String(q.quoteNum).startsWith('KC-'));
   if (currentTab === 'acrylicsign') return allQuotes.filter(q => String(q.quoteNum).startsWith('AS-'));
+  if (currentTab === 'acrylicplate') return allQuotes.filter(q => String(q.quoteNum).startsWith('AP-'));
   return allQuotes;
 }
 
@@ -799,6 +819,7 @@ function renderRecentTable() {
     const isSouvenir = String(q.quoteNum).startsWith('SP-');
     const isKeychain = String(q.quoteNum).startsWith('KC-');
     const isAcrylicSign = String(q.quoteNum).startsWith('AS-');
+    const isAcrylicPlate = String(q.quoteNum).startsWith('AP-');
     const typeLabel = isTarp
       ? `<span style="color:#888;">Tarpaulin</span>`
       : isReceipt
@@ -825,6 +846,8 @@ function renderRecentTable() {
       ? `<span style="color:#888;">${q.signageType||'Acrylic Keychain'}</span>`
       : isAcrylicSign
       ? `<span style="color:#888;">${q.signageType||'Acrylic Signage'}</span>`
+      : isAcrylicPlate
+      ? `<span style="color:#888;">${q.signageType||'Acrylic Plate'}</span>`
       : `<span style="color:#888;">${q.signageType||'—'}</span>`;
     html += `<tr>
       <td style="font-weight:600;color:#0A0A0A;">${q.quoteNum}</td>
@@ -856,7 +879,7 @@ function renderAllQuotes() {
     let actions=`<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button>`;
     if (canApprove&&q.status==='Pending') actions+=` <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓</button> <button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕</button>`;
     const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : String(q.quoteNum).startsWith('MUG-') ? ('Mug — '+(q.mugType||'')) : String(q.quoteNum).startsWith('STK-') ? ('Sticker — '+(q.stickerType||'')+(q.layout==='Pre-cut'?' (Pre-cut)':''))
-      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : String(q.quoteNum).startsWith('TB-') ? ('Tote Bag — '+(q.totebagSize||'')) : String(q.quoteNum).startsWith('TKT-') ? ('Tickets — '+(q.ticketType||'')) : String(q.quoteNum).startsWith('NL-') ? ((q.newsCategory||'News')+' — '+(q.newsOption||'')) : String(q.quoteNum).startsWith('SP-') ? ('Souvenir — '+(q.souvenirMaterial||'')) : String(q.quoteNum).startsWith('KC-') ? ('Keychain — '+(q.keychainSize||'')+' '+(q.keychainCutType||'')) : String(q.quoteNum).startsWith('AS-') ? ('Acrylic Sign — '+(q.acsignType||'')) : (q.signageType||'—');
+      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : String(q.quoteNum).startsWith('TB-') ? ('Tote Bag — '+(q.totebagSize||'')) : String(q.quoteNum).startsWith('TKT-') ? ('Tickets — '+(q.ticketType||'')) : String(q.quoteNum).startsWith('NL-') ? ((q.newsCategory||'News')+' — '+(q.newsOption||'')) : String(q.quoteNum).startsWith('SP-') ? ('Souvenir — '+(q.souvenirMaterial||'')) : String(q.quoteNum).startsWith('KC-') ? ('Keychain — '+(q.keychainSize||'')+' '+(q.keychainCutType||'')) : String(q.quoteNum).startsWith('AS-') ? ('Acrylic Sign — '+(q.acsignType||'')) : String(q.quoteNum).startsWith('AP-') ? ('Acrylic Plate — '+(q.plateType||'')) : (q.signageType||'—');
     html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${qTypeLabel}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
   });
   html+='</tbody></table>';
@@ -1103,6 +1126,19 @@ function buildQuoteMessage(q) {
       'Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ' + (q.unit||'ft') + (q.sqft ? ' (' + Number(q.sqft).toFixed(2) + ' sq.ft)' : ''),
       q.acsignBilledSqft ? 'Billed Area: ' + Number(q.acsignBilledSqft).toFixed(2) + ' sq.ft' : '',
       q.ratePerSqft>0 ? 'Rate: ' + php(q.ratePerSqft) + ' / sq.ft' : '',
+      'Quantity: ' + (q.quantity||0) + ' pc(s)',
+      q.unitPrice  ? 'Unit Price: ' + php(q.unitPrice) + ' / pc' : '',
+      q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+      q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
+      q.designService === 'Yes' ? 'Design Service: Yes' : '',
+      q.designFee>0 ? 'Design / Artwork Fee: ' + php(q.designFee) : '',
+    ];
+  } else if (qn.startsWith('AP-')) {
+    title = '🚗 ACRYLIC PLATE NUMBER QUOTATION';
+    specs = [
+      'Plate Type: ' + (q.plateType || '—'),
+      q.plateText ? 'Name / Plate Text: ' + q.plateText : '',
       'Quantity: ' + (q.quantity||0) + ' pc(s)',
       q.unitPrice  ? 'Unit Price: ' + php(q.unitPrice) + ' / pc' : '',
       q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
@@ -1368,6 +1404,16 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
   ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
   ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
   ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
+` : String(q.quoteNum).startsWith('AP-') ? `
+  ${row('Plate Type', '<span style="font-weight:600;">'+(q.plateType || 'Acrylic Plate')+'</span>')}
+  ${q.plateText?row('Name / Plate Text', q.plateText):''}
+  ${row('Quantity', (q.quantity||0)+' pc(s)')}
+  ${q.unitPrice>0?row('Unit Price', php(q.unitPrice)+' / pc'):''}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+  ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
+  ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+  ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
 ` : `
   ${row('Signage Type', '<span style="font-weight:500;">'+(q.signageType||'—')+'</span>')}
   ${row('Dimensions', (q.width||'?')+' × '+(q.height||'?')+' ft = '+(q.sqft||'?')+' sqft')}
@@ -1479,6 +1525,7 @@ const PORTAL_PRODUCTS = [
   { id:'souvenir', icon:'📖', label:'Souvenir Program', active:true, page:'customer-souvenir', shortUrl:'https://tinyurl.com/3kdyy275' },
   { id:'keychain', icon:'🔑', label:'Acrylic Keychain', active:true, page:'customer-keychain', shortUrl:'https://tinyurl.com/d2r6kf7s' },
   { id:'acrylicsign', icon:'🪧', label:'Acrylic Signage', active:true, page:'customer-acrylicsign'                                   },
+  { id:'acrylicplate', icon:'🚗', label:'Acrylic Plate Number', active:true, page:'customer-acrylicplate'                            },
 ];
 let selectedPortalProduct = null;
 

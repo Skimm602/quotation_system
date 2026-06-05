@@ -21,6 +21,7 @@ const NEWSPRINT_SHEET         = 'Newsprint Quotations';
 const SOUVENIR_SHEET          = 'Souvenir Quotations';
 const KEYCHAIN_SHEET          = 'Keychain Quotations';
 const ACRYLICSIGN_SHEET       = 'Acrylic Signage Quotations';
+const ACRYLICPLATE_SHEET      = 'Acrylic Plate Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
 
@@ -141,6 +142,9 @@ function doGet(e) {
   }
   if (page === 'acrylicsign') {
     return serveWithToken_('AcrylicSignage', 'Quotation System — Acrylic Signage', token, appUrl);
+  }
+  if (page === 'acrylicplate') {
+    return serveWithToken_('AcrylicPlate', 'Quotation System — Acrylic Plate Number', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1192,8 +1196,56 @@ function getDashboardData(token) {
       });
     }
 
+    // ── ACRYLIC PLATE NUMBER QUOTES ─────────────────────────────
+    let acrylicPlateQuotes = [];
+    const apSheet = ss.getSheetByName(ACRYLICPLATE_SHEET);
+    if (apSheet) {
+      const pdata  = apSheet.getDataRange().getValues();
+      const pStart = pdata.length > 0 && String(pdata[0][0]).startsWith('AP-') ? 0 : 1;
+      acrylicPlateQuotes = pdata.slice(pStart).filter(r => r[0] && String(r[0]).startsWith('AP-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[15] || '');
+        const plateType = String(row[6] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          plateType:        plateType,
+          plateText:        String(row[7] || ''),
+          quantity:         row[8]  || 0,
+          unitPrice:        parseFloat(row[9])  || 0,
+          baseAmount:       parseFloat(row[10]) || 0,
+          rushOrder:        String(row[11] || ''),
+          rushFee:          parseFloat(row[12]) || 0,
+          designService:    String(row[13] || ''),
+          designFee:        parseFloat(row[14]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[16]) || 0,
+          notes:            String(row[17] || ''),
+          salesStaff:       String(row[18] || ''),
+          status:           String(row[19] || 'Pending'),
+          approvedBy:       String(row[20] || ''),
+          taxType:          String(row[21] || 'non-vat'),
+          taxAmount:        parseFloat(row[22]) || 0,
+          quoteType:        'acrylicplate',
+          signageType:      'Acrylic Plate — ' + plateType,
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[13] || ''), addonDesignFee: parseFloat(row[14]) || 0,
+          addonRush:   String(row[11] || ''), addonRushFee:   parseFloat(row[12]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1221,7 +1273,7 @@ function getQuoteForPDF(token, quoteNum) {
   // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
   //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
   //     data builder, which already returns a render-ready quote object. ──
-  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-'];
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-'];
   if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
     try {
       const dash = getDashboardData(token);
@@ -1580,6 +1632,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isSouvenir  = String(quoteNum).startsWith('SP-');
   const isKeychain  = String(quoteNum).startsWith('KC-');
   const isAcrylicSign = String(quoteNum).startsWith('AS-');
+  const isAcrylicPlate = String(quoteNum).startsWith('AP-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -1787,6 +1840,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Acrylic Signage order not found: ' + quoteNum);
+  }
+
+  if (isAcrylicPlate) {
+    const sheet = ss.getSheetByName(ACRYLICPLATE_SHEET);
+    if (!sheet) throw new Error('Acrylic Plate Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 20).setValue(status);  // col T = Status
+        sheet.getRange(i+1, 21).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col U = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 23).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Acrylic Plate order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -2459,6 +2528,7 @@ function getPublicPricing() {
     souvenir: (function(){ try{ return getSouvenirPricing(); }catch(e){ return null; } })(),
     keychain: (function(){ try{ return getKeychainPricing(); }catch(e){ return null; } })(),
     acrylicsign:(function(){ try{ return getAcrylicSignPricing(); }catch(e){ return null; } })(),
+    acrylicplate:(function(){ try{ return getAcrylicPlatePricing(); }catch(e){ return null; } })(),
   };
 }
 
@@ -2561,7 +2631,10 @@ function submitCustomerRequest(data) {
       if (data.designRef) specs += ' | Ref: ' + data.designRef;
     } else if (data.productType === 'acrylicsign') {
       specs = 'Acrylic Signage · ' + (data.signageType || '—') + ' · ' + (data.width || '?') + ' × '
-            + (data.height || '?') + ' ft × ' + (data.quantity || 1) + ' pc(s)';
+            + (data.height || '?') + ' ' + (data.unit || 'ft') + ' × ' + (data.quantity || 1) + ' pc(s)';
+    } else if (data.productType === 'acrylicplate') {
+      specs = 'Acrylic Plate Number · ' + (data.plateType || '—') + ' × ' + (data.quantity || 1) + ' pc(s)';
+      if (data.plateText) specs += ' | Text: ' + data.plateText;
     }
 
     sheet.appendRow([
@@ -4269,6 +4342,149 @@ function saveAcrylicSignOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET ACRYLIC PLATE NUMBER PRICING (live from "Acrylic Signage and
+//  Plate Number" tab — only the Plate Number rows)
+// ══════════════════════════════════════════════════════════════════
+//  Rows like:  Acrylic Plate Number - Motorcycle | 200
+//              Acrylic Plate Number - Car        | 400
+//  Flat price per piece. Rush = ₱250 or 5% whichever higher; Design ₱250.
+function getAcrylicPlatePricing() {
+  const defaults = {
+    types: [
+      { name: 'Motorcycle', fullName: 'Acrylic Plate Number - Motorcycle', price: 200 },
+      { name: 'Car',        fullName: 'Acrylic Plate Number - Car',        price: 400 },
+    ],
+    rushFlat: 250, rushPct: 0.05, designFee: 250,
+  };
+
+  function num(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  function shortName(full) {
+    // "Acrylic Plate Number - Motorcycle" -> "Motorcycle"
+    const m = String(full || '').match(/plate\s*number\s*[-–:]?\s*(.+)$/i);
+    return m ? m[1].trim() : String(full || '').trim();
+  }
+
+  try {
+    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const sheet = ss.getSheetByName('Acrylic Signage and Plate Number')
+               || ss.getSheetByName('Acrylic Plate Number')
+               || ss.getSheetByName('Acrylic Signage');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) return defaults;
+
+    let headerIdx = -1;
+    for (let i = 0; i < rows.length; i++) {
+      const joined = rows[i].map(c => String(c || '').toLowerCase()).join(' ');
+      if (/signage\s*type|plate/.test(joined) && /price/.test(joined)) { headerIdx = i; break; }
+    }
+    const start = headerIdx >= 0 ? headerIdx + 1 : 1;
+
+    const result = { types: [], rushFlat: defaults.rushFlat, rushPct: defaults.rushPct, designFee: defaults.designFee };
+    for (let i = start; i < rows.length; i++) {
+      const name = String(rows[i][0] || '').trim();
+      if (!name) continue;
+      const lc = name.toLowerCase();
+
+      if (/plate/i.test(name)) {
+        const price = num(rows[i][1]);
+        if (price > 0) result.types.push({ name: shortName(name), fullName: name, price: price });
+      } else if (/^rush\b/i.test(lc) && !/more than/i.test(lc)) {
+        const f = num(rows[i][1]); if (f > 0) result.rushFlat = f;
+      } else if (/rush more than|whichever/i.test(rows[i].map(c => String(c||'')).join(' '))) {
+        const pm = rows[i].map(c => String(c||'')).join(' ').match(/(\d+(?:\.\d+)?)\s*%/);
+        if (pm) result.rushPct = (parseFloat(pm[1]) || 5) / 100;
+      } else if (/design\s*fee/i.test(lc)) {
+        const f = num(rows[i][1]); if (f > 0) result.designFee = f;
+      }
+    }
+
+    if (!result.types.length) return defaults;
+    return result;
+  } catch(e) {
+    Logger.log('getAcrylicPlatePricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE ACRYLIC PLATE NUMBER ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveAcrylicPlateOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(ACRYLICPLATE_SHEET);
+  if (!sheet) sheet = ss.insertSheet(ACRYLICPLATE_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Plate Type', 'Plate Text / Name', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('AP-')) {
+    if (firstCell.startsWith('AP-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'AP-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.plateType     || '',                   // G  - Plate Type
+    data.plateText     || '',                   // H  - Plate Text / Name
+    qty,                                        // I  - Quantity
+    parseFloat(unitP.toFixed(2)),               // J  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // K  - Base Amount
+    data.rushOrder     || '',                   // L  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // M  - Rush Fee
+    data.designService || '',                   // N  - Design Service
+    parseFloat(designFee.toFixed(2)),           // O  - Design Fee
+    '',                                         // P  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // Q  - Total Amount
+    data.notes         || '',                   // R  - Special Instructions
+    staffName,                                  // S  - Sales Staff
+    data.status || 'Pending',                   // T  - Status
+    '',                                         // U  - Approved By
+    data.taxType       || 'non-vat',            // V  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // W  - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 10, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Acrylic Plate Number', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -4701,6 +4917,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('SP-'))  sheetName = SOUVENIR_SHEET;
   else if (quoteNum.startsWith('KC-'))  sheetName = KEYCHAIN_SHEET;
   else if (quoteNum.startsWith('AS-'))  sheetName = ACRYLICSIGN_SHEET;
+  else if (quoteNum.startsWith('AP-'))  sheetName = ACRYLICPLATE_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -4725,6 +4942,7 @@ else if (quoteNum.startsWith('NL-'))  ptCol = 18; // col R
 else if (quoteNum.startsWith('SP-'))  ptCol = 18; // col R
 else if (quoteNum.startsWith('KC-'))  ptCol = 19; // col S
 else if (quoteNum.startsWith('AS-'))  ptCol = 21; // col U
+else if (quoteNum.startsWith('AP-'))  ptCol = 16; // col P
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
