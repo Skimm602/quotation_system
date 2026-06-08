@@ -1354,6 +1354,32 @@ function renderStickerSpecs() {
     </div>`;
 }
 
+// Build a specs summary to attach to the design-upload email (so sales sees
+// the full inquiry, not just the file).
+function customerUploadSpecs() {
+  if (selectedProduct === 'sticker') {
+    let s = 'Material: ' + (d.stickerType || '—') + (d.stickerPreCut === 'Yes' ? ' (Pre-cut)' : '');
+    s += '\nSize: ' + (d.stickerWidth || '?') + ' × ' + (d.stickerHeight || '?') + ' ' + (d.stickerUnit || 'in');
+    s += '\nQuantity: ' + (d.stickerQty || 0) + ' pc(s)';
+    if (d.stickerRush   === 'Yes') s += '\nRush Order: Yes';
+    if (d.stickerDesign === 'Yes') s += '\nDesign Service: Yes';
+    if (d.dateNeeded) s += '\nDate Needed: ' + d.dateNeeded;
+    return s;
+  }
+  if (selectedProduct === 'keychain') {
+    const kp = PRICING.keychain || {};
+    let s = 'Size: ' + (d.keychainSize || '—') + ' · ' + (d.keychainCutType || 'Standard');
+    s += '\nMaterial: ' + (kp.material || 'Acrylic + Vinyl Sticker');
+    s += '\nQuantity: ' + (d.keychainQty || 0) + ' pc(s)';
+    if (d.keychainDesignRef) s += '\nDesign Ref: ' + d.keychainDesignRef;
+    if (d.keychainRush   === 'Yes') s += '\nRush Order: Yes';
+    if (d.keychainDesign === 'Yes') s += '\nDesign Service: Yes';
+    if (d.dateNeeded) s += '\nDate Needed: ' + d.dateNeeded;
+    return s;
+  }
+  return '';
+}
+
 function pickStickerDesignFile() {
   try {
     const input = document.createElement('input');
@@ -1404,6 +1430,7 @@ function handleStickerDesignFile(input) {
             contact:     d.contact,
             email:       d.email,
             notes:       d.notes,
+            specs:       customerUploadSpecs(),
           });
       } catch (err2) { setStatus('⚠ ' + (err2 && err2.message || 'Send failed.'), '#B00E12'); }
     };
@@ -1463,6 +1490,7 @@ function handleKeychainDesignFile(input) {
             contact:     d.contact,
             email:       d.email,
             notes:       d.notes,
+            specs:       customerUploadSpecs(),
           });
       } catch (err2) { setStatus('⚠ ' + (err2 && err2.message || 'Send failed.'), '#B00E12'); }
     };

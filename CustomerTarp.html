@@ -434,6 +434,21 @@ function submitRequest() {
     });
 }
 
+function tarpSpecsText() {
+  const qty = parseInt(d.quantity) || 1;
+  const lines = [
+    'Size: ' + (d.width || '?') + ' × ' + (d.height || '?') + ' ' + d.unit
+      + ' (' + sqft().toFixed(2) + ' sqft total)',
+    'Quantity: ' + qty + ' pc(s)',
+    'Eyelet: ' + d.eyelet,
+    'Rush Order: ' + (d.rush ? 'Yes' : 'No'),
+    'Design Service: ' + (d.designCharge ? 'Yes' : 'No'),
+  ];
+  if (d.dateNeeded) lines.push('Date Needed: ' + d.dateNeeded);
+  lines.push('Estimated Total: ' + php(calcTotal()));
+  return lines.join('\n');
+}
+
 function pickDesignFile() {
   try {
     const input = document.createElement('input');
@@ -491,6 +506,7 @@ function handleDesignFile(input) {
             contact:     (typeof d !== 'undefined' ? d.contact : ''),
             email:       (typeof d !== 'undefined' ? d.email   : ''),
             notes:       (typeof d !== 'undefined' ? d.notes   : ''),
+            specs:       (typeof tarpSpecsText === 'function' ? tarpSpecsText() : ''),
           });
       } catch (err2) {
         setStatus('⚠ ' + (err2 && err2.message || 'Send failed.'), '#B00E12');

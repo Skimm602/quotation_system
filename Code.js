@@ -2818,6 +2818,7 @@ function uploadCustomerDesign(data) {
     const contact = String(data.contact     || '—');
     const email   = String(data.email       || '—');
     const notes   = String(data.notes       || '');
+    const specs   = String(data.specs       || '');
     const stamp   = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Manila', 'yyyy-MM-dd HH:mm');
 
     const subject = 'Attention Sales New Inquiry ' + product + ' — ' + client;
@@ -2829,6 +2830,7 @@ function uploadCustomerDesign(data) {
       'Email:   ' + email   + '\n' +
       'Product: ' + product + '\n' +
       'Time:    ' + stamp   + '\n' +
+      (specs ? '\n── Specifications ────────────────────────\n' + specs + '\n' : '') +
       (notes ? '\nNotes:\n' + notes + '\n' : '') +
       '\nFilename: ' + data.filename + '\n' +
       'See the attached file.';
