@@ -2628,7 +2628,7 @@ function submitRequest() {
     const p    = PRICING.frame || {};
     const w    = parseFloat(d.frameWidth)  || 0;
     const h    = parseFloat(d.frameHeight) || 0;
-    const sqft = (w * h) / 144;
+    const sqft = (frameToIn(d.frameWidth) * frameToIn(d.frameHeight)) / 144; // convert to inches (matches calcFrameTotal)
     const rate = (d.frameMatting === 'With Matting' || d.frameMatting === 'Yes') ? (p.withMatting||600) : (p.withoutMatting||550);
     const base = rate * sqft * d.frameQty;
     const rush = d.frameRush === 'Yes' ? (p.rushFee||150) : 0;
