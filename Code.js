@@ -1408,6 +1408,8 @@ function getQuoteForPDF(token, quoteNum) {
         orientation:           String(r[11] || ''),
         bindingSide:           String(r[12] || ''),
         coverColor:            String(r[13] || ''),
+        textColor:             String(r[30] || ''),   // AE col 31 - Text Color
+        fontStyle:             String(r[31] || ''),   // AF col 32 - Font Style
         printedMaterialsReady: String(r[14] || ''),
         printingType:          String(r[15] || ''),
         printingFee:           parseFloat(r[16]) || 0,

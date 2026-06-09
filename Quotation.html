@@ -379,6 +379,8 @@
       if (q.orientation) descParts.push('Orientation: ' + q.orientation);
       if (q.bindingSide) descParts.push('Binding Side: ' + q.bindingSide);
       if (q.coverColor) descParts.push('Cover Color: ' + q.coverColor);
+      if (q.textColor) descParts.push('Text Color: ' + q.textColor);
+      if (q.fontStyle) descParts.push('Font Style: ' + q.fontStyle);
       if (q.printingNeeded === 'Yes') {
         let printInfo = 'Printing Needed';
         if (q.printedMaterialsReady) printInfo += ' — Materials Ready: ' + q.printedMaterialsReady;

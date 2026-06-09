@@ -516,7 +516,9 @@ function saveStep() {
     d.paperSize  = v('f_size')||d.paperSize;
     d.orientation= v('f_orient')||d.orientation;
     d.bindingSide= v('f_side')||d.bindingSide;
-    d.coverColor = v('f_covcolor');
+    // Cover color is set by the swatch buttons (d.coverColor) — don't overwrite it.
+    // Only capture the free-text value when "Other" is chosen.
+    if (d.coverColor === 'Other') d.coverColorOther = v('f_covcolor_other') || d.coverColorOther;
     d.textColor  = v('f_textcolor');
     d.fontStyle  = v('f_fontstyle');
   }
