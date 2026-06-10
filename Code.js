@@ -4811,7 +4811,7 @@ function getReceiptPricing() {
         copies:      row[1],                   // 2, 3, 4
         sizeDiv:     row[2],                   // 1,2,3,4,6,8
         booklets:    row[3],                   // quantity
-        sellingPrice: row[14],                 // col L = Selling Price/Booklet
+        sellingPrice: row[11],                 // col L = Selling Price/Booklet
       });
     }
     return rows;

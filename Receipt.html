@@ -684,7 +684,7 @@ function computeTotal() {
   );
 
   if (!match) return 0;
-  return match.sellingPrice;
+  return match.sellingPrice * d.qty;
 }
 
 function rushFeeAmt() { return d.rushOrder === 'Yes' ? (RUSH_FEE || 150) : 0; }

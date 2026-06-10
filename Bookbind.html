@@ -358,7 +358,7 @@ function renderBody() {
             <select class="field-input" id="f_side" onchange="d.bindingSide=this.value;">${sideOpts}</select>
           </div>
           <div class="flex flex-col gap-1" style="grid-column:1/-1;">
-            <label class="field-label">Cover Color</label>
+            <label class="field-label">Cover Color *</label>
             <div style="display:flex;gap:8px;">
               ${[['Blue','#1A3A7A','#D0DBF5'],['Green','#1A5A2A','#D0F0D8'],['Maroon','#7A1A1A','#F5D0D0']].map(([c,fg,bg])=>`
                 <button onclick="d.coverColor='${c}';d.coverColorOther='';renderBody();"
@@ -550,6 +550,8 @@ function next() {
   if (step === 1) {
     if (!d.bindType) { showToast('⚠ Please select a Binding Type.', 'error'); return; }
     if (d.bindType === 'Softbound' && !d.withLettering) { showToast('⚠ Please select "With Lettering" or "Without Lettering".', 'error'); return; }
+    if (!d.coverColor) { showToast('⚠ Please select a Cover Color.', 'error'); return; }
+    if (d.coverColor === 'Other' && !(d.coverColorOther||'').trim()) { showToast('⚠ Please specify the Cover Color.', 'error'); return; }
   }
   if (step === 2) {
     if (!d.rushOrder) { showToast('⚠ Please indicate if this is a Rush Order.', 'error'); return; }
