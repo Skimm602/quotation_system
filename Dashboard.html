@@ -714,7 +714,7 @@ function setupDashboard() {
   const items = [
     { id:'sec-overview',        label:'Overview',        icon:'▣', roles:['admin','tech_support','sales','staff'] },
     { id:'sec-quotes',          label:'All Quotes',      icon:'≡', roles:['admin','tech_support','sales','staff'] },
-    { id:'sec-approvals',       label:'Approvals',       icon:'✓', roles:['admin','tech_support']                 },
+    { id:'sec-approvals',       label:'Approvals',       icon:'✓', roles:['admin','tech_support','sales']         },
     { id:'sec-customer-quotes', label:'Customer Quotes', icon:'👥', roles:['admin','tech_support','sales','staff'] },
     { id:'sec-users',           label:'Users',           icon:'◉', roles:['tech_support']                         },
   ];
@@ -891,10 +891,12 @@ function filterTable() { renderAllQuotes(); }
 function renderApprovals() {
   const pending=allQuotes.filter(q=>(q.status||'Pending')==='Pending').reverse();
   if (!pending.length) { document.getElementById('approvalsTable').innerHTML='<div style="padding:40px;text-align:center;color:#CCC;font-size:13px;">🎉 No pending approvals!</div>'; return; }
+  const role=(currentUser?.role||'').toLowerCase(), canApprove=role==='admin'||role==='tech_support';
   let html=`<table class="data-table"><thead><tr><th>Quote #</th><th>Client</th><th>Signage Type</th><th>Total Amount</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>`;
   pending.forEach(q => {
     const date=q.date?new Date(q.date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
-    html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td><div style="font-weight:600;">${q.clientName||'—'}</div><div style="font-size:11px;color:#AAA;">${q.contact||''}</div></td><td style="color:#666;">${q.signageType||'—'}</td><td style="font-weight:700;color:#E8151B;font-size:15px;">${php(q.totalAmount)}</td><td style="color:#888;">${date}</td><td style="display:flex;gap:6px;"><button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓ APPROVE</button><button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕ REJECT</button><button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">Details</button></td></tr>`;
+    const approveBtns = canApprove ? `<button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓ APPROVE</button><button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕ REJECT</button>` : '';
+    html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td><div style="font-weight:600;">${q.clientName||'—'}</div><div style="font-size:11px;color:#AAA;">${q.contact||''}</div></td><td style="color:#666;">${q.signageType||'—'}</td><td style="font-weight:700;color:#E8151B;font-size:15px;">${php(q.totalAmount)}</td><td style="color:#888;">${date}</td><td style="display:flex;gap:6px;">${approveBtns}<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">Details</button></td></tr>`;
   });
   html+='</tbody></table>';
   document.getElementById('approvalsTable').innerHTML=html;
