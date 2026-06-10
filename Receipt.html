@@ -150,7 +150,7 @@ const d = {
   copies: '', size: '',
   paperType: '', colors: ['White'],
   perforation: 'Yes', numbering: 'Yes', startingNo: '',
-  qty: 0, dateNeeded: '', notes: '',
+  qty: 0, qtyIsCustom: false, dateNeeded: '', notes: '',
   rushOrder: '',
   taxType: 'non-vat',
 };
@@ -428,10 +428,6 @@ function renderBody() {
 
   // STEP 4 — Order Summary
   else if (step===4) {
-    const total=computeFinalTotal();
-    const subtot=computeTotal();
-    const tAmt=receiptTaxAmt();
-    const tLabel=d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)';
     const copiesMap = {'Duplicate (2)':2,'Triplicate (3)':3,'Quadruplicate (4)':4};
     const availableQty = PRICING && Array.isArray(PRICING)
       ? [...new Set(
@@ -441,14 +437,19 @@ function renderBody() {
             .map(r => r.booklets)
         )].sort((a,b) => a-b)
       : [50,100,150,200,250,300,500];
+    const isCustomQty = !!d.qtyIsCustom;
     const qtyOpts=`<option value="">Select quantity…</option>`+
       availableQty.map(q=>
-        `<option value="${q}" ${d.qty===q?'selected':''}>${q} booklets</option>`).join('');
-    const hasTotal=total>0;
+        `<option value="${q}" ${!isCustomQty&&d.qty===q?'selected':''}>${q} booklets</option>`).join('')+
+      `<option value="others" ${isCustomQty?'selected':''}>Others…</option>`;
     el.innerHTML=`
       <div class="grid-2">
         <div class="field"><label class="field-label">Quantity (Booklets) *</label>
-          <select class="field-input" id="f_qty" onchange="d.qty=parseInt(this.value)||0;renderBody()">${qtyOpts}</select>
+          <select class="field-input" id="f_qty" onchange="if(this.value==='others'){d.qtyIsCustom=true;d.qty=0;}else{d.qtyIsCustom=false;d.qty=parseInt(this.value)||0;}renderBody()">${qtyOpts}</select>
+          ${isCustomQty?`
+            <input class="field-input" id="f_qty_other" type="number" min="1" inputmode="numeric"
+              placeholder="Enter quantity (e.g. 250)" value="${d.qty||''}" style="margin-top:8px;"
+              oninput="d.qty=parseInt(this.value)||0;updateTotals()">`:''}
         </div>
         <div class="field"><label class="field-label">Date Needed *</label>
           <input class="field-input" id="f_dateneeded" type="date" value="${esc(d.dateNeeded)}"
@@ -468,6 +469,23 @@ function renderBody() {
         <textarea class="field-input" id="f_notes" placeholder="Additional details, delivery, or remarks…">${esc(d.notes)}</textarea>
       </div>
       ${taxToggleHtml()}
+      <div id="totalsArea">${totalsAreaHtml()}</div>`;
+  }
+}
+
+function totalsAreaHtml() {
+  const total=computeFinalTotal();
+  const tAmt=receiptTaxAmt();
+  const tLabel=d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)';
+  const hasTotal=total>0;
+  const row=findPriceRow();
+  const tierNote = (row && d.qty > 0 && row.booklets !== d.qty)
+    ? `<div style="margin-top:10px;background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;padding:10px 12px;font-size:12px;color:#7A5500;">
+         ℹ️ Custom quantity — using the <strong>${row.booklets}-booklet</strong> price tier: <strong>${php(row.sellingPrice)}</strong> / booklet × ${d.qty}
+       </div>`
+    : '';
+  return `
+      ${tierNote}
       ${tAmt>0?`<div style="margin-top:10px;font-size:13px;color:var(--gray-500);">${tLabel}: <strong>${php(tAmt)}</strong></div>`:''}
       <div class="total-box" style="background:${hasTotal?'var(--green-light)':'var(--gray-100)'};border:1px solid ${hasTotal?'var(--green-border)':'var(--gray-200)'};border-left:3px solid ${hasTotal?'var(--green)':'var(--gray-200)'};margin-top:12px;">
         <div class="total-label">Total Price:</div>
@@ -479,7 +497,11 @@ function renderBody() {
             ${php(total/d.qty)} <span style="color:var(--gray-300);">/ booklet</span>
           </span>
         </div>` : ''}`;
-  }
+}
+
+function updateTotals() {
+  const el=$('totalsArea');
+  if (el) el.innerHTML=totalsAreaHtml();
 }
 
 function renderFoot() {
@@ -541,7 +563,7 @@ function save() {
   if (step===0) { d.company=v('f_company'); d.lastName=v('f_lastname'); d.firstName=v('f_firstname'); d.email=v('f_email'); d.mobile=v('f_mobile'); }
   if (step===2) { d.size=v('f_size')||d.size; }
   if (step===3) { d.startingNo=v('f_startno'); }
-  if (step===4) { d.qty=parseInt(v('f_qty'))||d.qty; d.dateNeeded=v('f_dateneeded')||d.dateNeeded; d.notes=v('f_notes')||d.notes; }
+  if (step===4) { d.qty=d.qtyIsCustom?(parseInt(v('f_qty_other'))||d.qty):(parseInt(v('f_qty'))||d.qty); d.dateNeeded=v('f_dateneeded')||d.dateNeeded; d.notes=v('f_notes')||d.notes; }
 }
 
 function next() {
@@ -593,7 +615,7 @@ function goToDashboard() {
 
 function submitOrder() {
   save();
-  const qty = parseInt(v('f_qty')) || d.qty;
+  const qty = d.qtyIsCustom ? (parseInt(v('f_qty_other')) || d.qty) : (parseInt(v('f_qty')) || d.qty);
   const dn  = v('f_dateneeded') || d.dateNeeded;
   d.qty = qty; d.dateNeeded = dn; d.notes = v('f_notes') || d.notes;
 
@@ -645,7 +667,7 @@ function submitOrder() {
 
 function resetForm(){
   if (!confirm('Start a new order? Current data will be cleared.')) return;
-  Object.assign(d,{company:'',lastName:'',firstName:'',email:'',mobile:'',customerType:'new',copies:'',size:'',paperType:'',colors:['White'],perforation:'Yes',numbering:'Yes',startingNo:'',qty:0,dateNeeded:'',notes:'',rushOrder:''});
+  Object.assign(d,{company:'',lastName:'',firstName:'',email:'',mobile:'',customerType:'new',copies:'',size:'',paperType:'',colors:['White'],perforation:'Yes',numbering:'Yes',startingNo:'',qty:0,qtyIsCustom:false,dateNeeded:'',notes:'',rushOrder:''});
   step=0; render();
 }
 
@@ -662,9 +684,9 @@ function loadPricing() {
   }
 }
 
-function computeTotal() {
-  if (!d.copies || !d.size || !d.paperType || !d.qty) return 0;
-  if (!PRICING || !Array.isArray(PRICING)) return 0;
+function findPriceRow() {
+  if (!d.copies || !d.size || !d.paperType || !d.qty) return null;
+  if (!PRICING || !Array.isArray(PRICING)) return null;
 
   const sizeDivMap = {
     'Full (1)': 1, '1/2': 2, '1/3': 3,
@@ -676,15 +698,26 @@ function computeTotal() {
     'Quadruplicate (4)': 4
   };
 
-  const match = PRICING.find(r =>
+  const candidates = PRICING.filter(r =>
     r.printType === d.paperType &&
     r.copies    === copiesMap[d.copies] &&
-    r.sizeDiv   === sizeDivMap[d.size] &&
-    r.booklets  === d.qty
-  );
+    r.sizeDiv   === sizeDivMap[d.size]
+  ).sort((a,b) => a.booklets - b.booklets);
+  if (!candidates.length) return null;
 
-  if (!match) return 0;
-  return match.sellingPrice * d.qty;
+  const exact = candidates.find(r => r.booklets === d.qty);
+  if (exact) return exact;
+
+  // Custom quantity not in the sheet: charge the price tier of the highest
+  // booklet count at or below it (e.g. 250 → 200-booklet tier, until 300).
+  // Below the lowest tier, the lowest tier's price applies.
+  const floor = candidates.filter(r => r.booklets <= d.qty).pop();
+  return floor || candidates[0];
+}
+
+function computeTotal() {
+  const row = findPriceRow();
+  return row ? row.sellingPrice * d.qty : 0;
 }
 
 function rushFeeAmt() { return d.rushOrder === 'Yes' ? (RUSH_FEE || 150) : 0; }
