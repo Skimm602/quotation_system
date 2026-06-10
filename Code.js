@@ -2582,6 +2582,7 @@ function submitCustomerRequest(data) {
       if (data.shirtColor) specs += ' | Color: ' + data.shirtColor;
     } else if (data.productType === 'tarp') {
       specs = (data.width || '?') + ' × ' + (data.height || '?') + ' ft × ' + (data.quantity || 1) + ' pc(s)';
+      if (data.eyelet) specs += ' | Eyelet: ' + data.eyelet;
     } else if (data.productType === 'frame') {
       specs = (data.frameWidth || data.width || '?') + ' × ' + (data.frameHeight || data.height || '?') + ' ' + (data.frameUnit || data.unit || 'in') + ' | '
             + ((data.hasMatting === 'With Matting' || data.hasMatting === 'Yes') ? 'With matting' : 'No matting')

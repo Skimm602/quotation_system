@@ -124,7 +124,7 @@ const d = {
   tshirtPrintType:'', tshirtLogoSize:'', tshirtGarmentType:'', tshirtOwnShirt:'No', tshirtShirtChoice:'',
   tshirtColor:'', tshirtSizes:{}, tshirtSizeOthersLabel:'', tshirtRush:'No', tshirtDesign:'No',
   // tarp
-  tarpWidth:'', tarpHeight:'', tarpQty:1, tarpRush:'No', tarpDesign:'No',
+  tarpWidth:'', tarpHeight:'', tarpQty:1, tarpEyelet:'No Eyelet', tarpRush:'No', tarpDesign:'No',
   // frame
   frameWidth:'', frameHeight:'', frameUnit:'in', frameMatting:'With Matting', frameQty:1, frameRush:'No',
   // bookbind
@@ -1716,6 +1716,20 @@ function renderTshirtSpecs() {
 
 // ── TARPAULIN SPECS ───────────────────────────────────────────────
 function renderTarpSpecs() {
+  const eyeletOpts = [
+    { v:'No Eyelet',    desc:'Flat banner, no holes' },
+    { v:'Top Only',     desc:'Holes along the top edge' },
+    { v:'Top & Bottom', desc:'Holes top and bottom' },
+    { v:'All Sides',    desc:'Holes on all four sides' },
+  ];
+  const eyeletCards = eyeletOpts.map(o => `
+    <div class="opt-card${d.tarpEyelet===o.v?' active':''}" onclick="d.tarpEyelet='${o.v}';renderForm();">
+      <input type="radio" ${d.tarpEyelet===o.v?'checked':''} readonly>
+      <div>
+        <div style="font-size:13px;font-weight:600;">${o.v}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">${o.desc}</div>
+      </div>
+    </div>`).join('');
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
       <div>
@@ -1734,6 +1748,10 @@ function renderTarpSpecs() {
         <input type="number" class="field-input" id="tp_qty" value="${d.tarpQty}" min="1"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
           oninput="d.tarpQty=parseInt(this.value)||1;" inputmode="numeric">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Eyelet Position *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${eyeletCards}</div>
       </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
@@ -2206,6 +2224,7 @@ function renderReview() {
     if (d.tshirtDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'tarp') {
     specSummary = `${d.tarpWidth||'?'} × ${d.tarpHeight||'?'} ft × ${d.tarpQty} pc(s)`;
+    specSummary += ` · Eyelet: ${esc(d.tarpEyelet||'No Eyelet')}`;
     if (d.tarpRush   === 'Yes') specSummary += ' · Rush';
     if (d.tarpDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'frame') {
@@ -2612,13 +2631,15 @@ function submitRequest() {
     Object.assign(payload, {
       width: parseFloat(d.tarpWidth)||0, height: parseFloat(d.tarpHeight)||0,
       sqft: sqft, quantity: d.tarpQty,
+      eyelet: d.tarpEyelet || 'No Eyelet',
       ratePerSqft: rate, baseAmount: base,
       rushOrder: d.tarpRush, rushFee: rush,
       designCharge: d.tarpDesign, designFee: des,
       totalAmount: base + rush + des,
       items: JSON.stringify([{
         width: d.tarpWidth, height: d.tarpHeight, quantity: d.tarpQty,
-        sqft: sqft, rush: d.tarpRush, designCharge: d.tarpDesign,
+        sqft: sqft, eyelet: d.tarpEyelet || 'No Eyelet',
+        rush: d.tarpRush, designCharge: d.tarpDesign,
         itemTotal: base + rush + des,
       }]),
     });
@@ -2937,6 +2958,7 @@ function buildMessengerText(qn) {
     if (d.tshirtDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'tarp') {
     specsLine = d.tarpWidth + ' × ' + d.tarpHeight + ' ft × ' + d.tarpQty + ' pc(s)';
+    specsLine += '\nEyelet: ' + (d.tarpEyelet || 'No Eyelet');
     if (d.tarpRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.tarpDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'frame') {
@@ -3096,7 +3118,7 @@ function resetAll() {
   });
   d.tshirtSizes = {};
   d.mugRush='No'; d.mugDesign='No'; d.tshirtRush='No'; d.tshirtDesign='No';
-  d.tshirtOwnShirt='No'; d.tarpRush='No'; d.tarpDesign='No';
+  d.tshirtOwnShirt='No'; d.tarpEyelet='No Eyelet'; d.tarpRush='No'; d.tarpDesign='No';
   d.frameMatting='With Matting'; d.frameRush='No'; d.frameUnit='in';
   d.bindRush='No'; d.bindMaterialsReady='Yes';
   d.bindPaperSize='A4'; d.bindOrientation='Portrait'; d.bindBindingSide='Left';
