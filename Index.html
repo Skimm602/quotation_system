@@ -266,8 +266,20 @@
     });
   }
 
+  // Material auto-derives from the signage type:
+  //   non-lighted (single or double)  → Premium Print
+  //   lighted     (single or double)  → UV Print
+  //   anything else                   → Standard
+  function autoMaterial(name) {
+    const t = String(name || '').toLowerCase();
+    if (/non[\s-]*lighted/.test(t)) return 'Premium Print';
+    if (/lighted/.test(t))          return 'UV Print';
+    return 'Standard';
+  }
+
   function selectSignageType(name, rate, minCharge, minArea) {
     d.signageType = name;
+    d.material    = autoMaterial(name);
     RATES[name]     = rate;
     MIN_CHARGE[name]= minCharge;
     MIN_AREA[name]  = minArea;
@@ -299,6 +311,8 @@
       el.querySelector('div').style.color = isSelected ? '#E8151B' : '#0A0A0A';
       el.querySelector('div').style.fontWeight = isSelected ? '700' : '500';
     });
+    // Refresh the step so the auto-filled Material display updates.
+    renderBody();
   }
 
   // --- STEPS ----------------------------------------------------------------
@@ -377,7 +391,7 @@
 
     // -- STEP 1: GROUPED SEARCHABLE SIGNAGE TYPE ------------------------------
     else if (step === 1) {
-      const matOpts = ['Standard','Premium','UV-resistant'].map(m => `<option ${d.material===m?'selected':''}>${m}</option>`).join('');
+      d.material = autoMaterial(d.signageType);
       const grouped = buildGrouped();
       const sel     = d.signageType;
       const selP    = PRODUCTS.find(p => p.name === sel);
@@ -446,8 +460,8 @@
             <div id="product-card">${productCard}</div>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="field-label">Material</label>
-            <select class="field-input" id="f_material">${matOpts}</select>
+            <label class="field-label">Material <span class="auto-tag">⚡ AUTO</span></label>
+            <div class="field-input" style="background:#F9F9F9;display:flex;align-items:center;font-weight:600;">${esc(d.material||'—')}</div>
           </div>
           ${complexitySection}
           <div style="grid-column:1/-1;" class="flex flex-col gap-1">
@@ -933,7 +947,7 @@
 
   function save() {
     if(step===0){ d.clientName=v('f_name'); d.contact=v('f_contact'); d.email=v('f_email'); d.address=v('f_address'); d.delivery=v('f_delivery'); d.dateNeeded=v('f_dateneeded'); }
-    if(step===1){ d.signageType=v('type-search'); d.material=v('f_material'); d.typeNotes=v('f_typenotes'); }
+    if(step===1){ d.signageType=v('type-search'); d.material=autoMaterial(d.signageType); d.typeNotes=v('f_typenotes'); }
     if(step===2){ 
       d.rawWidth  = v('f_width'); 
       d.rawHeight = v('f_height'); 
