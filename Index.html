@@ -304,7 +304,7 @@
   // --- STEPS ----------------------------------------------------------------
   const STEPS = [
     { label:'Client Info',     sub:'Name, contact & delivery location' },
-    { label:'Signage Type',    sub:'Type, lighting & material' },
+    { label:'Signage Type',    sub:'Type & material' },
     { label:'Dimensions',      sub:'Width × height → sq ft auto-computed' },
     { label:'Mounting',        sub:'Live mounting options from pricelist' },
     { label:'Add-ons',         sub:'Design, rush, electrical & transport fees' },
@@ -377,7 +377,6 @@
 
     // -- STEP 1: GROUPED SEARCHABLE SIGNAGE TYPE ------------------------------
     else if (step === 1) {
-      const litOpts = ['None','Frontlit','Backlit','LED'].map(l => `<option ${d.lighting===l?'selected':''}>${l}</option>`).join('');
       const matOpts = ['Standard','Premium','UV-resistant'].map(m => `<option ${d.material===m?'selected':''}>${m}</option>`).join('');
       const grouped = buildGrouped();
       const sel     = d.signageType;
@@ -445,10 +444,6 @@
               ${PRODUCTS.length===0?'<div style="padding:18px;text-align:center;color:#BBB;font-size:13px;">No products loaded.</div>':''}
             </div>
             <div id="product-card">${productCard}</div>
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="field-label">Lighting</label>
-            <select class="field-input" id="f_lighting">${litOpts}</select>
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Material</label>
@@ -763,7 +758,7 @@
         </div>
         <table class="q-table">
           <tr><td colspan="2" class="sec-label">SIGNAGE DETAILS</td></tr>
-          <tr><td>Type</td><td>${esc(d.signageType)||'—'} · ${d.lighting} · ${d.material}</td></tr>
+          <tr><td>Type</td><td>${esc(d.signageType)||'—'} · ${d.material}</td></tr>
           <tr><td>Dimensions</td><td>${d.rawWidth||d.width||'?'} × ${d.rawHeight||d.height||'?'} ${d.unit||'ft'} = <strong>${sf.toFixed(2)} sq ft</strong>${bsf>sf?` <span style="color:#CC6600;font-size:11px;">(billed as ${bsf.toFixed(2)} sq ft min)</span>`:''}</td></tr>
           <tr><td>Rate / sq ft</td><td>${php(RATES[d.signageType]||0)}</td></tr>
           ${MIN_CHARGE[d.signageType]?`<tr><td>Min. Charge</td><td>${php(MIN_CHARGE[d.signageType])}</td></tr>`:''}
@@ -874,13 +869,10 @@
     if (existing >= 0) { d.selectedComplexity.splice(existing,1); cardEl.classList.remove('checked'); }
     else { if (!d.selectedComplexity) d.selectedComplexity=[]; d.selectedComplexity.push(opt); cardEl.classList.add('checked'); }
     const typenotes=(document.getElementById('f_typenotes')||{}).value;
-    const lit=(document.getElementById('f_lighting')||{}).value;
     const mat=(document.getElementById('f_material')||{}).value;
     if (typenotes!==undefined) d.typeNotes=typenotes;
-    if (lit) d.lighting=lit;
     if (mat) d.material=mat;
     renderBody();
-    if (document.getElementById('f_lighting')) document.getElementById('f_lighting').value=d.lighting;
     if (document.getElementById('f_material')) document.getElementById('f_material').value=d.material;
   }
 
@@ -941,7 +933,7 @@
 
   function save() {
     if(step===0){ d.clientName=v('f_name'); d.contact=v('f_contact'); d.email=v('f_email'); d.address=v('f_address'); d.delivery=v('f_delivery'); d.dateNeeded=v('f_dateneeded'); }
-    if(step===1){ d.signageType=v('type-search'); d.lighting=v('f_lighting'); d.material=v('f_material'); d.typeNotes=v('f_typenotes'); }
+    if(step===1){ d.signageType=v('type-search'); d.material=v('f_material'); d.typeNotes=v('f_typenotes'); }
     if(step===2){ 
       d.rawWidth  = v('f_width'); 
       d.rawHeight = v('f_height'); 
@@ -1112,7 +1104,6 @@
     lines.push('');
     lines.push('📐 SPECIFICATIONS');
     lines.push('• Type: ' + (d.signageType || '—'));
-    lines.push('• Lighting: ' + (d.lighting || '—'));
     lines.push('• Material: ' + (d.material || '—'));
     lines.push('• Size: ' + (d.rawWidth||d.width||'?') + ' × ' + (d.rawHeight||d.height||'?') + ' ' + (d.unit||'ft')
              + ' = ' + sf.toFixed(2) + ' sq ft' + (bsf>sf ? ' (billed ' + bsf.toFixed(2) + ' sq ft min)' : ''));
