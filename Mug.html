@@ -399,7 +399,7 @@ function renderBody() {
 
         <div class="flex flex-col gap-1">
           <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
-          <textarea class="field-input" id="f_notes" placeholder="Design details, color preferences, delivery notes...">${esc(d.notes || '')}</textarea>
+          <textarea class="field-input" id="f_notes" oninput="d.notes=this.value" placeholder="Design details, color preferences, delivery notes...">${esc(d.notes || '')}</textarea>
         </div>
 
       </div>`;

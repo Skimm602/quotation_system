@@ -4722,13 +4722,10 @@ function saveReceiptOrder(payload) {
     sheet.setFrozenRows(1);
   }
 
-   
-    // ← line 1040 (closing brace of if(!sheet))
-     // ← line 1041 (blank)
-    const session   = payload.salesStaff ? getSessionData_(payload.salesStaff) : null;  // ← NEW
-    const staffName = session ? session.name : '';  // ← NEW
-    const lastRow   = sheet.getLastRow();   // ← line 1042 (unchanged)
-    const orderNum  = 'RQ-' + String(lastRow).padStart(4, '0');  // ← line 1043 (unchanged)
+  const session   = payload.salesStaff ? getSessionData_(payload.salesStaff) : null;
+  const staffName = session ? session.name : '';
+  const lastRow   = sheet.getLastRow();
+  const orderNum  = 'RQ-' + String(lastRow).padStart(4, '0');
 
   sheet.appendRow([
     orderNum,                // A  col 1  - Order #
@@ -4828,7 +4825,23 @@ function getReceiptPricing() {
 function getReceiptRushFee() {
   const defaultFee = 150;
   try {
-    const extSS    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    // Resolve the external pricing spreadsheet from the Database sheet,
+    // same as getReceiptPricing(), so both always read the same source.
+    const db = getMainSS_().getSheetByName(SHEET_DATABASE);
+    if (!db) return defaultFee;
+    const dbData = db.getDataRange().getValues();
+    let externalId = null;
+    for (let i = 0; i < dbData.length; i++) {
+      if (String(dbData[i][0]).trim() === 'PriceDatabase') {
+        externalId = String(dbData[i][1]).trim();
+        break;
+      }
+    }
+    if (!externalId) return defaultFee;
+    const match = externalId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    const ssId  = match ? match[1] : externalId;
+
+    const extSS    = SpreadsheetApp.openById(ssId);
     const extSheet = extSS.getSheetByName('Receipt');
     if (!extSheet) return defaultFee;
 

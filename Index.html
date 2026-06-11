@@ -466,7 +466,7 @@
           ${complexitySection}
           <div style="grid-column:1/-1;" class="flex flex-col gap-1">
             <label class="field-label">Special Notes</label>
-            <textarea class="field-input" id="f_typenotes" placeholder="Additional specifications...">${esc(d.typeNotes||'')}</textarea>
+            <textarea class="field-input" id="f_typenotes" oninput="d.typeNotes=this.value" placeholder="Additional specifications...">${esc(d.typeNotes||'')}</textarea>
           </div>
         </div>`;
 
@@ -572,7 +572,7 @@
           ${selMount && selMount.isQuotation ? `<div class="info-box mt-1"><span>⚠</span><span>This mounting type requires a <strong>site visit</strong>. Final price to be determined upon assessment.</span></div>` : ''}
           <div class="flex flex-col gap-1 mt-2">
             <label class="field-label">Installation Notes</label>
-            <textarea class="field-input" id="f_instnotes" placeholder="Access constraints, obstacles, height requirements...">${esc(d.installNotes)}</textarea>
+            <textarea class="field-input" id="f_instnotes" oninput="d.installNotes=this.value" placeholder="Access constraints, obstacles, height requirements...">${esc(d.installNotes)}</textarea>
           </div>
         </div>`;
     }
@@ -740,11 +740,11 @@
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">File Format Provided</label>
-            <select class="field-input" id="f_fileformat">${ffOpts}</select>
+            <select class="field-input" id="f_fileformat" onchange="d.fileFormat=this.value">${ffOpts}</select>
           </div>
           <div style="grid-column:1/-1;" class="flex flex-col gap-1">
             <label class="field-label">Artwork Specifications</label>
-            <textarea class="field-input" id="f_artspecs" placeholder="Colors, logo details, text content, brand guidelines...">${esc(d.artSpecs)}</textarea>
+            <textarea class="field-input" id="f_artspecs" oninput="d.artSpecs=this.value" placeholder="Colors, logo details, text content, brand guidelines...">${esc(d.artSpecs)}</textarea>
           </div>
         </div>
         ${d.designService==='Yes' ? `<div class="info-box mt-1"><span>▸</span><span>Design service fee of <strong>${php(DESIGN_FEE)}</strong> will be added.</span></div>` : ''}`;
@@ -883,11 +883,8 @@
     if (existing >= 0) { d.selectedComplexity.splice(existing,1); cardEl.classList.remove('checked'); }
     else { if (!d.selectedComplexity) d.selectedComplexity=[]; d.selectedComplexity.push(opt); cardEl.classList.add('checked'); }
     const typenotes=(document.getElementById('f_typenotes')||{}).value;
-    const mat=(document.getElementById('f_material')||{}).value;
     if (typenotes!==undefined) d.typeNotes=typenotes;
-    if (mat) d.material=mat;
     renderBody();
-    if (document.getElementById('f_material')) document.getElementById('f_material').value=d.material;
   }
 
   // --- ADDON HANDLERS -------------------------------------------------------

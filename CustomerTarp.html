@@ -154,7 +154,7 @@ function renderStep0() {
       </div>
       <div>
         <label class="field-label">Special Instructions <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
-        <textarea class="field-input" id="f_notes" placeholder="Color preferences, design details, etc.">${esc(d.notes)}</textarea>
+        <textarea class="field-input" id="f_notes" oninput="d.notes=this.value" placeholder="Color preferences, design details, etc.">${esc(d.notes)}</textarea>
       </div>
     </div>`;
 }
