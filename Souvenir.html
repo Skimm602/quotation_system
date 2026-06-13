@@ -583,14 +583,17 @@ function buildMessengerText() {
 function buildJobOrderText() {
   const pages = parseInt(d.pages)||0;
   const qty = parseInt(d.quantity)||1;
-  const specs = [
-    pages + ' pgs × ' + qty + ' copies',
-    (PRICING.pageSize||'A3'),
-    (PRICING.method||'Laser'),
-    (d.rushOrder==='Yes'?'Rush':'No rush')
-  ];
-  if (d.designService==='Yes') specs.push('Design');
-  return ['JOB ORDER', 'Souvenir Program', specs.join(' · '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  const rate = unitPrice();
+  const base = baseAmt();
+  const line =
+    'Pages per Copy: ' + (pages||'—') + ', ' +
+    'Copies: ' + qty + ', ' +
+    'Page Size: ' + (PRICING.pageSize||'A3') + ', ' +
+    'Print: ' + (PRICING.method||'Laser') + ', ' +
+    'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
+    'Design Charge: ' + (d.designService==='Yes'?'Yes':'No') + ', ' +
+    'Price ' + php(rate) + '/page x ' + pages + ' pgs x ' + qty + ' copies = ' + php(base);
+  return ['JOB ORDER', 'Souvenir Program', line, 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

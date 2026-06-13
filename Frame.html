@@ -563,14 +563,16 @@ function buildMessengerText() {
 function buildJobOrderText() {
   const qty = parseInt(d.quantity)||1;
   const w = parseFloat(d.width)||0, h = parseFloat(d.height)||0;
-  const specs = [
-    (w||'?') + ' × ' + (h||'?') + ' ' + (d.unit||'ft'),
-    (d.matting||'—'),
-    qty + ' frame(s)',
-    totalSqft().toFixed(2) + ' sq ft',
-    (d.rushOrder==='Yes'?'Rush':'No rush')
-  ];
-  return ['JOB ORDER', 'Picture Frame', specs.join(' · '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  const base = baseAmt();
+  const unit = qty ? base/qty : 0;
+  const line =
+    'Size: ' + (w||'?') + ' × ' + (h||'?') + ' ' + (d.unit||'ft') + ', ' +
+    'Matting: ' + (d.matting||'—') + ', ' +
+    'Quantity: ' + qty + ' frame(s), ' +
+    'Total Area: ' + totalSqft().toFixed(2) + ' sq ft, ' +
+    'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
+    'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty);
+  return ['JOB ORDER', 'Picture Frame', line, 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

@@ -779,15 +779,18 @@ function buildReceiptMessengerText() {
 }
 
 function buildJobOrderText() {
-  const specs = [
-    (d.copies||'—'),
-    (d.size||'—'),
-    (d.paperType||'—'),
-    ((d.colors&&d.colors.length)?d.colors.join('/'):'—'),
-    (d.qty||0) + ' booklet(s)',
-    (d.rushOrder==='Yes'?'Rush':'No rush')
-  ];
-  return ['JOB ORDER', 'Receipt / Booklet', specs.join(' · '), 'TOTAL: ' + php(computeFinalTotal())].join('\n');
+  const qty = d.qty || 0;
+  const base = computeTotal();
+  const unit = qty ? base/qty : 0;
+  const line =
+    'Copies: ' + (d.copies||'—') + ', ' +
+    'Size: ' + (d.size||'—') + ', ' +
+    'Paper: ' + (d.paperType||'—') + ', ' +
+    'Colors: ' + ((d.colors&&d.colors.length)?d.colors.join('/'):'—') + ', ' +
+    'Quantity: ' + qty + ' booklet(s), ' +
+    'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
+    'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty);
+  return ['JOB ORDER', 'Receipt / Booklet', line, 'TOTAL: ' + php(computeFinalTotal())].join('\n');
 }
 function copyJobOrder() {
   save();

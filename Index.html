@@ -1178,13 +1178,19 @@
   }
   function buildJobOrderText() {
     const sf = sqft(), bsf = billableSqft();
-    const sizeStr = (d.rawWidth||d.width||'?') + ' × ' + (d.rawHeight||d.height||'?') + ' ' + (d.unit||'ft')
-      + ' = ' + (bsf>sf?bsf:sf).toFixed(2) + ' sq ft';
-    const specs = [ (d.material||'—'), sizeStr ];
-    if (d.mounting) specs.push('Mount: ' + d.mounting);
-    if (addons.rushFeeAmt>0 || addons.rushOption) specs.push('Rush');
-    if (designFeeAmt()>0 || addons.designFeeAmt>0) specs.push('Design');
-    return ['JOB ORDER', 'Signage' + (d.signageType?(' — '+d.signageType):''), specs.join(' · '), 'TOTAL: ' + php(total())].join('\n');
+    const billed = (bsf>sf?bsf:sf);
+    const rate = RATES[d.signageType] || 0;
+    const sizeStr = (d.rawWidth||d.width||'?') + ' × ' + (d.rawHeight||d.height||'?') + ' ' + (d.unit||'ft') + ' = ' + billed.toFixed(2) + ' sq ft';
+    const parts = [
+      'Type: ' + (d.signageType || '—'),
+      'Material: ' + (d.material || '—'),
+      'Size: ' + sizeStr
+    ];
+    if (d.mounting) parts.push('Mounting: ' + d.mounting);
+    parts.push('Rush Order: ' + ((addons.rushFeeAmt>0 || addons.rushOption) ? 'Yes' : 'No'));
+    parts.push('Design Charge: ' + ((designFeeAmt()>0 || addons.designFeeAmt>0) ? 'Yes' : 'No'));
+    parts.push('Price ' + php(rate) + '/sq ft x ' + billed.toFixed(2) + ' sq ft = ' + php(base()));
+    return ['JOB ORDER', 'Signage' + (d.signageType?(' — '+d.signageType):''), parts.join(', '), 'TOTAL: ' + php(total())].join('\n');
   }
   function copyJobOrder() {
     const text = buildJobOrderText();

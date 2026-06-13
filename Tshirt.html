@@ -762,15 +762,18 @@ function buildMessengerText() {
 }
 function buildJobOrderText() {
   const qty = totalQty()||1;
-  const specs = [ (d.printType||'—') ];
-  if (d.garmentType) specs.push(d.garmentType);
-  if (d.hasOwnShirt==='Yes') specs.push('Own shirt'); else if (d.shirtChoice) specs.push(d.shirtChoice);
-  if (d.shirtColor) specs.push(d.shirtColor);
-  if (d.sizeBreakdown) specs.push(d.sizeBreakdown);
-  specs.push(qty + ' pc(s)');
-  specs.push(d.rushOrder==='Yes'?'Rush':'No rush');
-  if (d.designService==='Yes') specs.push('Design');
-  return ['JOB ORDER', 'T-Shirt / Garment', specs.join(' · '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  const base = baseAmt();
+  const unit = qty ? base/qty : 0;
+  const parts = ['Print Type: ' + (d.printType||'—')];
+  if (d.garmentType) parts.push('Garment: ' + d.garmentType);
+  if (d.hasOwnShirt==='Yes') parts.push('Shirt: Own shirt'); else if (d.shirtChoice) parts.push('Shirt: ' + d.shirtChoice);
+  if (d.shirtColor) parts.push('Color: ' + d.shirtColor);
+  if (d.sizeBreakdown) parts.push('Sizes: ' + d.sizeBreakdown);
+  parts.push('Quantity: ' + qty + ' pc(s)');
+  parts.push('Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'));
+  parts.push('Design Charge: ' + (d.designService==='Yes'?'Yes':'No'));
+  parts.push('Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty));
+  return ['JOB ORDER', 'T-Shirt / Garment', parts.join(', '), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

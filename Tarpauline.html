@@ -435,7 +435,7 @@ function renderBody() {
 
   // ── STEP 2: EYELET ───────────────────────────────────────────────────────
   else if (step === 2) {
-    const opts = ['No Eyelet','Top Only','Top & Bottom','All Sides'];
+    const opts = ['No Eyelet','Top Only','All Sides'];
     el.innerHTML = `
       <div class="flex flex-col gap-2">
         <label class="field-label" style="margin-bottom:10px;">Select Eyelet Position</label>
@@ -655,7 +655,6 @@ function renderFooter() {
 function eyeletDesc(o) {
   if (o === 'No Eyelet')    return 'Flat banner, no holes';
   if (o === 'Top Only')     return 'Holes along the top edge';
-  if (o === 'Top & Bottom') return 'Holes top and bottom';
   if (o === 'All Sides')    return 'Holes on all four sides';
   return '';
 }
@@ -889,17 +888,19 @@ function buildTarpMessengerText() {
 
 function buildJobOrderText() {
   const allItems = [...items, currentItemSnap()];
-  const multi = allItems.length > 1;
   const lines = ['JOB ORDER', 'Tarpaulin / Banner Print'];
   allItems.forEach(function(it, i){
-    const specs = [
-      (it.width||0).toFixed(2) + ' × ' + (it.height||0).toFixed(2) + ' ft',
-      (it.quantity||1) + ' pc(s)',
-      (it.eyelet||'—'),
-      (it.rush?'Rush':'No rush')
-    ];
-    if (it.designCharge) specs.push('Design');
-    lines.push((multi?('Item '+(i+1)+': '):'') + specs.join(' · '));
+    const qty  = it.quantity || 1;
+    const area = (it.width || 0) * (it.height || 0);          // per-piece sq.ft
+    const unit = qty ? (it.baseAmt || 0) / qty : 0;           // price per piece
+    lines.push(
+      'Item ' + (i + 1) + ': ' +
+      'Size: ' + (it.width || 0).toFixed(2) + ' × ' + (it.height || 0).toFixed(2) + ' ft = ' + area.toFixed(2) + ' sq.ft., ' +
+      'Eyelet: ' + (it.eyelet || '—') + ', ' +
+      'Rush Order: ' + (it.rush ? 'Yes' : 'No') + ', ' +
+      'Design Charge: ' + (it.designCharge ? 'Yes' : 'No') + ', ' +
+      'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit * qty)
+    );
   });
   lines.push('TOTAL: ' + php(grandTotalFinal()));
   return lines.join('\n');

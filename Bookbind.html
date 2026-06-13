@@ -684,15 +684,18 @@ function buildJobOrderText() {
     ? 'Softbound ' + (d.withLettering==='Yes'?'(With Lettering)':'(Without Lettering)')
     : (d.bindType || '—');
   const cover = d.coverColor === 'Other' ? (d.coverColorOther||'Other') : d.coverColor;
-  const specs = [
-    qty + ' book(s)',
-    (d.paperSize||'—') + ' ' + (d.orientation||''),
-    'Bind: ' + (d.bindingSide||'—')
+  const unit = bindingUnitPrice();
+  const parts = [
+    'Binding: ' + bindLabel,
+    'Quantity: ' + qty + ' book(s)',
+    'Paper: ' + (d.paperSize||'—') + ' ' + (d.orientation||''),
+    'Bind Side: ' + (d.bindingSide||'—')
   ];
-  if (cover) specs.push('Cover: ' + cover);
-  if (d.printedMaterialsReady==='No' && d.printingType) specs.push('Printing: ' + d.printingType);
-  specs.push(d.rushOrder==='Yes'?'Rush':'No rush');
-  return ['JOB ORDER', 'Bookbinding — ' + bindLabel, specs.join(' · '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  if (cover) parts.push('Cover: ' + cover);
+  if (d.printedMaterialsReady==='No' && d.printingType) parts.push('Printing: ' + d.printingType);
+  parts.push('Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'));
+  parts.push('Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty));
+  return ['JOB ORDER', 'Bookbinding', parts.join(', '), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

@@ -613,13 +613,16 @@ function buildMessengerText() {
 }
 function buildJobOrderText() {
   const qty = parseInt(d.quantity)||minQty();
-  const specs = [
-    (d.optionLabel||'—'),
-    qty + ' copies',
-    (d.rushOrder==='Yes'?'Rush':'No rush')
-  ];
-  if (d.designService==='Yes') specs.push('Design');
-  return ['JOB ORDER', (d.category||'Newsletter / Newspaper'), specs.join(' · '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  const base = baseAmt();
+  const unit = qty ? base/qty : 0;
+  const line =
+    'Type: ' + (d.category||'—') + ', ' +
+    'Pages / Option: ' + (d.optionLabel||'—') + ', ' +
+    'Quantity: ' + qty + ' copies, ' +
+    'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
+    'Design Charge: ' + (d.designService==='Yes'?'Yes':'No') + ', ' +
+    'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty);
+  return ['JOB ORDER', (d.category||'Newsletter / Newspaper'), line, 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

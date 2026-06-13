@@ -595,13 +595,16 @@ function buildMessengerText() {
 function buildJobOrderText() {
   const w = parseFloat(d.width)||0, h = parseFloat(d.height)||0;
   const qty = parseInt(d.quantity)||1;
-  const specs = [
-    (w||'?') + ' × ' + (h||'?') + ' ' + (d.unit||'ft') + ' = ' + billedSqft().toFixed(2) + ' sq.ft',
-    qty + ' pc(s)',
-    (d.rushOrder==='Yes'?'Rush':'No rush')
-  ];
-  if (d.designService==='Yes') specs.push('Design');
-  return ['JOB ORDER', 'Acrylic Signage' + (d.signageType?(' — '+d.signageType):''), specs.join(' · '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  const base = baseAmt();
+  const unit = qty ? base/qty : 0;
+  const line =
+    'Type: ' + (d.signageType || 'Acrylic Signage') + ', ' +
+    'Size: ' + w + ' × ' + h + ' ' + (d.unit||'ft') + ' = ' + billedSqft().toFixed(2) + ' sq.ft., ' +
+    'Quantity: ' + qty + ' pc(s), ' +
+    'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
+    'Design Charge: ' + (d.designService==='Yes'?'Yes':'No') + ', ' +
+    'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty);
+  return ['JOB ORDER', 'Acrylic Signage', line, 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

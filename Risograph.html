@@ -650,17 +650,20 @@ function buildMessengerText() {
 function buildJobOrderText() {
   const qty = parseInt(d.quantity)||1;
   const unitL = PRICING.unitLabel || 'ream';
-  const specs = [
-    (d.paperType||'—'),
-    (d.paperSize||'—'),
-    (d.service||'—'),
-    (d.sides||'—'),
-    qty + ' ' + unitL + '(s)'
+  const base = baseAmt();
+  const unit = qty ? base/qty : 0;
+  const parts = [
+    'Paper Type: ' + (d.paperType||'—'),
+    'Paper Size: ' + (d.paperSize||'—'),
+    'Service: ' + (d.service||'—'),
+    'Sides: ' + (d.sides||'—'),
+    'Quantity: ' + qty + ' ' + unitL + '(s)',
+    'Sort & Staple: ' + (d.sortStaple==='Yes'?'Yes':'No'),
+    'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'),
+    'Design Charge: ' + (d.designService==='Yes'?'Yes':'No'),
+    'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty)
   ];
-  if (d.sortStaple==='Yes') specs.push('Sort & Staple');
-  specs.push(d.rushOrder==='Yes'?'Rush':'No rush');
-  if (d.designService==='Yes') specs.push('Design');
-  return ['JOB ORDER', 'Risograph Printing', specs.join(' · '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  return ['JOB ORDER', 'Risograph Printing', parts.join(', '), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

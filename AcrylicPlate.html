@@ -538,11 +538,14 @@ function buildMessengerText() {
 }
 function buildJobOrderText() {
   const qty = parseInt(d.quantity)||1;
-  const specs = [];
-  if (d.plateText) specs.push('Text: ' + d.plateText);
-  specs.push(qty + ' pc(s)');
-  specs.push(d.rushOrder==='Yes'?'Rush':'No rush');
-  return ['JOB ORDER', 'Acrylic Plate Number' + (d.plateType?(' — '+d.plateType):''), specs.join(' · '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  const base = baseAmt();
+  const unit = qty ? base/qty : 0;
+  const parts = ['Plate Type: ' + (d.plateType || '—')];
+  if (d.plateText) parts.push('Text: ' + d.plateText);
+  parts.push('Quantity: ' + qty + ' pc(s)');
+  parts.push('Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'));
+  parts.push('Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty));
+  return ['JOB ORDER', 'Acrylic Plate Number', parts.join(', '), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

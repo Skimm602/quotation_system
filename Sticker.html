@@ -666,15 +666,17 @@ function buildMessengerText() {
 }
 function buildJobOrderText() {
   const qty = parseInt(d.quantity)||1;
-  const specs = [
-    (d.stickerType||'—'),
-    (d.preCut||'—'),
-    (d.width||'?') + ' × ' + (d.height||'?') + ' ' + (d.unit||''),
-    qty + ' pc(s)',
-    (d.rushOrder==='Yes'?'Rush':'No rush')
-  ];
-  if (d.designService==='Yes') specs.push('Design');
-  return ['JOB ORDER', 'Sticker Printing', specs.join(' · '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  const base = baseAmt();
+  const unit = qty ? base/qty : 0;
+  const line =
+    'Material: ' + (d.stickerType||'—') + ', ' +
+    'Pre-cut: ' + (d.preCut||'—') + ', ' +
+    'Size: ' + (d.width||'?') + ' × ' + (d.height||'?') + ' ' + (d.unit||'') + ', ' +
+    'Quantity: ' + qty + ' pc(s), ' +
+    'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
+    'Design Charge: ' + (d.designService==='Yes'?'Yes':'No') + ', ' +
+    'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty);
+  return ['JOB ORDER', 'Sticker Printing', line, 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();
