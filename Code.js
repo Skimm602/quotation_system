@@ -23,6 +23,7 @@ const KEYCHAIN_SHEET          = 'Keychain Quotations';
 const ACRYLICSIGN_SHEET       = 'Acrylic Signage Quotations';
 const ACRYLICPLATE_SHEET      = 'Acrylic Plate Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
+const CUSTOMER_INFO_SHEET     = 'Customer Info';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
 
 function setupMainSSId() {
@@ -70,6 +71,117 @@ function getPriceDbSS_() {
 // is auto-released when the script execution ends.
 function lockQuoteNumbering_() {
   try { LockService.getScriptLock().waitLock(10000); } catch (e) {}
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CUSTOMER INFO  (autofill returning customers + save on every quote)
+// ══════════════════════════════════════════════════════════════════
+const CUSTOMER_INFO_HEADERS = [
+  'Name', 'Contact', 'Company', 'Email', 'Address',
+  'First Name', 'Last Name', 'First Saved', 'Last Updated',
+];
+
+function normName_(s) {
+  return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function getCustomerInfoSheet_() {
+  const ss = getMainSS_();
+  let sheet = ss.getSheetByName(CUSTOMER_INFO_SHEET);
+  if (!sheet) sheet = ss.insertSheet(CUSTOMER_INFO_SHEET);
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, CUSTOMER_INFO_HEADERS.length).setValues([CUSTOMER_INFO_HEADERS])
+      .setBackground('#E8151B').setFontColor('#fff').setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+// Look up a saved customer by name (case-insensitive). Returns the most
+// recent matching record, or null. Called from the quotation pages to
+// autofill the contact/email/etc. of a returning customer.
+function lookupCustomerByName(name) {
+  const key = normName_(name);
+  if (key.length < 2) return null;
+  try {
+    const sheet = getMainSS_().getSheetByName(CUSTOMER_INFO_SHEET);
+    if (!sheet || sheet.getLastRow() < 2) return null;
+    const data = sheet.getDataRange().getValues();
+    for (let i = data.length - 1; i >= 1; i--) {   // newest row wins
+      if (normName_(data[i][0]) === key) {
+        return {
+          name:      String(data[i][0] || ''),
+          contact:   String(data[i][1] || ''),
+          company:   String(data[i][2] || ''),
+          email:     String(data[i][3] || ''),
+          address:   String(data[i][4] || ''),
+          firstName: String(data[i][5] || ''),
+          lastName:  String(data[i][6] || ''),
+        };
+      }
+    }
+  } catch (e) {
+    Logger.log('lookupCustomerByName error: ' + (e && e.message));
+  }
+  return null;
+}
+
+// Insert or update a customer (matched by name). New non-empty fields
+// overwrite blanks but never wipe existing data. Best-effort: never throws.
+function upsertCustomerInfo_(rec) {
+  try {
+    const name = String(rec && rec.name || '').trim();
+    if (!name) return;
+    const sheet = getCustomerInfoSheet_();
+    const key   = normName_(name);
+    const data  = sheet.getDataRange().getValues();
+    const now   = new Date();
+    let rowIdx  = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (normName_(data[i][0]) === key) { rowIdx = i; break; }
+    }
+    if (rowIdx >= 0) {
+      const r = data[rowIdx];
+      const merged = [
+        name,
+        rec.contact   || r[1] || '',
+        rec.company   || r[2] || '',
+        rec.email     || r[3] || '',
+        rec.address   || r[4] || '',
+        rec.firstName || r[5] || '',
+        rec.lastName  || r[6] || '',
+        r[7] || now,   // First Saved (preserved)
+        now,           // Last Updated
+      ];
+      sheet.getRange(rowIdx + 1, 1, 1, merged.length).setValues([merged]);
+    } else {
+      sheet.appendRow([
+        name, rec.contact || '', rec.company || '', rec.email || '', rec.address || '',
+        rec.firstName || '', rec.lastName || '', now, now,
+      ]);
+    }
+  } catch (e) {
+    Logger.log('upsertCustomerInfo_ error: ' + (e && e.message));
+  }
+}
+
+// Derive a customer record from any quotation payload and upsert it.
+// Handles both the single-name pages (clientName) and Receipt (first/last/company).
+function upsertCustomerFromPayload_(data) {
+  if (!data) return;
+  const first = data.firstName || '';
+  const last  = data.lastName  || '';
+  const name  = String(data.clientName || [first, last].filter(String).join(' ') || data.company || '').trim();
+  if (!name) return;
+  upsertCustomerInfo_({
+    name:      name,
+    contact:   data.contact || data.mobile || '',
+    company:   data.company || '',
+    email:     data.email   || '',
+    address:   data.address || data.delivery || '',
+    firstName: first,
+    lastName:  last,
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2723,6 +2835,8 @@ function submitCustomerRequest(data) {
 //  NOTIFY ORMOC PRINTSHOPPE — sales-side save (internal quote logged)
 // ══════════════════════════════════════════════════════════════════
 function notifyQuoteSaved_(quoteNum, productType, data) {
+  // Record / update the customer on every save (best-effort, never blocks).
+  try { upsertCustomerFromPayload_(data); } catch (e) {}
   try {
     const client  = String(data.clientName || '—');
     const contact = String(data.contact    || '—');
@@ -4809,6 +4923,9 @@ function saveReceiptOrder(payload) {
     notifyQuoteSaved_(orderNum, 'Receipt', {
       clientName:  (payload.company || ((payload.firstName || '') + ' ' + (payload.lastName || '')).trim() || '—'),
       contact:     payload.mobile     || '',
+      company:     payload.company    || '',
+      firstName:   payload.firstName  || '',
+      lastName:    payload.lastName   || '',
       email:       payload.email      || '',
       dateNeeded:  payload.dateNeeded  || '',
       notes:       payload.notes       || '',

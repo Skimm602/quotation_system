@@ -346,7 +346,7 @@ function renderBody() {
       <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
         <div style="grid-column:1/-1;" class="flex flex-col gap-1">
           <label class="field-label">Client Name <span class="req">*</span></label>
-          <input class="field-input" id="f_name" value="${esc(d.clientName)}" placeholder="Juan dela Cruz / ABC Corp">
+          <input class="field-input" id="f_name" value="${esc(d.clientName)}" placeholder="Juan dela Cruz / ABC Corp" onblur="lookupCustomer()">
         </div>
         <div class="flex flex-col gap-1">
           <label class="field-label">Contact Number <span class="req">*</span></label>
@@ -645,6 +645,7 @@ function renderFooter() {
           <option value="link">Customer filled the link</option>
         </select>
         <button class="btn-ghost" onclick="copyForMessenger()">📋 COPY</button>
+        <button class="btn-ghost" onclick="copyJobOrder()">🧾 COPY JO</button>
         <button class="btn-save" id="saveBtn" onclick="saveQuotation()">💾 SAVE QUOTATION</button>
       </div>`;
   el.innerHTML = back + next;
@@ -659,6 +660,34 @@ function eyeletDesc(o) {
   return '';
 }
 
+var _custLastQuery = '';
+function lookupCustomer() {
+  const nameEl = document.getElementById('f_name');
+  const name = nameEl ? nameEl.value.trim() : '';
+  if (name.length < 2) return;
+  const q = name.toLowerCase();
+  if (q === _custLastQuery) return;
+  _custLastQuery = q;
+  if (typeof google === 'undefined' || !google.script) return;
+  google.script.run
+    .withSuccessHandler(function(rec){
+      if (!rec) return;
+      const cEl = document.getElementById('f_contact');
+      const eEl = document.getElementById('f_email');
+      if (cEl && !cEl.value && rec.contact) { cEl.value = rec.contact; d.contact = rec.contact; }
+      if (eEl && !eEl.value && rec.email)   { eEl.value = rec.email;   d.email = rec.email; }
+      custToast('✓ Existing customer — autofilled');
+    })
+    .withFailureHandler(function(){})
+    .lookupCustomerByName(name);
+}
+function custToast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'toast show';
+  setTimeout(function(){ el.className = 'toast'; }, 2500);
+}
 function formatPhone(input) {
   let digits = input.value.replace(/\D/g, '');
   if (digits.length > 11) digits = digits.slice(0, 11);
@@ -667,6 +696,7 @@ function formatPhone(input) {
   else if (digits.length > 7) fmt = digits.slice(0,4)+' '+digits.slice(4,7)+' '+digits.slice(7);
   input.value = fmt;
   d.contact = fmt;
+  if (digits.length === 11) lookupCustomer();
 }
 
 function liveCompute() {
@@ -857,6 +887,43 @@ function buildTarpMessengerText() {
   return lines.join('\n');
 }
 
+function buildJobOrderText() {
+  const allItems = [...items, currentItemSnap()];
+  const multi = allItems.length > 1;
+  const lines = ['JOB ORDER', 'Tarpaulin / Banner Print'];
+  allItems.forEach(function(it, i){
+    const specs = [
+      (it.width||0).toFixed(2) + ' × ' + (it.height||0).toFixed(2) + ' ft',
+      (it.quantity||1) + ' pc(s)',
+      (it.eyelet||'—'),
+      (it.rush?'Rush':'No rush')
+    ];
+    if (it.designCharge) specs.push('Design');
+    lines.push((multi?('Item '+(i+1)+': '):'') + specs.join(' · '));
+  });
+  lines.push('TOTAL: ' + php(grandTotalFinal()));
+  return lines.join('\n');
+}
+function copyJobOrder() {
+  const text = buildJobOrderText();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(joToast).catch(function(){ joFallback(text); });
+  } else { joFallback(text); }
+}
+function joFallback(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+  joToast();
+}
+function joToast() {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = '🧾 Job Order copied!';
+  el.className = 'toast show';
+  setTimeout(function(){ el.className = 'toast'; }, 3000);
+}
 function copyForMessenger() {
   const key   = (document.getElementById('msgScriptType')||{}).value || 'walkin';
   const sales = (document.getElementById('server-user')||{}).value || '';
