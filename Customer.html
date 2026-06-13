@@ -171,7 +171,54 @@ const MUG_ICONS = {
 };
 
 function php(n) { return '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// Targeted re-render of a single estimate line so typing in an input
+// doesn't rebuild the whole form (which would steal focus mid-keystroke).
+function updateEst(id, fn) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = fn();
+}
+function plateEstHtml() {
+  const t   = plateTypeObj();
+  const qty = parseInt(d.plateQty) || 0;
+  return (t && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function acsignEstHtml() {
+  const t   = acsignTypeObj();
+  const w   = parseFloat(d.acsignWidth)  || 0;
+  const h   = parseFloat(d.acsignHeight) || 0;
+  const qty = parseInt(d.acsignQty) || 0;
+  if (!t || w <= 0 || h <= 0 || !qty) return '';
+  const billed = acsignBilledSqft();
+  return `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Billed: ${billed} sq.ft × ₱${(t.pricePerSqft||0).toLocaleString('en-PH')} × ${qty} pc(s) = ₱${(acsignUnitPrice()*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
+}
+function keychainEstHtml() {
+  const up  = keychainUnitPrice();
+  const qty = parseInt(d.keychainQty) || 0;
+  return (up && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pcs × ₱${up.toLocaleString('en-PH')}/pc = ₱${(up*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function souvenirEstHtml() {
+  const p     = PRICING.souvenir || {};
+  const rate  = p.pricePerPage || 80;
+  const pages = parseInt(d.souvenirPages) || 0;
+  const qty   = parseInt(d.souvenirQty)   || 0;
+  return (pages && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${pages} pages × ${qty} copies × ₱${rate.toLocaleString('en-PH')}/page = ₱${(rate*pages*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function totebagTierHintHtml() {
+  if (!d.totebagSize) return '';
+  const active = getTotebagActiveTier();
+  const minQ   = getTotebagMinQty();
+  return active
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Current tier: ${active.minQty}+ pcs @ ₱${active.price.toLocaleString('en-PH')}/pc</div>`
+    : `<div style="font-size:11px;color:#B00E12;margin-top:6px;">Minimum order is ${minQ} pcs for ${esc(d.totebagSize)}.</div>`;
+}
 function v(id)  { return (document.getElementById(id)||{}).value||''; }
 
 // ── PRICING CALCULATIONS ──────────────────────────────────────────
@@ -621,11 +668,7 @@ function renderAcrylicPlateSpecs() {
     </div>`;
   }).join('');
 
-  const t   = plateTypeObj();
-  const qty = parseInt(d.plateQty) || 0;
-  const estLine = (t && qty)
-    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
-    : '';
+  const estLine = plateEstHtml();
 
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
@@ -642,8 +685,8 @@ function renderAcrylicPlateSpecs() {
         <label class="field-label">Quantity</label>
         <input type="number" class="field-input" id="ap_qty" value="${d.plateQty}" min="1"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
-          oninput="d.plateQty=parseInt(this.value)||1;renderForm();" inputmode="numeric">
-        ${estLine}
+          oninput="d.plateQty=parseInt(this.value)||1;updateEst('ap_est',plateEstHtml);" inputmode="numeric">
+        <div id="ap_est">${estLine}</div>
       </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
@@ -679,14 +722,8 @@ function renderAcrylicSignSpecs() {
     </div>`;
   }).join('');
 
-  const t    = acsignTypeObj();
-  const w    = parseFloat(d.acsignWidth)  || 0;
-  const h    = parseFloat(d.acsignHeight) || 0;
-  const qty  = parseInt(d.acsignQty) || 0;
-  const billed = (t && w && h) ? acsignBilledSqft() : 0;
-  const estLine = (t && w && h && qty)
-    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Billed: ${billed} sq.ft × ₱${(t.pricePerSqft||0).toLocaleString('en-PH')} × ${qty} pc(s) = ₱${(acsignUnitPrice()*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
-    : '';
+  const t       = acsignTypeObj();
+  const estLine = acsignEstHtml();
   const remarkBox = (t && t.remarks)
     ? `<div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:10px 12px;font-size:11px;color:#7A5500;line-height:1.5;">ℹ️ ${esc(t.remarks)}</div>`
     : '';
@@ -705,10 +742,10 @@ function renderAcrylicSignSpecs() {
         <label class="field-label">Size (Width × Height) *</label>
         <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
           <input type="number" class="field-input" id="as_w" value="${esc(String(d.acsignWidth||''))}" placeholder="Width" min="0.01" step="0.1"
-            oninput="d.acsignWidth=this.value;renderForm();" inputmode="decimal" style="text-align:center;">
+            oninput="d.acsignWidth=this.value;updateEst('as_est',acsignEstHtml);" inputmode="decimal" style="text-align:center;">
           <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
           <input type="number" class="field-input" id="as_h" value="${esc(String(d.acsignHeight||''))}" placeholder="Height" min="0.01" step="0.1"
-            oninput="d.acsignHeight=this.value;renderForm();" inputmode="decimal" style="text-align:center;">
+            oninput="d.acsignHeight=this.value;updateEst('as_est',acsignEstHtml);" inputmode="decimal" style="text-align:center;">
           <select class="field-input" id="as_unit" onchange="d.acsignUnit=this.value;renderForm();"
             style="max-width:80px;flex-shrink:0;font-weight:700;">
             ${['ft','in','cm','m'].map(u=>`<option ${d.acsignUnit===u?'selected':''}>${u}</option>`).join('')}
@@ -719,8 +756,8 @@ function renderAcrylicSignSpecs() {
         <label class="field-label">Quantity</label>
         <input type="number" class="field-input" id="as_qty" value="${d.acsignQty}" min="1"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
-          oninput="d.acsignQty=parseInt(this.value)||1;renderForm();" inputmode="numeric">
-        ${estLine}
+          oninput="d.acsignQty=parseInt(this.value)||1;updateEst('as_est',acsignEstHtml);" inputmode="numeric">
+        <div id="as_est">${estLine}</div>
       </div>
       ${remarkBox}
       <div>
@@ -778,10 +815,7 @@ function renderKeychainSpecs() {
     </div>`;
   }).join('');
 
-  const qty = parseInt(d.keychainQty) || 0;
-  const estLine = (up && qty)
-    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pcs × ₱${up.toLocaleString('en-PH')}/pc = ₱${(up*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
-    : '';
+  const estLine = keychainEstHtml();
 
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
@@ -804,8 +838,8 @@ function renderKeychainSpecs() {
         <label class="field-label">Quantity (pcs)${sObj?` (min. ${minQ})`:''} *</label>
         <input type="number" class="field-input" id="kc_qty" value="${esc(String(d.keychainQty||''))}" min="${minQ}" placeholder="${sObj?('min. '+minQ):'min. 20'}"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
-          oninput="d.keychainQty=this.value;renderForm();" inputmode="numeric">
-        ${estLine}
+          oninput="d.keychainQty=this.value;updateEst('kc_est',keychainEstHtml);" inputmode="numeric">
+        <div id="kc_est">${estLine}</div>
       </div>
       <div>
         <label class="field-label">Design File / Reference <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
@@ -873,11 +907,7 @@ function renderSouvenirSpecs() {
     </div>`;
   }).join('');
 
-  const pages = parseInt(d.souvenirPages) || 0;
-  const qty   = parseInt(d.souvenirQty)   || 0;
-  const estLine = (pages && qty)
-    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${pages} pages × ${qty} copies × ₱${rate.toLocaleString('en-PH')}/page = ₱${(rate*pages*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
-    : '';
+  const estLine = souvenirEstHtml();
 
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
@@ -895,14 +925,14 @@ function renderSouvenirSpecs() {
         <label class="field-label">Pages per Copy (${esc(size)}) *</label>
         <input type="number" class="field-input" id="sv_pages" value="${esc(d.souvenirPages||'')}" min="1" placeholder="e.g. 8"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
-          oninput="d.souvenirPages=this.value;renderForm();" inputmode="numeric">
+          oninput="d.souvenirPages=this.value;updateEst('sv_est',souvenirEstHtml);" inputmode="numeric">
       </div>
       <div>
         <label class="field-label">Number of Copies *</label>
         <input type="number" class="field-input" id="sv_qty" value="${d.souvenirQty}" min="1"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
-          oninput="d.souvenirQty=parseInt(this.value)||0;renderForm();" inputmode="numeric">
-        ${estLine}
+          oninput="d.souvenirQty=parseInt(this.value)||0;updateEst('sv_est',souvenirEstHtml);" inputmode="numeric">
+        <div id="sv_est">${estLine}</div>
       </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
@@ -990,7 +1020,7 @@ function renderNewsprintSpecs() {
         <label class="field-label">Quantity (min. ${minQ} copies)</label>
         <input type="number" class="field-input" id="np_qty" value="${d.newsQty}" min="${minQ}"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
-          oninput="d.newsQty=parseInt(this.value)||0;renderForm();" inputmode="numeric">
+          oninput="d.newsQty=parseInt(this.value)||0;" inputmode="numeric">
       </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
@@ -1037,7 +1067,7 @@ function renderTicketSpecs() {
         <label class="field-label">Quantity</label>
         <input type="number" class="field-input" id="tk_qty" value="${d.ticketQty}" min="1"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
-          oninput="d.ticketQty=parseInt(this.value)||0;renderForm();" inputmode="numeric">
+          oninput="d.ticketQty=parseInt(this.value)||0;" inputmode="numeric">
       </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
@@ -1098,13 +1128,8 @@ function renderTotebagSpecs() {
     </div>`;
   }).join('');
 
-  const active = getTotebagActiveTier();
-  const minQ   = d.totebagSize ? getTotebagMinQty() : 1;
-  const tierHint = d.totebagSize
-    ? (active
-        ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Current tier: ${active.minQty}+ pcs @ ₱${active.price.toLocaleString('en-PH')}/pc</div>`
-        : `<div style="font-size:11px;color:#B00E12;margin-top:6px;">Minimum order is ${minQ} pcs for ${esc(d.totebagSize)}.</div>`)
-    : '';
+  const minQ     = d.totebagSize ? getTotebagMinQty() : 1;
+  const tierHint = totebagTierHintHtml();
 
   return `
     <div style="display:flex;flex-direction:column;gap:18px;">
@@ -1122,8 +1147,8 @@ function renderTotebagSpecs() {
         <label class="field-label">Quantity${d.totebagSize ? ` (min. ${minQ} pcs)` : ''}</label>
         <input type="number" class="field-input" id="tb_qty" value="${d.totebagQty}" min="${minQ}"
           style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
-          oninput="d.totebagQty=parseInt(this.value)||0;renderForm();" inputmode="numeric">
-        ${tierHint}
+          oninput="d.totebagQty=parseInt(this.value)||0;updateEst('tb_est',totebagTierHintHtml);" inputmode="numeric">
+        <div id="tb_est">${tierHint}</div>
       </div>
       <div>
         <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>

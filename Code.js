@@ -41,6 +41,37 @@ function getCustomerSS_() {
   return SpreadsheetApp.openById(CUSTOMER_SS_ID);
 }
 
+// Resolve the external pricing spreadsheet from the Database sheet
+// ('PriceDatabase' row, accepts a raw ID or a full URL). Falls back to
+// the legacy hardcoded ID so pricing keeps working if the row is missing.
+function getPriceDbSS_() {
+  const FALLBACK_ID = '1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o';
+  try {
+    const db = getMainSS_().getSheetByName(SHEET_DATABASE);
+    if (db) {
+      const dbData = db.getDataRange().getValues();
+      for (let i = 0; i < dbData.length; i++) {
+        if (String(dbData[i][0]).trim() === 'PriceDatabase') {
+          const raw = String(dbData[i][1]).trim();
+          if (raw) {
+            const m = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            return SpreadsheetApp.openById(m ? m[1] : raw);
+          }
+          break;
+        }
+      }
+    }
+  } catch (e) {}
+  return SpreadsheetApp.openById(FALLBACK_ID);
+}
+
+// Serialize quote-number generation: two simultaneous saves would otherwise
+// read the same getLastRow() and produce duplicate quote numbers. The lock
+// is auto-released when the script execution ends.
+function lockQuoteNumbering_() {
+  try { LockService.getScriptLock().waitLock(10000); } catch (e) {}
+}
+
 // ══════════════════════════════════════════════════════════════════
 //  doGet
 // ══════════════════════════════════════════════════════════════════
@@ -2105,6 +2136,7 @@ function saveTarpQuotation(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = `TQ-${String(lastRow).padStart(4,'0')}`;
 
@@ -2169,7 +2201,7 @@ function saveTarpQuotation(data) {
 function getTarpPricing() {
   const defaults = { ratePerSqft: 50, rushFee: 150, designFee: 250 };
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Banner');
     if (!sheet) return defaults;
 
@@ -2201,7 +2233,7 @@ function getTarpPricing() {
 function getFramePricing() {
   const defaults = { withMatting: 600, withoutMatting: 550, rushFee: 150 };
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Frame');
     if (!sheet) return defaults;
 
@@ -2262,6 +2294,7 @@ function saveFrameOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'FQ-' + String(lastRow).padStart(4, '0');
 
@@ -2323,7 +2356,7 @@ function getTshirtPricing() {
     rushFee: 150, designFee: 250, fullSubMinQty: 15,
   };
   try {
-    const ss = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss = getPriceDbSS_();
     // Try multiple capitalizations since tab name may vary
     let sheet = ss.getSheetByName('T-shirt') || ss.getSheetByName('T-Shirt')
              || ss.getSheetByName('Tshirt')  || ss.getSheetByName('TShirt');
@@ -2453,6 +2486,7 @@ function saveTshirtOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'SH-' + String(lastRow).padStart(4, '0');
 
@@ -2557,6 +2591,7 @@ function submitCustomerRequest(data) {
       sheet.setFrozenRows(1);
     }
 
+    lockQuoteNumbering_();
     const lastRow  = sheet.getLastRow();
     const reqNum   = 'CUST-' + String(lastRow).padStart(4, '0');
     const type     = String(data.productType || '').toUpperCase();
@@ -2925,7 +2960,7 @@ function getMugPricing() {
     rushFee: 150, designFee: 250,
   };
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Mugs') || ss.getSheetByName('Mug') || ss.getSheetByName('Table2');
     if (!sheet) return defaults;
 
@@ -2994,6 +3029,7 @@ function saveMugOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'MUG-' + String(lastRow).padStart(4, '0');
 
@@ -3078,7 +3114,7 @@ function getStickerPricing() {
   }
 
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Sticker') || ss.getSheetByName('Stickers');
     if (!sheet) return defaults;
 
@@ -3132,6 +3168,7 @@ function saveStickerOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'STK-' + String(lastRow).padStart(4, '0');
 
@@ -3210,7 +3247,7 @@ function getRisographPricing() {
   }
 
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Risograph') || ss.getSheetByName('Riso');
     if (!sheet) return defaults;
 
@@ -3315,7 +3352,7 @@ function getTotebagPricing() {
   }
 
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Tote Bag')
                || ss.getSheetByName('TOTE BAG')
                || ss.getSheetByName('ToteBag')
@@ -3412,6 +3449,7 @@ function saveRisographOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'RG-' + String(lastRow).padStart(4, '0');
 
@@ -3488,6 +3526,7 @@ function saveTotebagOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'TB-' + String(lastRow).padStart(4, '0');
 
@@ -3568,7 +3607,7 @@ function getTicketPricing() {
   }
 
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Tickets')
                || ss.getSheetByName('Ticket')
                || ss.getSheetByName('TICKETS');
@@ -3626,6 +3665,7 @@ function saveTicketOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'TKT-' + String(lastRow).padStart(4, '0');
 
@@ -3717,7 +3757,7 @@ function getNewsprintPricing() {
   }
 
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('NewsLetter/NewPaper')
                || ss.getSheetByName('NewsLetter/NewsPaper')
                || ss.getSheetByName('Newsletter/Newspaper')
@@ -3816,6 +3856,7 @@ function saveNewsprintOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'NL-' + String(lastRow).padStart(4, '0');
 
@@ -3889,7 +3930,7 @@ function getSouvenirPricing() {
   function afterColon(s) { return String(s || '').replace(/^[^:]*:\s*/, '').trim(); }
 
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Souvenir Program')
                || ss.getSheetByName('Souvenir')
                || ss.getSheetByName('Souvenir Programs');
@@ -3964,6 +4005,7 @@ function saveSouvenirOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'SP-' + String(lastRow).padStart(4, '0');
 
@@ -4053,7 +4095,7 @@ function getKeychainPricing() {
   }
 
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Acrylic Keychains')
                || ss.getSheetByName('Acrylic Keychain')
                || ss.getSheetByName('Keychain')
@@ -4146,6 +4188,7 @@ function saveKeychainOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'KC-' + String(lastRow).padStart(4, '0');
 
@@ -4225,7 +4268,7 @@ function getAcrylicSignPricing() {
   }
 
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Acrylic Signage and Plate Number')
                || ss.getSheetByName('Acrylic Signage')
                || ss.getSheetByName('Acrylic Signage and Plate No');
@@ -4296,6 +4339,7 @@ function saveAcrylicSignOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'AS-' + String(lastRow).padStart(4, '0');
 
@@ -4375,7 +4419,7 @@ function getAcrylicPlatePricing() {
   }
 
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('Acrylic Signage and Plate Number')
                || ss.getSheetByName('Acrylic Plate Number')
                || ss.getSheetByName('Acrylic Signage');
@@ -4445,6 +4489,7 @@ function saveAcrylicPlateOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'AP-' + String(lastRow).padStart(4, '0');
 
@@ -4639,6 +4684,7 @@ function saveQuotation(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = `SQ-${String(lastRow).padStart(4,'0')}`;
 
@@ -4724,6 +4770,7 @@ function saveReceiptOrder(payload) {
 
   const session   = payload.salesStaff ? getSessionData_(payload.salesStaff) : null;
   const staffName = session ? session.name : '';
+  lockQuoteNumbering_();
   const lastRow   = sheet.getLastRow();
   const orderNum  = 'RQ-' + String(lastRow).padStart(4, '0');
 
@@ -4825,23 +4872,7 @@ function getReceiptPricing() {
 function getReceiptRushFee() {
   const defaultFee = 150;
   try {
-    // Resolve the external pricing spreadsheet from the Database sheet,
-    // same as getReceiptPricing(), so both always read the same source.
-    const db = getMainSS_().getSheetByName(SHEET_DATABASE);
-    if (!db) return defaultFee;
-    const dbData = db.getDataRange().getValues();
-    let externalId = null;
-    for (let i = 0; i < dbData.length; i++) {
-      if (String(dbData[i][0]).trim() === 'PriceDatabase') {
-        externalId = String(dbData[i][1]).trim();
-        break;
-      }
-    }
-    if (!externalId) return defaultFee;
-    const match = externalId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    const ssId  = match ? match[1] : externalId;
-
-    const extSS    = SpreadsheetApp.openById(ssId);
+    const extSS    = getPriceDbSS_();
     const extSheet = extSS.getSheetByName('Receipt');
     if (!extSheet) return defaultFee;
 
@@ -4984,7 +5015,7 @@ function getBookbindPricing() {
     'Rush fee':                    150,
   };
   try {
-    const ss    = SpreadsheetApp.openById('1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o');
+    const ss    = getPriceDbSS_();
     const sheet = ss.getSheetByName('BookBind');
     if (!sheet) return defaults;
     const rows = sheet.getDataRange().getValues();
@@ -5036,6 +5067,7 @@ function saveBookbindOrder(data) {
     sheet.setFrozenRows(1);
   }
 
+  lockQuoteNumbering_();
   const lastRow  = sheet.getLastRow();
   const quoteNum = 'BQ-' + String(lastRow).padStart(4, '0');
 

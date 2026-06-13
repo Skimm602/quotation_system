@@ -198,7 +198,29 @@ function grandTotal() { return d.taxType === 'vat-exclusive' ? subtotal() * (1 +
 function dp()         { return grandTotal() * 0.5; }
 function bal()        { return grandTotal() - dp(); }
 function php(n)       { return '₱' + (n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-function esc(s)       { return (s || '').split('<').join('&lt;').split('>').join('&gt;'); }
+function esc(s)       { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function costPreviewHtml() {
+  const s   = sizeObj();
+  const mq  = minQty();
+  const up  = unitPrice();
+  const qty = parseInt(d.quantity) || 0;
+  if (s && qty > 0 && up > 0) {
+    return `<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Keychain Cost</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:#E8151B;letter-spacing:0.05em;line-height:1;">${php(up * qty)}</div>
+          <div style="font-size:12px;color:#999;margin-top:5px;">${qty} pcs × ${php(up)}/pc</div>
+        </div>`;
+  }
+  if (s && qty > 0 && qty < mq) {
+    return `<div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;padding:12px 16px;font-size:12px;color:#8A6500;">Minimum order for <strong>${esc(d.size)}</strong> is <strong>${mq} pcs</strong>.</div>`;
+  }
+  return '';
+}
+function updateCostPreview() {
+  const el = document.getElementById('cost-preview');
+  if (el) el.innerHTML = costPreviewHtml();
+}
 function v(id)        { return (document.getElementById(id) || {}).value || ''; }
 
 function taxToggleHtml() {
@@ -300,15 +322,6 @@ function renderBody() {
       </div>`;
     }).join('');
 
-    const costPreview = (s && qty > 0 && up > 0)
-      ? `<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">
-          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Keychain Cost</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:#E8151B;letter-spacing:0.05em;line-height:1;">${php(up * qty)}</div>
-          <div style="font-size:12px;color:#999;margin-top:5px;">${qty} pcs × ${php(up)}/pc</div>
-        </div>`
-      : (s && qty > 0 && qty < mq
-          ? `<div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;padding:12px 16px;font-size:12px;color:#8A6500;">Minimum order for <strong>${esc(d.size)}</strong> is <strong>${mq} pcs</strong>.</div>`
-          : '');
 
     el.innerHTML = `
       <div class="flex flex-col gap-6">
@@ -331,7 +344,7 @@ function renderBody() {
             <label class="field-label">Quantity (pcs)${s?' · min '+mq:''}</label>
             <input type="number" class="field-input" id="f_qty" value="${esc(String(d.quantity||''))}" min="${mq}" placeholder="${s?('min. '+mq):'min. 20'}"
               style="font-size:20px;font-weight:700;text-align:center;padding:10px;"
-              oninput="d.quantity=this.value;renderBody();">
+              oninput="d.quantity=this.value;updateCostPreview();">
           </div>
         </div>
 
@@ -371,7 +384,7 @@ function renderBody() {
           </div>
         </div>
 
-        <div id="cost-preview">${costPreview}</div>
+        <div id="cost-preview">${costPreviewHtml()}</div>
 
         <div class="flex flex-col gap-1">
           <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>

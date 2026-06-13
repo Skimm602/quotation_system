@@ -187,7 +187,7 @@ const COLOR_DEFS = [
   { name:'Blue',   hex:'#64B5F6', locked:false },
 ];
 
-const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const v   = id => document.getElementById(id)?.value || '';
 const $   = id => document.getElementById(id);
 

@@ -91,7 +91,7 @@ function calcTotal() {
   return (sqft() * rate) + rush + des;
 }
 function php(n) { return '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function v(id)  { return (document.getElementById(id)||{}).value||''; }
 
 const STEPS = ['Your Info','Dimensions','Eyelet','Options','Review'];

@@ -177,7 +177,33 @@ function grandTotal() { return d.taxType==='vat-exclusive'?subtotal()*(1+VAT):su
 function dp()         { return grandTotal()*0.5; }
 function bal()        { return grandTotal()-dp(); }
 function php(n)       { return '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function esc(s)       { return (s||'').split('<').join('&lt;').split('>').join('&gt;'); }
+function esc(s)       { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function areaLineHtml() {
+  const w = parseFloat(d.width)  || 0;
+  const h = parseFloat(d.height) || 0;
+  if (w <= 0 || h <= 0) return '';
+  return `<div style="font-size:12px;color:#888;">Area per frame: <strong>${areaPerPc().toFixed(2)} sq ft</strong> · Total: <strong>${totalSqft().toFixed(2)} sq ft</strong></div>`;
+}
+function costPreviewHtml() {
+  const w = parseFloat(d.width)  || 0;
+  const h = parseFloat(d.height) || 0;
+  if (!d.matting || w <= 0 || h <= 0) return '';
+  const totalSq = totalSqft();
+  const rate    = ratePerSqft();
+  return `
+      <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:14px 16px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Frame Cost</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;letter-spacing:0.05em;">${php(rate*totalSq)}</div>
+        <div style="font-size:11px;color:#999;margin-top:2px;">${totalSq.toFixed(2)} sq ft × ${php(rate)} / sq ft</div>
+      </div>`;
+}
+function updateCostPreview() {
+  const a = document.getElementById('area-line');
+  if (a) a.innerHTML = areaLineHtml();
+  const el = document.getElementById('cost-preview');
+  if (el) el.innerHTML = costPreviewHtml();
+}
 function v(id)        { return (document.getElementById(id)||{}).value||''; }
 
 function taxToggleHtml() {
@@ -268,15 +294,6 @@ function renderBody() {
       </label>`;
     }).join('');
 
-    const area = areaPerPc();
-    const totalSq = totalSqft();
-    const rate = ratePerSqft();
-    const costPreview = (d.matting && d.width && d.height) ? `
-      <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:14px 16px;">
-        <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Frame Cost</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;letter-spacing:0.05em;">${php(rate*totalSq)}</div>
-        <div style="font-size:11px;color:#999;margin-top:2px;">${totalSq.toFixed(2)} sq ft × ${php(rate)} / sq ft</div>
-      </div>` : '';
 
     el.innerHTML = `
       <div class="flex flex-col gap-5">
@@ -287,11 +304,11 @@ function renderBody() {
         <div class="grid gap-5" style="grid-template-columns:1fr 1fr 80px 1fr;">
           <div class="flex flex-col gap-1">
             <label class="field-label">Width (${esc(d.unit||'ft')})</label>
-            <input class="field-input" id="f_width" type="number" min="0" step="0.01" value="${d.width||''}" placeholder="e.g. 2" oninput="d.width=this.value;renderBody();">
+            <input class="field-input" id="f_width" type="number" min="0" step="0.01" value="${d.width||''}" placeholder="e.g. 2" oninput="d.width=this.value;updateCostPreview();">
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Height (${esc(d.unit||'ft')})</label>
-            <input class="field-input" id="f_height" type="number" min="0" step="0.01" value="${d.height||''}" placeholder="e.g. 3" oninput="d.height=this.value;renderBody();">
+            <input class="field-input" id="f_height" type="number" min="0" step="0.01" value="${d.height||''}" placeholder="e.g. 3" oninput="d.height=this.value;updateCostPreview();">
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Unit</label>
@@ -301,10 +318,10 @@ function renderBody() {
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Quantity</label>
-            <input class="field-input" id="f_qty" type="number" min="1" value="${d.quantity||1}" placeholder="1" oninput="d.quantity=parseInt(this.value)||1;renderBody();">
+            <input class="field-input" id="f_qty" type="number" min="1" value="${d.quantity||1}" placeholder="1" oninput="d.quantity=Math.max(1,parseInt(this.value)||1);updateCostPreview();">
           </div>
         </div>
-        ${d.width && d.height ? `<div style="font-size:12px;color:#888;">Area per frame: <strong>${area.toFixed(2)} sq ft</strong> · Total: <strong>${totalSq.toFixed(2)} sq ft</strong></div>` : ''}
+        <div id="area-line">${areaLineHtml()}</div>
         <div>
           <label class="field-label" style="margin-bottom:10px;">Rush Order? <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(rush fee applies)</span></label>
           <div style="display:flex;gap:8px;">
@@ -317,7 +334,7 @@ function renderBody() {
             <span>⚡</span>
             <span>Rush fee of <strong>${php(PRICES.rushFee||150)}</strong> will be added to the total.</span>
           </div>` : ''}
-        ${costPreview}
+        <div id="cost-preview">${costPreviewHtml()}</div>
         <div class="flex flex-col gap-1">
           <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
           <textarea class="field-input" id="f_notes" oninput="d.notes=this.value" placeholder="Frame color, mat color, delivery notes...">${esc(d.notes||'')}</textarea>
