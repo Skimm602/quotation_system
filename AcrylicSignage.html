@@ -186,7 +186,26 @@ function grandTotal() { return d.taxType === 'vat-exclusive' ? subtotal() * (1 +
 function dp()         { return grandTotal() * 0.5; }
 function bal()        { return grandTotal() - dp(); }
 function php(n)       { return '₱' + (n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-function esc(s)       { return (s || '').split('<').join('&lt;').split('>').join('&gt;'); }
+function esc(s)       { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function costPreviewHtml() {
+  const t   = typeObj();
+  const w   = parseFloat(d.width)  || 0;
+  const h   = parseFloat(d.height) || 0;
+  const qty = parseInt(d.quantity) || 1;
+  const up  = unitPrice();
+  if (!t || w <= 0 || h <= 0 || qty <= 0) return '';
+  const billed = billedSqft();
+  return `<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Signage Cost</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:#E8151B;letter-spacing:0.05em;line-height:1;">${php(up * qty)}</div>
+          <div style="font-size:12px;color:#999;margin-top:5px;">Billed ${billed} sq.ft × ${php(t.pricePerSqft)} × ${qty} pc(s)</div>
+        </div>`;
+}
+function updateCostPreview() {
+  const el = document.getElementById('cost-preview');
+  if (el) el.innerHTML = costPreviewHtml();
+}
 function v(id)        { return (document.getElementById(id) || {}).value || ''; }
 
 function taxToggleHtml() {
@@ -280,14 +299,6 @@ function renderBody() {
       </div>`;
     }).join('');
 
-    const billed = (t && w && h) ? billedSqft() : 0;
-    const costPreview = (t && w && h && qty > 0)
-      ? `<div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:16px 18px;">
-          <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Signage Cost</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:#E8151B;letter-spacing:0.05em;line-height:1;">${php(up * qty)}</div>
-          <div style="font-size:12px;color:#999;margin-top:5px;">Billed ${billed} sq.ft × ${php(t.pricePerSqft)} × ${qty} pc(s)</div>
-        </div>`
-      : '';
     const remarkBox = (t && t.remarks)
       ? `<div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:3px;padding:10px 12px;font-size:12px;color:#7A5500;line-height:1.5;">ℹ️ ${esc(t.remarks)}</div>`
       : '';
@@ -305,10 +316,10 @@ function renderBody() {
             <label class="field-label">Size (Width × Height)</label>
             <div style="display:flex;gap:8px;align-items:center;">
               <input type="number" class="field-input" id="f_w" value="${esc(String(d.width||''))}" placeholder="W" min="0.01" step="0.1"
-                style="text-align:center;" oninput="d.width=this.value;renderBody();">
+                style="text-align:center;" oninput="d.width=this.value;updateCostPreview();">
               <span style="color:#999;font-size:18px;">×</span>
               <input type="number" class="field-input" id="f_h" value="${esc(String(d.height||''))}" placeholder="H" min="0.01" step="0.1"
-                style="text-align:center;" oninput="d.height=this.value;renderBody();">
+                style="text-align:center;" oninput="d.height=this.value;updateCostPreview();">
               <select class="field-input" id="f_unit" onchange="d.unit=this.value;renderBody();" style="max-width:72px;font-weight:700;">
                 ${['ft','in','cm','m'].map(u=>`<option ${d.unit===u?'selected':''}>${u}</option>`).join('')}
               </select>

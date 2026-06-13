@@ -125,7 +125,7 @@ let PRICES = {
   'Softbound with lettering':    150,
   'Softbound without lettering': 100,
   'Ring bind':                   100,
-  'Rush fee':                    100,
+  'Rush fee':                    150,
 };
 let pricesLoaded = false;
 
@@ -201,7 +201,7 @@ function grandTotal() { return d.taxType==='vat-exclusive'?subtotal()*(1+VAT):su
 function dp()         { return grandTotal()*0.5; }
 function bal()        { return grandTotal()-dp(); }
 function php(n)       { return '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function esc(s)       { return (s||'').split('<').join('&lt;').split('>').join('&gt;'); }
+function esc(s)       { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function v(id)        { return (document.getElementById(id)||{}).value||''; }
 
 function taxToggleHtml() {
@@ -228,6 +228,21 @@ function ynRow(label, field, hint) {
         <button class="yn-btn no  ${no ?'active':''}" onclick="d['${field}']='No';renderBody();">No</button>
       </div>
     </div>`;
+}
+
+function costPreviewHtml() {
+  if (!d.bindType || (d.bindType === 'Softbound' && !d.withLettering)) return '';
+  const unitPr = bindingUnitPrice();
+  return `
+      <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:14px 16px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Binding Cost</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;letter-spacing:0.05em;">${php(unitPr*(parseInt(d.quantity)||1))}</div>
+        <div style="font-size:11px;color:#999;margin-top:2px;">${d.quantity} book(s) × ${php(unitPr)} each</div>
+      </div>`;
+}
+function updateCostPreview() {
+  const el = document.getElementById('cost-preview');
+  if (el) el.innerHTML = costPreviewHtml();
 }
 
 // ─── STEPS ────────────────────────────────────────────────────────
@@ -321,14 +336,6 @@ function renderBody() {
     const orOpts   = ['Portrait','Landscape'].map(o=>`<option ${d.orientation===o?'selected':''}>${o}</option>`).join('');
     const sideOpts = ['Left','Right','Top','Bottom'].map(s=>`<option ${d.bindingSide===s?'selected':''}>${s}</option>`).join('');
 
-    const unitPr = bindingUnitPrice();
-    const costPreview = (d.bindType && (d.bindType!=='Softbound'||d.withLettering)) ? `
-      <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:14px 16px;">
-        <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Binding Cost</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;letter-spacing:0.05em;">${php(unitPr*(parseInt(d.quantity)||1))}</div>
-        <div style="font-size:11px;color:#999;margin-top:2px;">${d.quantity} book(s) × ${php(unitPr)} each</div>
-      </div>` : '';
-
     el.innerHTML = `
       <div class="flex flex-col gap-5">
         <div>
@@ -339,7 +346,7 @@ function renderBody() {
         <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
           <div class="flex flex-col gap-1">
             <label class="field-label">Quantity (books)</label>
-            <input class="field-input" id="f_qty" type="number" min="1" value="${d.quantity||1}" placeholder="1" oninput="d.quantity=parseInt(this.value)||1;renderBody();">
+            <input class="field-input" id="f_qty" type="number" min="1" value="${d.quantity||1}" placeholder="1" oninput="d.quantity=Math.max(1,parseInt(this.value)||1);updateCostPreview();">
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Number of Pages</label>
@@ -381,7 +388,7 @@ function renderBody() {
             <input class="field-input" id="f_fontstyle" value="${esc(d.fontStyle||'')}" placeholder="e.g. Times New Roman, Arial">
           </div>
         </div>
-        ${costPreview}
+        <div id="cost-preview">${costPreviewHtml()}</div>
       </div>`;
   }
 
@@ -390,7 +397,7 @@ function renderBody() {
     const rushPreview = d.rushOrder==='Yes' ? `
       <div style="background:#FFF5F5;border:1px solid #FFCCCC;border-radius:3px;padding:12px 14px;font-size:13px;color:#CC1015;display:flex;gap:8px;">
         <span>⚡</span>
-        <span>Rush fee of <strong>${php(PRICES['Rush fee']||100)}</strong> will be added to the total.</span>
+        <span>Rush fee of <strong>${php(PRICES['Rush fee']||150)}</strong> will be added to the total.</span>
       </div>` : '';
 
     const printingOpts = Object.keys(PRICES).filter(function(k){ return k.toLowerCase().startsWith('printing'); });
@@ -554,6 +561,8 @@ function next() {
     if (d.coverColor === 'Other' && !(d.coverColorOther||'').trim()) { showToast('⚠ Please specify the Cover Color.', 'error'); return; }
   }
   if (step === 2) {
+    if (!d.printedMaterialsReady) { showToast('⚠ Please indicate if printed materials are ready.', 'error'); return; }
+    if (d.printedMaterialsReady === 'No' && !d.printingType) { showToast('⚠ Please select a Printing Type.', 'error'); return; }
     if (!d.rushOrder) { showToast('⚠ Please indicate if this is a Rush Order.', 'error'); return; }
   }
   if (step < STEPS.length - 1) { step++; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
@@ -681,7 +690,7 @@ function saveToSheet() {
     textColor:             d.textColor,
     fontStyle:             d.fontStyle,
     printedMaterialsReady: d.printedMaterialsReady,
-    printingType:          d.printingType,
+    printingType:          d.printedMaterialsReady === 'No' ? d.printingType : '',
     printingFee:           printingFeeAmt(),
     rushOrder:             d.rushOrder,
     bindingPrice:          bindingUnitPrice(),
