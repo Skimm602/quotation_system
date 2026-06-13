@@ -186,7 +186,7 @@ function calcMugTotal() {
   const des  = d.mugDesign === 'Yes' ? (p.designFee || 250) : 0;
   return (active.price * d.mugQty) + rush + des;
 }
-
+ 
 function calcTshirtTotal() {
   const p    = PRICING.tshirt || {};
   const qty  = tshirtTotalQty();
