@@ -193,7 +193,7 @@ function acsignEstHtml() {
   const qty = parseInt(d.acsignQty) || 0;
   if (!t || w <= 0 || h <= 0 || !qty) return '';
   const billed = acsignBilledSqft();
-  return `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Billed: ${billed} sq.ft × ₱${(t.pricePerSqft||0).toLocaleString('en-PH')} × ${qty} pc(s) = ₱${(acsignUnitPrice()*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
+  return `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Billed: ${billed.toFixed(2)} sq.ft × ₱${(t.pricePerSqft||0).toLocaleString('en-PH')} × ${qty} pc(s) = ₱${(acsignUnitPrice()*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
 }
 function keychainEstHtml() {
   const up  = keychainUnitPrice();
