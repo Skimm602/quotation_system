@@ -202,6 +202,54 @@ function showToast(msg, type='') {
 }
 
 var _custLastQuery = '';
+// ─── CUSTOMER AUTOCOMPLETE (live first-name suggestions) ───────────
+var _custSearchTimer = null, _custSuggestData = [];
+function custSearch(q) {
+  q = (q == null ? '' : String(q));
+  d.firstName = q.trim();
+  if (q.trim().length < 2) { custHideSuggest(); return; }
+  if (typeof google === 'undefined' || !google.script) return;
+  clearTimeout(_custSearchTimer);
+  _custSearchTimer = setTimeout(function () {
+    google.script.run
+      .withSuccessHandler(custRenderSuggest)
+      .withFailureHandler(function () {})
+      .searchCustomersByName(q.trim());
+  }, 220);
+}
+function custRenderSuggest(list) {
+  const box = document.getElementById('custSuggestBox');
+  if (!box) return;
+  _custSuggestData = list || [];
+  if (!_custSuggestData.length) { custHideSuggest(); return; }
+  box.innerHTML = _custSuggestData.map(function (c, i) {
+    const sub = [c.contact, c.email].filter(String).join(' · ');
+    return '<div onmousedown="custPick(' + i + ')" onmouseover="this.style.background=\'#FFF5F5\'" onmouseout="this.style.background=\'#fff\'" '
+      + 'style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #F0F0F0;background:#fff;">'
+      + '<div style="font-size:13px;font-weight:600;color:#0A0A0A;">' + esc(c.name) + '</div>'
+      + (sub ? '<div style="font-size:11px;color:#888;margin-top:1px;">' + esc(sub) + '</div>' : '')
+      + '</div>';
+  }).join('');
+  box.style.display = 'block';
+}
+function custPick(i) {
+  const c = _custSuggestData[i];
+  if (!c) return;
+  var fn = c.firstName || '', ln = c.lastName || '';
+  if (!fn && !ln && c.name) { var parts = String(c.name).trim().split(/\s+/); fn = parts.shift() || ''; ln = parts.join(' '); }
+  d.firstName = fn; d.lastName = ln;
+  if (c.company) d.company = c.company;
+  if (c.contact) d.mobile  = c.contact;
+  if (c.email)   d.email   = c.email;
+  function setV(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; }
+  setV('f_firstname', fn); setV('f_lastname', ln); setV('f_company', c.company); setV('f_mobile', c.contact); setV('f_email', c.email);
+  custHideSuggest();
+  custToast('✓ Existing customer — autofilled');
+}
+function custHideSuggest() {
+  const box = document.getElementById('custSuggestBox');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+}
 function lookupCustomer() {
   const fn = (document.getElementById('f_firstname')||{}).value || '';
   const ln = (document.getElementById('f_lastname')||{}).value || '';
@@ -307,7 +355,8 @@ function renderBody() {
         <div class="field"><label class="field-label">Last Name *</label>
           <input class="field-input" id="f_lastname" value="${esc(d.lastName)}" placeholder="Last Name" onblur="lookupCustomer()"></div>
         <div class="field"><label class="field-label">First Name *</label>
-          <input class="field-input" id="f_firstname" value="${esc(d.firstName)}" placeholder="First Name" onblur="lookupCustomer()"></div>
+          <div style="position:relative;"><input class="field-input" id="f_firstname" value="${esc(d.firstName)}" placeholder="First Name" autocomplete="off" oninput="custSearch(this.value)" onblur="setTimeout(custHideSuggest,150)">
+            <div id="custSuggestBox" style="position:absolute;left:0;right:0;top:100%;margin-top:2px;background:#fff;border:1px solid #E0E0E0;border-radius:4px;box-shadow:0 8px 20px rgba(0,0,0,0.10);max-height:230px;overflow-y:auto;display:none;z-index:60;"></div></div></div>
       </div>
       <div class="grid-2 mt-5">
         <div class="field"><label class="field-label">Email *</label>

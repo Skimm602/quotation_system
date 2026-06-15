@@ -145,10 +145,12 @@ function searchCustomersByName(prefix) {
       if (!startsWord) continue;
       seen[full] = true;
       out.push({
-        name:    String(data[i][0] || ''),
-        contact: String(data[i][1] || ''),
-        company: String(data[i][2] || ''),
-        email:   String(data[i][3] || ''),
+        name:      String(data[i][0] || ''),
+        contact:   String(data[i][1] || ''),
+        company:   String(data[i][2] || ''),
+        email:     String(data[i][3] || ''),
+        firstName: String(data[i][5] || ''),
+        lastName:  String(data[i][6] || ''),
       });
       if (out.length >= 8) break;
     }
