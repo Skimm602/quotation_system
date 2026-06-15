@@ -126,6 +126,39 @@ function lookupCustomerByName(name) {
   return null;
 }
 
+// Live autocomplete for the staff quotation pages. Returns up to 8 saved
+// customers whose full name OR any name-word starts with the typed prefix
+// (case-insensitive), newest first, de-duplicated by name.
+function searchCustomersByName(prefix) {
+  const key = normName_(prefix);
+  if (key.length < 2) return [];
+  try {
+    const sheet = getMainSS_().getSheetByName(CUSTOMER_INFO_SHEET);
+    if (!sheet || sheet.getLastRow() < 2) return [];
+    const data = sheet.getDataRange().getValues();
+    const seen = {};
+    const out  = [];
+    for (let i = data.length - 1; i >= 1; i--) {   // newest first
+      const full = normName_(data[i][0]);
+      if (!full || seen[full]) continue;
+      const startsWord = full.indexOf(key) === 0 || full.split(' ').some(function (w) { return w.indexOf(key) === 0; });
+      if (!startsWord) continue;
+      seen[full] = true;
+      out.push({
+        name:    String(data[i][0] || ''),
+        contact: String(data[i][1] || ''),
+        company: String(data[i][2] || ''),
+        email:   String(data[i][3] || ''),
+      });
+      if (out.length >= 8) break;
+    }
+    return out;
+  } catch (e) {
+    Logger.log('searchCustomersByName error: ' + (e && e.message));
+    return [];
+  }
+}
+
 // Insert or update a customer (matched by name). New non-empty fields
 // overwrite blanks but never wipe existing data. Best-effort: never throws.
 function upsertCustomerInfo_(rec) {
@@ -2898,6 +2931,8 @@ function testEmailNotif() {
 //  NOTIFY ORMOC PRINTSHOPPE — sent after every customer submission
 // ══════════════════════════════════════════════════════════════════
 function notifyCustomerSubmission_(reqNum, productType, data, specs, total, proofBlob) {
+  // Record / update the customer on every portal submission too (best-effort, never blocks).
+  try { upsertCustomerFromPayload_(data); } catch (e) {}
   try {
     const client  = String(data.clientName || '—');
     const contact = String(data.contact    || '—');
