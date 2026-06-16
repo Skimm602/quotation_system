@@ -365,10 +365,6 @@ function renderBody() {
           <label class="field-label">Date Needed <span class="req">*</span></label>
           <input class="field-input" id="f_dateneeded" type="date" value="${esc(d.dateNeeded||'')}" min="${new Date().toISOString().split('T')[0]}" style="max-width:240px;">
         </div>
-        <div style="grid-column:1/-1;" class="flex flex-col gap-1">
-          <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
-          <textarea class="field-input" id="f_notes" oninput="d.notes=this.value" placeholder="Layout details, color notes, delivery, special requests..." style="min-height:70px;resize:vertical;">${esc(d.notes||'')}</textarea>
-        </div>
       </div>`;
   }
 
@@ -544,6 +540,11 @@ function renderBody() {
               </div>
             </label>
           </div>
+        </div>
+
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+          <textarea class="field-input" id="f_notes" oninput="d.notes=this.value" placeholder="Layout details, color notes, delivery, special requests..." style="min-height:70px;resize:vertical;width:100%;">${esc(d.notes||'')}</textarea>
         </div>
 
         ${total() > 0 ? `
@@ -961,6 +962,7 @@ function buildJobOrderText() {
       'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit * qty)
     );
   });
+  if (d.notes) lines.push('Notes: ' + d.notes);
   lines.push('TOTAL: ' + php(grandTotalFinal()));
   return lines.join('\n');
 }
