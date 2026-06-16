@@ -839,6 +839,9 @@ function buildJobOrderText() {
     'Size: ' + (d.size||'—') + ', ' +
     'Paper: ' + (d.paperType||'—') + ', ' +
     'Colors: ' + ((d.colors&&d.colors.length)?d.colors.join('/'):'—') + ', ' +
+    'Perforation: ' + (d.perforation||'—') + ', ' +
+    'Numbering: ' + (d.numbering||'—') + ', ' +
+    ((d.numbering==='Yes' && d.startingNo) ? 'Starting No.: ' + d.startingNo + ', ' : '') +
     'Quantity: ' + qty + ' booklet(s), ' +
     'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
     'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty);
