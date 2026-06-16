@@ -1281,6 +1281,7 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
     ${it.designCharge === 'Yes' ? row('Design Charge', '✓ Yes') : ''}
     ${row('Item Total', '<strong>'+php(it.itemTotal)+'</strong>')}
   `).join('')}
+  ${q.notes ? row('Special Instructions', String(q.notes).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')) : ''}
 ` : String(q.quoteNum).startsWith('MUG-') ? `
   ${row('Mug Type', '<span style="font-weight:600;">'+(q.mugType || (q.signageType||'').replace('Mug — ','') || '—')+'</span>')}
   ${row('Quantity', (q.quantity||0)+' pc(s)')}

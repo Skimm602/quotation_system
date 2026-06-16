@@ -2274,7 +2274,7 @@ function saveTarpQuotation(data) {
       'Base Amount', 'Rush Fee Amt', 'Design Fee Amt',
       'TOTAL AMOUNT', 'Balance', 'Date Needed', 'Status',
       'Approved By', 'Sales Staff', 'Payment Term', 'Items JSON',
-      'Tax Type', 'Tax Amount',
+      'Tax Type', 'Tax Amount', 'Notes',
     ];
     sheet.appendRow(headers);
     sheet.getRange(1, 1, 1, headers.length)
@@ -2335,6 +2335,7 @@ function saveTarpQuotation(data) {
     itemsJson,                         // AB col 28 - Items JSON
     data.taxType  || 'non-vat',       // AC col 29 - Tax Type
     parseFloat(data.taxAmount) || 0,  // AD col 30 - Tax Amount
+    data.notes        || '',          // AE col 31 - Notes / Special Instructions
   ]);
 
   sheet.getRange(sheet.getLastRow(), 18, 1, 4).setNumberFormat('₱#,##0.00');
@@ -4787,6 +4788,7 @@ function getTarpDashboardData(token) {
         status:       String(row[23] || 'Pending'),  // X = col 24
         approvedBy:   String(row[24] || ''),          // Y = col 25
         salesStaff:   String(row[25] || ''),          // Z = col 26
+        notes:        String(row[30] || ''),          // AE = col 31
       };
     });
 

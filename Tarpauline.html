@@ -193,6 +193,7 @@ const d = {
   rush: false,
   quantity: 1,
   taxType: 'non-vat',
+  notes: '',
 };
 
 let pricing = { ratePerSqft: 0, rushFee: 0, designFee: 0 };
@@ -363,6 +364,10 @@ function renderBody() {
         <div style="grid-column:1/-1;" class="flex flex-col gap-1">
           <label class="field-label">Date Needed <span class="req">*</span></label>
           <input class="field-input" id="f_dateneeded" type="date" value="${esc(d.dateNeeded||'')}" min="${new Date().toISOString().split('T')[0]}" style="max-width:240px;">
+        </div>
+        <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+          <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+          <textarea class="field-input" id="f_notes" oninput="d.notes=this.value" placeholder="Layout details, color notes, delivery, special requests..." style="min-height:70px;resize:vertical;">${esc(d.notes||'')}</textarea>
         </div>
       </div>`;
   }
@@ -618,6 +623,7 @@ function renderBody() {
           <tr><td>Eyelet Position</td><td>${esc(d.eyelet)}</td></tr>
           <tr><td>Rush Order</td><td>${d.rush ? 'Yes' : 'No'}</td></tr>
           <tr><td>Design Service</td><td>${d.designCharge ? 'Yes — design fee applies' : 'No — customer provides file'}</td></tr>
+          ${d.notes ? `<tr><td>Special Instructions</td><td>${esc(d.notes)}</td></tr>` : ''}
           <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
           <tr><td>Base (${sqftVal.toFixed(2)} sq ft × ${php(pricing.ratePerSqft)})</td><td>${php(base())}</td></tr>
           ${d.rush ? `<tr><td>Rush Fee</td><td>${php(rushFeeAmt())}</td></tr>` : ''}
@@ -915,6 +921,7 @@ function buildTarpMessengerText() {
   if (d.email) lines.push('✉️ Email: ' + d.email);
   lines.push('📅 Date Needed: ' + dateStr);
   lines.push('🎨 Print Layout: ' + (d.printLayout || '—'));
+  if (d.notes) lines.push('📝 Notes: ' + d.notes);
   lines.push('');
   lines.push('📐 SPECIFICATIONS');
 
@@ -1024,6 +1031,7 @@ function saveQuotation() {
     rushFee:      pricing.rushFee,
     designFee:    pricing.designFee,
     dateNeeded:   d.dateNeeded,
+    notes:        d.notes,
     salesStaff:   '',
     token:        SERVER_TOKEN,
     items:        allItems,
@@ -1051,7 +1059,7 @@ function saveQuotation() {
 function startNewOrder() {
   d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
   d.width=''; d.height=''; d.quantity=1;
-  d.eyelet='No Eyelet'; d.printLayout='Upload'; d.designCharge=false; d.rush=false;
+  d.eyelet='No Eyelet'; d.printLayout='Upload'; d.designCharge=false; d.rush=false; d.notes='';
   d.taxType='non-vat'; currentUnit='ft'; items=[]; step=0;
   document.getElementById('stepper-wrap').style.display='';
   const fc = document.getElementById('formCard');
@@ -1067,7 +1075,7 @@ function resetForm() {
   if (!confirm('Start a new tarpaulin order? Current data will be cleared.')) return;
   d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
   d.width=''; d.height=''; d.quantity=1;
-  d.eyelet='No Eyelet'; d.printLayout='Upload'; d.designCharge=false; d.rush=false;
+  d.eyelet='No Eyelet'; d.printLayout='Upload'; d.designCharge=false; d.rush=false; d.notes='';
   d.taxType='non-vat';
   currentUnit = 'ft';
   items = [];
