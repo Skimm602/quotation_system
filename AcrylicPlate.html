@@ -597,7 +597,7 @@ function buildJobOrderText() {
   parts.push('Quantity: ' + qty + ' pc(s)');
   parts.push('Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'));
   parts.push('Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty));
-  return ['JOB ORDER', 'Acrylic Plate Number', parts.join(', '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  return ['JOB ORDER', 'Acrylic Plate Number', parts.join(', ') + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

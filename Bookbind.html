@@ -756,7 +756,7 @@ function buildJobOrderText() {
   if (d.printedMaterialsReady==='No' && d.printingType) parts.push('Printing: ' + d.printingType);
   parts.push('Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'));
   parts.push('Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty));
-  return ['JOB ORDER', 'Bookbinding', parts.join(', '), 'TOTAL: ' + php(grandTotal())].join('\n');
+  return ['JOB ORDER', 'Bookbinding', parts.join(', ') + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

@@ -682,7 +682,7 @@ function buildJobOrderText() {
     'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
     'Design Charge: ' + (d.designService==='Yes'?'Yes':'No') + ', ' +
     'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty);
-  return ['JOB ORDER', 'Mug Printing', line, 'TOTAL: ' + php(grandTotal())].join('\n');
+  return ['JOB ORDER', 'Mug Printing', line + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

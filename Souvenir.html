@@ -645,7 +645,7 @@ function buildJobOrderText() {
     'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
     'Design Charge: ' + (d.designService==='Yes'?'Yes':'No') + ', ' +
     'Price ' + php(rate) + '/page x ' + pages + ' pgs x ' + qty + ' copies = ' + php(base);
-  return ['JOB ORDER', 'Souvenir Program', line, 'TOTAL: ' + php(grandTotal())].join('\n');
+  return ['JOB ORDER', 'Souvenir Program', line + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();
