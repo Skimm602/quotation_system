@@ -418,7 +418,7 @@ function renderBody() {
             </div>
             ${currentUnit !== 'ft' && (wFt > 0 || hFt > 0) ? `
               <div style="font-size:11px;color:#E8151B;margin-top:3px;" id="ftConvLabel">
-                = ${displayW||'?'} × ${displayH||'?'} ${UNIT_LABELS[currentUnit]} (input) → ${wFt.toFixed(4)} × ${hFt.toFixed(4)} ft
+                = ${displayW||'?'} × ${displayH||'?'} ${UNIT_LABELS[currentUnit]} (input) → ${wFt.toFixed(2)} × ${hFt.toFixed(2)} ft
               </div>` : ''}
           </div>
           <div style="text-align:right;">
@@ -612,7 +612,7 @@ function renderBody() {
         ` : `
           <tr><td colspan="2" class="sec-label">ORDER DETAILS</td></tr>
           <tr><td>Product</td><td>Tarpaulin / Banner Print</td></tr>
-          <tr><td>Dimensions</td><td>${(parseFloat(d.width)||0).toFixed(4)} × ${(parseFloat(d.height)||0).toFixed(4)} ft</td></tr>
+          <tr><td>Dimensions</td><td>${(parseFloat(d.width)||0).toFixed(2)} × ${(parseFloat(d.height)||0).toFixed(2)} ft</td></tr>
           <tr><td>Total Area</td><td><strong>${sqftVal.toFixed(2)} sq ft</strong></td></tr>
           <tr><td>Quantity</td><td>${qty} pc(s)</td></tr>
           <tr><td>Eyelet Position</td><td>${esc(d.eyelet)}</td></tr>
@@ -769,14 +769,14 @@ function liveCompute() {
   const cvEl  = document.getElementById('ftConvLabel');
 
   if (sqEl)  sqEl.textContent  = totalSqft > 0 ? totalSqft.toFixed(2) : '—';
-  if (dimEl) dimEl.textContent = `${wFt.toFixed(4)||'?'} × ${hFt.toFixed(4)||'?'} ft × ${qty} pc(s)`;
+  if (dimEl) dimEl.textContent = `${wFt.toFixed(2)||'?'} × ${hFt.toFixed(2)||'?'} ft × ${qty} pc(s)`;
   if (bsEl)  bsEl.textContent  = totalSqft > 0 ? '= ' + php(totalSqft * pricing.ratePerSqft) : '';
 
   // Show/hide the ft conversion hint
   if (cvEl) {
     if (currentUnit !== 'ft' && (wFt > 0 || hFt > 0)) {
       cvEl.style.display = 'block';
-      cvEl.textContent   = `= ${rawW||'?'} × ${rawH||'?'} ${UNIT_LABELS[currentUnit]} → ${wFt.toFixed(4)} × ${hFt.toFixed(4)} ft`;
+      cvEl.textContent   = `= ${rawW||'?'} × ${rawH||'?'} ${UNIT_LABELS[currentUnit]} → ${wFt.toFixed(2)} × ${hFt.toFixed(2)} ft`;
     } else {
       cvEl.style.display = 'none';
     }
