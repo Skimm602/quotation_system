@@ -512,23 +512,26 @@ function renderFooter() {
 // ─── NAVIGATION ───────────────────────────────────────────────────
 var _custLastQuery = '';
 // ─── CUSTOMER AUTOCOMPLETE (live first-name suggestions) ───────────
-var _custSearchTimer = null, _custSuggestData = [];
+var _custSearchTimer = null, _custSuggestData = [], _custQ = '';
 function custSearch(q) {
   q = (q == null ? '' : String(q));
   d.clientName = q.trim();
-  if (q.trim().length < 2) { custHideSuggest(); return; }
+  _custQ = q.trim();
+  if (_custQ.length < 2) { clearTimeout(_custSearchTimer); custHideSuggest(); return; }
   if (typeof google === 'undefined' || !google.script) return;
   clearTimeout(_custSearchTimer);
+  var qNow = _custQ;
   _custSearchTimer = setTimeout(function () {
     google.script.run
-      .withSuccessHandler(custRenderSuggest)
+      .withSuccessHandler(function (list) { custRenderSuggest(list, qNow); })
       .withFailureHandler(function () {})
-      .searchCustomersByName(q.trim());
+      .searchCustomersByName(qNow);
   }, 220);
 }
-function custRenderSuggest(list) {
+function custRenderSuggest(list, forQuery) {
   const box = document.getElementById('custSuggestBox');
   if (!box) return;
+  if (forQuery != null && forQuery !== _custQ) return;
   _custSuggestData = list || [];
   if (!_custSuggestData.length) { custHideSuggest(); return; }
   box.innerHTML = _custSuggestData.map(function (c, i) {
