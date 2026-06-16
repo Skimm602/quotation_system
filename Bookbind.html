@@ -380,11 +380,19 @@ function renderBody() {
                 Other
               </button>
             </div>
+            <button onclick="d.coverColor='Not Yet Decided';d.coverColorOther='';renderBody();"
+              style="width:100%;margin-top:8px;padding:9px 0;border:2px dashed ${d.coverColor==='Not Yet Decided'?'#B8860B':'#E0E0E0'};border-radius:3px;font-size:12px;font-weight:700;cursor:pointer;background:${d.coverColor==='Not Yet Decided'?'#FFF8E6':'#FAFAFA'};color:${d.coverColor==='Not Yet Decided'?'#B8860B':'#999'};transition:all .15s;letter-spacing:0.04em;">
+              ⏳ NOT YET DECIDED
+            </button>
             ${d.coverColor==='Other'?`<input class="field-input" id="f_covcolor_other" value="${esc(d.coverColorOther||'')}" placeholder="e.g. Black, Navy Blue, Red…" oninput="d.coverColorOther=this.value;" style="margin-top:8px;">`:``}
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Text Color <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
-            <input class="field-input" id="f_textcolor" value="${esc(d.textColor||'')}" placeholder="e.g. Gold, White, Black">
+            <input class="field-input" id="f_textcolor" value="${esc(d.textColor||'')}" placeholder="e.g. Gold, White, Black" oninput="d.textColor=this.value;">
+            <button onclick="d.textColor='Not Yet Decided';renderBody();"
+              style="margin-top:6px;padding:7px 0;border:2px dashed ${d.textColor==='Not Yet Decided'?'#B8860B':'#E0E0E0'};border-radius:3px;font-size:11px;font-weight:700;cursor:pointer;background:${d.textColor==='Not Yet Decided'?'#FFF8E6':'#FAFAFA'};color:${d.textColor==='Not Yet Decided'?'#B8860B':'#999'};transition:all .15s;letter-spacing:0.04em;">
+              ⏳ NOT YET DECIDED
+            </button>
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Font Style <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
@@ -744,6 +752,7 @@ function buildJobOrderText() {
     'Bind Side: ' + (d.bindingSide||'—')
   ];
   if (cover) parts.push('Cover: ' + cover);
+  if (d.textColor) parts.push('Text Color: ' + d.textColor);
   if (d.printedMaterialsReady==='No' && d.printingType) parts.push('Printing: ' + d.printingType);
   parts.push('Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'));
   parts.push('Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty));
