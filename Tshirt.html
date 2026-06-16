@@ -825,7 +825,7 @@ function buildJobOrderText() {
   parts.push('Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'));
   parts.push('Design Charge: ' + (d.designService==='Yes'?'Yes':'No'));
   parts.push('Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty));
-  return ['JOB ORDER', 'T-Shirt / Garment', parts.join(', ') + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
+  return ['JOB ORDER', 'Date Needed: ' + (d.dateNeeded || '—'), 'T-Shirt / Garment', parts.join(', ') + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

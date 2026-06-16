@@ -715,7 +715,7 @@ function buildJobOrderText() {
     'Design Charge: ' + (d.designService==='Yes'?'Yes':'No'),
     'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty)
   ];
-  return ['JOB ORDER', 'Risograph Printing', parts.join(', ') + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
+  return ['JOB ORDER', 'Date Needed: ' + (d.dateNeeded || '—'), 'Risograph Printing', parts.join(', ') + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

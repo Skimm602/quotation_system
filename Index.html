@@ -1242,7 +1242,7 @@ function custHideSuggest() {
     parts.push('Rush Order: ' + ((addons.rushFeeAmt>0 || addons.rushOption) ? 'Yes' : 'No'));
     parts.push('Design Charge: ' + ((designFeeAmt()>0 || addons.designFeeAmt>0) ? 'Yes' : 'No'));
     parts.push('Price ' + php(rate) + '/sq ft x ' + billed.toFixed(2) + ' sq ft = ' + php(base()));
-    return ['JOB ORDER', 'Signage' + (d.signageType?(' — '+d.signageType):''), parts.join(', '), 'TOTAL: ' + php(total())].join('\n');
+    return ['JOB ORDER', 'Date Needed: ' + (d.dateNeeded || '—'), 'Signage' + (d.signageType?(' — '+d.signageType):''), parts.join(', '), 'TOTAL: ' + php(total())].join('\n');
   }
   function copyJobOrder() {
     const text = buildJobOrderText();

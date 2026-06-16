@@ -624,7 +624,7 @@ function buildJobOrderText() {
     'Total Area: ' + totalSqft().toFixed(2) + ' sq ft, ' +
     'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
     'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty);
-  return ['JOB ORDER', 'Picture Frame', line + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
+  return ['JOB ORDER', 'Date Needed: ' + (d.dateNeeded || '—'), 'Picture Frame', line + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();

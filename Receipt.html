@@ -845,7 +845,7 @@ function buildJobOrderText() {
     'Quantity: ' + qty + ' booklet(s), ' +
     'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
     'Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty);
-  return ['JOB ORDER', 'Receipt / Booklet', line + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(computeFinalTotal())].join('\n');
+  return ['JOB ORDER', 'Date Needed: ' + (d.dateNeeded || '—'), 'Receipt / Booklet', line + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(computeFinalTotal())].join('\n');
 }
 function copyJobOrder() {
   save();
