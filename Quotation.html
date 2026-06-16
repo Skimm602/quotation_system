@@ -528,6 +528,21 @@
         descParts.push('<strong>Acrylic Plate Number — ' + (q.plateType || '') + '</strong>');
         if (q.plateText) descParts.push('Name / Plate Text: ' + q.plateText);
       }
+      if (isAcrylicPlate && q.items && q.items.length > 1) {
+        q.items.forEach(function(it) {
+          const dp = ['<strong>Acrylic Plate Number — ' + (it.plateType || '') + '</strong>'];
+          if (it.plateText) dp.push('Name / Plate Text: ' + it.plateText);
+          if (it.rushOrder === 'Yes') dp.push('Rush Order: Yes');
+          rows += `<tr>
+            <td class="center">${lineNum++}</td>
+            <td style="line-height:1.75;">${dp.join('<br>')}</td>
+            <td class="center">${it.quantity || 1}</td>
+            <td class="right">${php(it.unitPrice || 0)}</td>
+            <td class="right">${php(it.itemTotal || 0)}</td>
+          </tr>`;
+        });
+        if (q.notes) rows += `<tr><td></td><td colspan="4" style="font-size:11px;color:#666;">Notes: ${q.notes}</td></tr>`;
+      } else {
       descParts.push('Quantity: ' + uQty + ' ' + unitWord + (uQty > 1 ? 's' : ''));
       if (q.notes) descParts.push('Notes: ' + q.notes);
       rows += `<tr>
@@ -537,6 +552,7 @@
         <td class="right">${php(uUnit)}</td>
         <td class="right">${isQuotation ? '<em style="color:#888;">TBD</em>' : php(uBase)}</td>
       </tr>`;
+      }
     } else {
       // Single-item (signage or single tarp or receipt)
       let descParts = [];

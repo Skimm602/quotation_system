@@ -169,12 +169,36 @@ function designFeeAmt() { return d.designService === 'Yes' ? (PRICING.designFee 
 
 const VAT = 0.12;
 function subtotal()   { return baseAmt() + rushFeeAmt() + designFeeAmt(); }
-function taxAmt()     { const s = subtotal(); return d.taxType === 'vat-exclusive' ? s * VAT : d.taxType === 'vat-inclusive' ? s - s / (1 + VAT) : 0; }
-function grandTotal() { return d.taxType === 'vat-exclusive' ? subtotal() * (1 + VAT) : subtotal(); }
+function taxAmt()     { const s = cartSubtotal(); return d.taxType === 'vat-exclusive' ? s * VAT : d.taxType === 'vat-inclusive' ? s - s / (1 + VAT) : 0; }
+function grandTotal() { return d.taxType === 'vat-exclusive' ? cartSubtotal() * (1 + VAT) : cartSubtotal(); }
 function dp()         { return grandTotal() * 0.5; }
 function bal()        { return grandTotal() - dp(); }
 function php(n)       { return '₱' + (n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function esc(s)       { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ─── MULTI-ITEM CART ──────────────────────────────────────────────
+let items = [];
+function currentItemSnap() {
+  return {
+    plateType: d.plateType, plateText: d.plateText,
+    quantity: parseInt(d.quantity) || 1,
+    rushOrder: d.rushOrder, designService: d.designService,
+    unitPrice: unitPrice(),
+    itemTotal: baseAmt() + rushFeeAmt() + designFeeAmt(),
+  };
+}
+function cartSubtotal() { return items.reduce((s, i) => s + i.itemTotal, 0) + subtotal(); }
+function addItem() {
+  if (!d.plateType || !typeObj())   { showToast('⚠ Select a Plate Type first.', 'error'); return; }
+  if (!d.quantity || d.quantity < 1) { showToast('⚠ Quantity must be at least 1.', 'error'); return; }
+  if (!d.rushOrder)                  { showToast('⚠ Please indicate if this is a Rush Order.', 'error'); return; }
+  items.push(currentItemSnap());
+  d.plateType = ''; d.plateText = ''; d.quantity = 1; d.rushOrder = '';
+  renderBody();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  showToast('✓ Plate ' + items.length + ' added! Set the next plate.', 'success');
+}
+function removeItem(i) { items.splice(i, 1); renderBody(); }
 
 function costPreviewHtml() {
   const t   = typeObj();
@@ -289,6 +313,24 @@ function renderBody() {
     el.innerHTML = `
       <div class="flex flex-col gap-6">
 
+        ${items.length ? `
+        <div>
+          <div class="field-label" style="margin-bottom:10px;">Added Plates (${items.length})</div>
+          <div style="border:1px solid #E0E0E0;border-radius:3px;overflow:hidden;">
+            ${items.map((it,i) => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #F0F0F0;background:${i%2===0?'#FAFAFA':'#FFF'};">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:700;color:#0A0A0A;">Plate ${i+1}: ${esc(it.plateType)||'—'}</div>
+                  <div style="font-size:11px;color:#888;margin-top:1px;">${it.plateText?esc(it.plateText)+' — ':''}${it.quantity} pc(s)${it.rushOrder==='Yes'?' · RUSH':''}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                  <span style="font-weight:700;color:#E8151B;font-size:13px;">${php(it.itemTotal)}</span>
+                  <button onclick="removeItem(${i})" style="border:none;background:#FFF0F0;color:#E8151B;cursor:pointer;font-size:14px;padding:3px 8px;border-radius:2px;line-height:1;font-weight:900;" title="Remove">×</button>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>` : ''}
+
         <div>
           <label class="field-label" style="margin-bottom:10px;">Plate Type</label>
           <div style="display:flex;flex-direction:column;gap:8px;">${typeCards}</div>
@@ -321,15 +363,31 @@ function renderBody() {
           <textarea class="field-input" id="f_notes" oninput="d.notes=this.value" placeholder="Font, color, mounting holes, etc.">${esc(d.notes || '')}</textarea>
         </div>
 
+        <button onclick="addItem()"
+          style="width:100%;padding:12px 16px;border:2px dashed #E8151B;background:transparent;color:#E8151B;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border-radius:3px;cursor:pointer;transition:background 0.15s;"
+          onmouseover="this.style.background='#FFF0F0'" onmouseout="this.style.background='transparent'">
+          + ADD ANOTHER PLATE
+        </button>
+
       </div>`;
   }
 
   // ── STEP 2: QUOTATION SUMMARY ─────────────────────────────────────
   else if (step === 2) {
-    const qty  = parseInt(d.quantity) || 1;
+    const allItems = [...items, currentItemSnap()];
+    const multi    = allItems.length > 1;
     const up   = unitPrice();
     const rush = rushFeeAmt();
     const desf = designFeeAmt();
+    const specRows = allItems.map(function(it, idx) {
+      return (multi ? `<tr><td colspan="2" style="padding:10px 0 2px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#E8151B;border-top:1px solid #E5E5E5;">PLATE ${idx+1}</td></tr>` : '')
+        + `<tr><td>Plate Type</td><td>${esc(it.plateType) || '—'}</td></tr>`
+        + (it.plateText ? `<tr><td>Name / Plate Text</td><td>${esc(it.plateText)}</td></tr>` : '')
+        + `<tr><td>Quantity</td><td>${it.quantity} pc(s)</td></tr>`
+        + `<tr><td>Unit Price</td><td>${php(it.unitPrice)} / pc</td></tr>`
+        + `<tr><td>Rush Order</td><td>${it.rushOrder || '—'}</td></tr>`
+        + (multi ? `<tr class="sub-row"><td>Plate ${idx+1} Subtotal</td><td><strong>${php(it.itemTotal)}</strong></td></tr>` : '');
+    }).join('');
 
     el.innerHTML = `
       <div style="background:#FFFFFF;border:1px solid #E0E0E0;border-left:3px solid #E8151B;padding:16px 20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
@@ -346,18 +404,16 @@ function renderBody() {
 
       <table class="q-table">
         <tr><td colspan="2" class="sec-label">ACRYLIC PLATE NUMBER SPECIFICATIONS</td></tr>
-        <tr><td>Plate Type</td><td>${esc(d.plateType) || '—'}</td></tr>
-        ${d.plateText ? `<tr><td>Name / Plate Text</td><td>${esc(d.plateText)}</td></tr>` : ''}
-        <tr><td>Quantity</td><td>${qty} pc(s)</td></tr>
-        <tr><td>Rush Order</td><td>${d.rushOrder || '—'}</td></tr>
+        ${specRows}
 
         <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
+        ${multi ? `<tr><td>Items Subtotal (${allItems.length} plates)</td><td>${php(cartSubtotal())}</td></tr>` : `
         <tr>
-          <td>Acrylic Plate (${esc(d.plateType || '')}) × ${qty} @ ${php(up)}/pc</td>
-          <td>${php(up * qty)}</td>
+          <td>Acrylic Plate (${esc(d.plateType || '')}) × ${parseInt(d.quantity)||1} @ ${php(up)}/pc</td>
+          <td>${php(up * (parseInt(d.quantity)||1))}</td>
         </tr>
         ${rush > 0 ? `<tr><td>Rush Fee</td><td>${php(rush)}</td></tr>` : ''}
-        ${desf > 0 ? `<tr><td>Design Fee</td><td>${php(desf)}</td></tr>` : ''}
+        ${desf > 0 ? `<tr><td>Design Fee</td><td>${php(desf)}</td></tr>` : ''}`}
 
         <tr><td colspan="2" style="height:8px;"></td></tr>
         ${taxToggleHtml()}
@@ -533,6 +589,7 @@ function resetForm() {
   d.plateType = ''; d.plateText = ''; d.quantity = 1;
   d.rushOrder = ''; d.designService = '';
   d.notes = ''; d.taxType = 'non-vat';
+  items = [];
   step = 0; render();
 }
 
@@ -570,17 +627,27 @@ function buildMessengerText() {
   lines.push('📅 Date Needed: ' + dateStr);
   lines.push('');
   lines.push('📐 SPECIFICATIONS');
-  lines.push('• Plate Type: ' + (d.plateType || '—'));
-  if (d.plateText) lines.push('• Name / Plate Text: ' + d.plateText);
-  lines.push('• Quantity: ' + qty + ' pc(s)');
-  lines.push('• Unit Price: ' + php(up) + ' / pc');
-  lines.push('• Rush Order: ' + (d.rushOrder || 'No'));
+  const allItems = [...items, currentItemSnap()];
+  const multi = allItems.length > 1;
+  allItems.forEach(function(it, i) {
+    const pre = multi ? '  ' : '';
+    if (multi) { if (i>0) lines.push(''); lines.push('Plate ' + (i+1) + ':'); }
+    lines.push(pre + '• Plate Type: ' + (it.plateType || '—'));
+    if (it.plateText) lines.push(pre + '• Name / Plate Text: ' + it.plateText);
+    lines.push(pre + '• Quantity: ' + it.quantity + ' pc(s)');
+    lines.push(pre + '• Unit Price: ' + php(it.unitPrice) + ' / pc');
+    lines.push(pre + '• Rush Order: ' + (it.rushOrder || 'No'));
+    if (multi) lines.push(pre + '• Subtotal: ' + php(it.itemTotal));
+  });
   if (d.notes) lines.push('• Notes: ' + d.notes);
   lines.push('');
   lines.push('💰 COST BREAKDOWN');
-  lines.push('• Base (' + qty + ' pc): ' + php(baseAmt()));
-  if (rushFeeAmt()>0)   lines.push('• Rush fee: ' + php(rushFeeAmt()));
-  if (designFeeAmt()>0) lines.push('• Design service: ' + php(designFeeAmt()));
+  if (multi) lines.push('• Items Subtotal (' + allItems.length + ' plates): ' + php(cartSubtotal()));
+  else {
+    lines.push('• Base (' + (parseInt(d.quantity)||1) + ' pc): ' + php(baseAmt()));
+    if (rushFeeAmt()>0)   lines.push('• Rush fee: ' + php(rushFeeAmt()));
+    if (designFeeAmt()>0) lines.push('• Design service: ' + php(designFeeAmt()));
+  }
   if (tAmt>0) lines.push('• ' + (d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)') + ': ' + php(tAmt));
   lines.push('');
   lines.push('💵 TOTAL: ' + php(grandTotal()));
@@ -589,15 +656,21 @@ function buildMessengerText() {
   return lines.join('\n');
 }
 function buildJobOrderText() {
-  const qty = parseInt(d.quantity)||1;
-  const base = baseAmt();
-  const unit = qty ? base/qty : 0;
-  const parts = ['Plate Type: ' + (d.plateType || '—')];
-  if (d.plateText) parts.push('Text: ' + d.plateText);
-  parts.push('Quantity: ' + qty + ' pc(s)');
-  parts.push('Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'));
-  parts.push('Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty));
-  return ['JOB ORDER', 'Date Needed: ' + (d.dateNeeded || '—'), 'Acrylic Plate Number', parts.join(', ') + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
+  const allItems = [...items, currentItemSnap()];
+  const lines = ['JOB ORDER', 'Date Needed: ' + (d.dateNeeded || '—'), 'Acrylic Plate Number'];
+  allItems.forEach(function(it, i) {
+    const qty = it.quantity || 1;
+    const unit = it.unitPrice || 0;
+    const parts = ['Plate Type: ' + (it.plateType || '—')];
+    if (it.plateText) parts.push('Text: ' + it.plateText);
+    parts.push('Quantity: ' + qty + ' pc(s)');
+    parts.push('Rush Order: ' + (it.rushOrder==='Yes'?'Yes':'No'));
+    parts.push('Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty));
+    lines.push((allItems.length>1 ? 'Plate ' + (i+1) + ': ' : '') + parts.join(', '));
+  });
+  if (d.notes) lines.push('Notes: ' + d.notes);
+  lines.push('TOTAL: ' + php(grandTotal()));
+  return lines.join('\n');
 }
 function copyJobOrder() {
   const text = buildJobOrderText();
@@ -663,6 +736,7 @@ function saveToSheet() {
     designService: d.designService,
     designFee:     designFeeAmt(),
     totalAmount:   grandTotal(),
+    items:         [...items, currentItemSnap()],
     notes:         d.notes,
     salesStaff:    (document.getElementById('server-user') || {}).value || '',
     taxType:       d.taxType || 'non-vat',

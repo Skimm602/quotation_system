@@ -1410,6 +1410,7 @@ function getDashboardData(token) {
           approvedBy:       String(row[20] || ''),
           taxType:          String(row[21] || 'non-vat'),
           taxAmount:        parseFloat(row[22]) || 0,
+          items: (function(){ try { const j = String(row[23]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e){ return []; } })(),
           quoteType:        'acrylicplate',
           signageType:      'Acrylic Plate — ' + plateType,
           address: '', delivery: '', lighting: '', material: '',
@@ -4629,7 +4630,7 @@ function saveAcrylicPlateOrder(data) {
     'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
     'Payment Term', 'Total Amount',
     'Special Instructions', 'Sales Staff',
-    'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount', 'Items JSON',
   ];
 
   const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
@@ -4679,6 +4680,7 @@ function saveAcrylicPlateOrder(data) {
     '',                                         // U  - Approved By
     data.taxType       || 'non-vat',            // V  - Tax Type
     parseFloat(data.taxAmount) || 0,            // W  - Tax Amount
+    (data.items && data.items.length) ? JSON.stringify(data.items) : '[]',  // X - Items JSON
   ]);
 
   sheet.getRange(sheet.getLastRow(), 10, 1, 8).setNumberFormat('₱#,##0.00');

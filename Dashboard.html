@@ -1408,15 +1408,27 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
   ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
   ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
 ` : String(q.quoteNum).startsWith('AP-') ? `
-  ${row('Plate Type', '<span style="font-weight:600;">'+(q.plateType || 'Acrylic Plate')+'</span>')}
-  ${q.plateText?row('Name / Plate Text', q.plateText):''}
-  ${row('Quantity', (q.quantity||0)+' pc(s)')}
-  ${q.unitPrice>0?row('Unit Price', php(q.unitPrice)+' / pc'):''}
-  ${row('Base Amount', php(q.baseAmount))}
-  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
-  ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
-  ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
-  ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
+  ${(q.items && q.items.length > 1) ? `
+    ${row('Product', '<span style="font-weight:600;">Acrylic Plate Number — '+q.items.length+' designs</span>')}
+    ${q.items.map((it, idx) => `
+      <tr><td colspan="2" style="padding:8px 0 2px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#E8151B;border-top:1px solid #E5E5E5;">PLATE ${idx+1}</td></tr>
+      ${row('Plate Type', it.plateType||'—')}
+      ${it.plateText?row('Name / Plate Text', it.plateText):''}
+      ${row('Quantity', (it.quantity||0)+' pc(s)')}
+      ${it.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+      ${row('Subtotal', '<strong>'+php(it.itemTotal)+'</strong>')}
+    `).join('')}
+  ` : `
+    ${row('Plate Type', '<span style="font-weight:600;">'+(q.plateType || 'Acrylic Plate')+'</span>')}
+    ${q.plateText?row('Name / Plate Text', q.plateText):''}
+    ${row('Quantity', (q.quantity||0)+' pc(s)')}
+    ${q.unitPrice>0?row('Unit Price', php(q.unitPrice)+' / pc'):''}
+    ${row('Base Amount', php(q.baseAmount))}
+    ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+    ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
+    ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+    ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
+  `}
 ` : `
   ${row('Signage Type', '<span style="font-weight:500;">'+(q.signageType||'—')+'</span>')}
   ${row('Dimensions', (q.width||'?')+' × '+(q.height||'?')+' ft = '+(q.sqft||'?')+' sqft')}
