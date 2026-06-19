@@ -1042,7 +1042,7 @@ function buildQuoteMessage(q) {
   } else if (qn.startsWith('FQ-')) {
     title = '🖼️ PICTURE FRAME QUOTATION';
     specs = [
-      'Frame Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' in',
+      'Frame Size: ' + (q.width?Number(q.width).toFixed(2):'?') + ' × ' + (q.height?Number(q.height).toFixed(2):'?') + ' in',
       q.matting ? 'Matting: ' + q.matting : '',
       'Quantity: ' + (q.quantity||1) + ' pc(s)',
       q.rate>0 ? 'Rate: ' + php(q.rate) + ' / sqft' : '',
@@ -1332,7 +1332,7 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
   ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
   ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
 ` : String(q.quoteNum).startsWith('FQ-') ? `
-  ${row('Frame Size', (q.width||'?')+' × '+(q.height||'?')+' in')}
+  ${row('Frame Size', (q.width?Number(q.width).toFixed(2):'?')+' × '+(q.height?Number(q.height).toFixed(2):'?')+' in')}
   ${row('Quantity', (q.quantity||1)+' pc(s)')}
   ${q.matting?row('Matting', q.matting):''}
   ${row('Rate', php(q.rate)+' / sqft')}
