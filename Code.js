@@ -2934,6 +2934,163 @@ function testEmailNotif() {
 // ══════════════════════════════════════════════════════════════════
 //  NOTIFY ORMOC PRINTSHOPPE — sent after every customer submission
 // ══════════════════════════════════════════════════════════════════
+// Build a COMPLETE, human-readable multi-line spec breakdown for the
+// notification email — shows every spec the customer submitted (per product),
+// not just the compact one-line summary stored in the sheet. Falls back to the
+// compact summary for any product type not handled here.
+function buildSpecsEmailDetail_(data, fallbackSpecs) {
+  try {
+    const t     = String(data.productType || '').toLowerCase();
+    const lines = [];
+
+    const add = function(label, val) {
+      if (val === null || val === undefined) return;
+      const s = String(val).trim();
+      if (s === '' || s === '—') return;
+      lines.push(label + ': ' + s);
+    };
+    const dim = function(v) {
+      const n = parseFloat(v);
+      if (isNaN(n)) return (v == null ? '' : String(v));
+      return String(Math.round(n * 100) / 100);
+    };
+    const peso = function(n) {
+      return '₱' + (parseFloat(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+    const yn = function(v) {
+      if (v === 'Yes' || v === true)  return 'Yes';
+      if (v === 'No'  || v === false) return 'No';
+      return (v == null ? '' : String(v));
+    };
+    const RECEIPT_SIZE_LABELS = {
+      '1': 'Full Page', '2': 'Half Page', '3': 'Third Page',
+      '4': 'Quarter Page', '6': 'Sixth Page', '8': 'Eighth Page',
+    };
+
+    if (t === 'mug') {
+      add('Mug Type', data.mugType);
+
+    } else if (t === 'tshirt') {
+      add('Print Type', data.printType);
+      add('Logo Size', data.logoSize);
+      add('Garment Type', data.garmentType);
+      if (data.hasOwnShirt === 'Yes') add('Shirt', 'Own shirt provided');
+      else                            add('Shirt', data.shirtChoice);
+      add('Shirt Color', data.shirtColor);
+      add('Size Breakdown', data.sizeBreakdown);
+
+    } else if (t === 'tarp') {
+      add('Size', dim(data.width) + ' × ' + dim(data.height) + ' ft'
+        + (parseFloat(data.sqft) ? ' (' + (parseFloat(data.sqft)).toFixed(2) + ' sqft)' : ''));
+      add('Eyelet', data.eyelet);
+      if (parseFloat(data.ratePerSqft)) add('Rate', peso(data.ratePerSqft) + '/sqft');
+
+    } else if (t === 'frame') {
+      add('Size', dim(data.frameWidth || data.width) + ' × ' + dim(data.frameHeight || data.height)
+        + ' ' + (data.frameUnit || data.unit || 'in'));
+      add('Matting', (data.hasMatting === 'With Matting' || data.hasMatting === 'Yes') ? 'With matting' : 'No matting');
+      if (parseFloat(data.ratePerSqft)) add('Rate', peso(data.ratePerSqft) + '/sqft');
+
+    } else if (t === 'bookbind') {
+      add('Binding Type', data.bindingType || data.bindType);
+      add('Pages', data.pages);
+      add('Paper Size', (data.paperSize || '') + (data.orientation ? ' ' + data.orientation : ''));
+      add('Binding Side', data.bindingSide);
+      add('Cover Color', data.coverColor);
+      add('Text Color', data.textColor);
+      add('Font Style', data.fontStyle);
+      if (data.printedMaterialsReady === 'No') add('Printing', data.printingType);
+
+    } else if (t === 'receipt') {
+      add('Paper Type', data.paperType);
+      add('Copies', data.copies ? data.copies + '-Part' : '');
+      add('Size Division', RECEIPT_SIZE_LABELS[String(data.sizeDiv)] || data.sizeDiv);
+      add('Paper Colors', data.colors);
+      add('Perforation', data.perforation);
+      add('Numbering', yn(data.numbering) + (data.numbering === 'Yes' && data.startingNo ? ' (from ' + data.startingNo + ')' : ''));
+
+    } else if (t === 'sticker') {
+      add('Sticker Type', data.stickerType);
+      add('Layout', data.layout);
+      add('Size', dim(data.width) + ' × ' + dim(data.height) + ' ' + (data.unit || 'in')
+        + (parseFloat(data.sqft) ? ' (' + (parseFloat(data.sqft)).toFixed(2) + ' sqft)' : ''));
+
+    } else if (t === 'risograph') {
+      add('Paper Type', data.paperType);
+      add('Paper Size', data.paperSize);
+      add('Service', data.service);
+      add('Sides', data.sides);
+      if (data.sortStaple === 'Yes') add('Sort & Staple', 'Yes');
+
+    } else if (t === 'signage') {
+      add('Signage Type', data.signageType);
+      add('Size', dim(data.width) + ' × ' + dim(data.height) + ' ' + (data.unit || 'ft'));
+      add('Lighting', data.lighting);
+      add('Material', data.material);
+      add('Mounting', data.mounting);
+      add('Transport', (data.transport || '') + (data.transportLocation ? ' (' + data.transportLocation + ')' : ''));
+      add('Electrical', data.electrical);
+
+    } else if (t === 'totebag') {
+      add('Size', data.totebagSize);
+      add('Print Method', data.printMethod);
+      add('Material', data.material);
+
+    } else if (t === 'ticket') {
+      add('Ticket Type', data.ticketType);
+
+    } else if (t === 'newsprint') {
+      add('Category', data.category);
+      add('Option', data.optionLabel);
+      add('Size', data.size);
+      add('Material', data.material);
+
+    } else if (t === 'souvenir') {
+      add('Material', data.material);
+      add('Page Size', data.pageSize);
+      add('Method', data.method);
+      add('Pages', data.pages);
+
+    } else if (t === 'keychain') {
+      add('Size', data.size);
+      add('Cut Type', data.cutType);
+      add('Material', data.material);
+      add('Design Ref', data.designRef);
+
+    } else if (t === 'acrylicsign') {
+      add('Signage Type', data.signageType);
+      add('Size', dim(data.width) + ' × ' + dim(data.height) + ' ' + (data.unit || 'ft')
+        + (parseFloat(data.sqft) ? ' (' + (parseFloat(data.sqft)).toFixed(2) + ' sqft)' : ''));
+      if (parseFloat(data.billedSqft)) add('Billed Sqft', (parseFloat(data.billedSqft)).toFixed(2));
+      if (parseFloat(data.ratePerSqft)) add('Rate', peso(data.ratePerSqft) + '/sqft');
+
+    } else if (t === 'acrylicplate') {
+      add('Plate Type', data.plateType);
+      add('Plate Text', data.plateText);
+    }
+
+    // ── Universal fields (apply to every product) ──
+    add('Quantity', data.quantity);
+
+    if (data.rushOrder !== undefined && data.rushOrder !== null && data.rushOrder !== '') {
+      let rush = yn(data.rushOrder);
+      if (rush === 'Yes' && parseFloat(data.rushFee) > 0) rush += ' (+' + peso(data.rushFee) + ')';
+      add('Rush Order', rush);
+    }
+    const designVal = (data.designService != null && data.designService !== '') ? data.designService : data.designCharge;
+    if (designVal !== undefined && designVal !== null && designVal !== '') {
+      let des = yn(designVal);
+      if (des === 'Yes' && parseFloat(data.designFee) > 0) des += ' (+' + peso(data.designFee) + ')';
+      add('Design Service', des);
+    }
+
+    if (!lines.length) return (fallbackSpecs || '—');
+    return lines.join('\n');
+  } catch (e) {
+    return (fallbackSpecs || '—');
+  }
+}
+
 function notifyCustomerSubmission_(reqNum, productType, data, specs, total, proofBlob) {
   // Record / update the customer on every portal submission too (best-effort, never blocks).
   try { upsertCustomerFromPayload_(data); } catch (e) {}
@@ -2946,6 +3103,7 @@ function notifyCustomerSubmission_(reqNum, productType, data, specs, total, proo
     const stamp   = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Manila', 'yyyy-MM-dd HH:mm');
     const totalPHP = '₱' + (parseFloat(total) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const hasProof = !!(proofBlob && proofBlob.getName);
+    const specsDetail = buildSpecsEmailDetail_(data, specs);
 
     const subject = (hasProof ? '💰 ' : '🆕 ') + 'New Customer Quote — ' + productType + ' — ' + client + ' (' + reqNum + ')';
     const body =
@@ -2960,7 +3118,7 @@ function notifyCustomerSubmission_(reqNum, productType, data, specs, total, proo
       (email ? 'Email:   ' + email + '\n' : '') +
       'Date Needed: ' + dateN + '\n\n' +
       '── Specs ────────────────────────────────\n' +
-      (specs || '—') + '\n\n' +
+      specsDetail + '\n\n' +
       '── Estimate ─────────────────────────────\n' +
       'Total: ' + totalPHP + '\n' +
       (notes ? '\nNotes:\n' + notes + '\n' : '') +
