@@ -143,7 +143,7 @@ const d = {
   // Step 0 — Client Info
   clientName: '', contact: '', email: '', dateNeeded: '',
   // Step 1 — Frame Dimensions
-  width: '', height: '', quantity: 1, matting: '',
+  width: '', height: '', quantity: 1, matting: '', mattingInches: '',
   unit: 'ft',
   rushOrder: '',
   // Step 2 — Notes & Summary
@@ -153,9 +153,15 @@ const d = {
 
 // ─── CALCULATIONS ─────────────────────────────────────────────────
 function ratePerSqft() {
-  if (d.matting === 'With Matting')    return PRICES.withMatting    || 600;
   if (d.matting === 'Without Matting') return PRICES.withoutMatting || 550;
   return 0;
+}
+function mattingRate()      { return PRICES.withMatting || 600; } // per inch
+function mattingInchesVal() { return parseFloat(d.mattingInches) || 0; }
+function mattingAmt() {
+  return d.matting === 'With Matting'
+    ? mattingInchesVal() * mattingRate() * (parseInt(d.quantity) || 1)
+    : 0;
 }
 function unitToFt(v) {
   const n = parseFloat(v) || 0;
@@ -167,7 +173,7 @@ function unitToFt(v) {
 }
 function areaPerPc() { return unitToFt(d.width) * unitToFt(d.height); }
 function totalSqft() { return areaPerPc() * (parseInt(d.quantity)||1); }
-function baseAmt()   { return totalSqft() * ratePerSqft(); }
+function baseAmt()   { return mattingAmt() + totalSqft() * ratePerSqft(); }
 function rushFeeAmt() { return d.rushOrder === 'Yes' ? (PRICES.rushFee || 150) : 0; }
 
 const VAT = 0.12;
@@ -186,16 +192,26 @@ function areaLineHtml() {
   return `<div style="font-size:12px;color:#888;">Area per frame: <strong>${areaPerPc().toFixed(2)} sq ft</strong> · Total: <strong>${totalSqft().toFixed(2)} sq ft</strong></div>`;
 }
 function costPreviewHtml() {
-  const w = parseFloat(d.width)  || 0;
-  const h = parseFloat(d.height) || 0;
-  if (!d.matting || w <= 0 || h <= 0) return '';
-  const totalSq = totalSqft();
-  const rate    = ratePerSqft();
+  if (!d.matting) return '';
+  const qty = parseInt(d.quantity) || 1;
+  let amount, breakdown;
+  if (d.matting === 'With Matting') {
+    const inches = mattingInchesVal();
+    if (inches <= 0) return '';
+    amount    = mattingAmt();
+    breakdown = inches + ' in × ' + php(mattingRate()) + ' / in' + (qty > 1 ? ' × ' + qty + ' frame(s)' : '');
+  } else {
+    const w = parseFloat(d.width) || 0, h = parseFloat(d.height) || 0;
+    if (w <= 0 || h <= 0) return '';
+    const totalSq = totalSqft(), rate = ratePerSqft();
+    amount    = rate * totalSq;
+    breakdown = totalSq.toFixed(2) + ' sq ft × ' + php(rate) + ' / sq ft';
+  }
   return `
       <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:14px 16px;">
         <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Frame Cost</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;letter-spacing:0.05em;">${php(rate*totalSq)}</div>
-        <div style="font-size:11px;color:#999;margin-top:2px;">${totalSq.toFixed(2)} sq ft × ${php(rate)} / sq ft</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E8151B;letter-spacing:0.05em;">${php(amount)}</div>
+        <div style="font-size:11px;color:#999;margin-top:2px;">${breakdown}</div>
       </div>`;
 }
 function updateCostPreview() {
@@ -283,8 +299,8 @@ function renderBody() {
   // ── STEP 1: FRAME SPECS ──────────────────────────────────────────
   else if (step === 1) {
     const mattingOpts = [
-      { key: 'With Matting',    price: PRICES.withMatting    || 600, icon: '🖼️' },
-      { key: 'Without Matting', price: PRICES.withoutMatting || 550, icon: '🔲' },
+      { key: 'With Matting',    price: PRICES.withMatting    || 600, icon: '🖼️', unit: 'in' },
+      { key: 'Without Matting', price: PRICES.withoutMatting || 550, icon: '🔲', unit: 'sq ft' },
     ];
     const mattingCards = mattingOpts.map(o => {
       const sel = d.matting === o.key;
@@ -293,7 +309,7 @@ function renderBody() {
         <div style="flex:1;">
           <div style="font-size:14px;font-weight:700;color:#0A0A0A;">${o.icon} ${o.key}</div>
         </div>
-        <div class="price-badge">${php(o.price)} / sq ft</div>
+        <div class="price-badge">${php(o.price)} / ${o.unit}</div>
       </label>`;
     }).join('');
 
@@ -304,6 +320,12 @@ function renderBody() {
           <label class="field-label" style="margin-bottom:10px;">Matting</label>
           <div class="flex flex-col gap-2">${mattingCards}</div>
         </div>
+        ${d.matting === 'With Matting' ? `
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Matting Size (inches)</label>
+          <input class="field-input" id="f_mattingInches" type="number" min="0" step="0.01" value="${d.mattingInches||''}" placeholder="e.g. 2" oninput="d.mattingInches=this.value;updateCostPreview();">
+          <span style="font-size:11px;color:#888;">Matting charge = inches × ${php(mattingRate())} per frame</span>
+        </div>` : ''}
         <div class="grid gap-5" style="grid-template-columns:1fr 1fr 80px 1fr;">
           <div class="flex flex-col gap-1">
             <label class="field-label">Width (${esc(d.unit||'ft')})</label>
@@ -371,6 +393,7 @@ function renderBody() {
       <table class="q-table">
         <tr><td colspan="2" class="sec-label">FRAME SPECIFICATIONS</td></tr>
         <tr><td>Matting</td><td>${esc(d.matting)||'—'}</td></tr>
+        ${d.matting==='With Matting'?`<tr><td>Matting Size</td><td>${mattingInchesVal()} in</td></tr>`:''}
         <tr><td>Dimensions</td><td>${w} ${esc(d.unit||'ft')} × ${h} ${esc(d.unit||'ft')}</td></tr>
         <tr><td>Total Area</td><td>${totalSq.toFixed(2)} sq ft</td></tr>
         <tr><td>Area / frame</td><td>${area.toFixed(2)} sq ft</td></tr>
@@ -378,7 +401,9 @@ function renderBody() {
         <tr><td>Rush Order</td><td>${d.rushOrder||'—'}</td></tr>
 
         <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
-        <tr><td>${totalSq.toFixed(2)} sq ft × ${php(rate)} / sq ft</td><td>${php(rate*totalSq)}</td></tr>
+        ${d.matting==='With Matting'
+          ? `<tr><td>${mattingInchesVal()} in × ${php(mattingRate())} / in × ${qty} frame(s)</td><td>${php(mattingAmt())}</td></tr>`
+          : `<tr><td>${totalSq.toFixed(2)} sq ft × ${php(rate)} / sq ft</td><td>${php(rate*totalSq)}</td></tr>`}
         ${rushFeeAmt()>0?`<tr><td>Rush Fee</td><td>${php(rushFeeAmt())}</td></tr>`:''}
 
         <tr><td colspan="2" style="height:8px;"></td></tr>
@@ -536,6 +561,11 @@ function next() {
   }
   if (step === 1) {
     if (!d.matting) { showToast('⚠ Please select a matting option.', 'error'); return; }
+    if (d.matting === 'With Matting' && !(parseFloat(d.mattingInches) > 0)) {
+      const mi = document.getElementById('f_mattingInches'); if (mi) mi.style.borderColor='#E8151B';
+      showToast('⚠ Please enter the matting size in inches.', 'error');
+      return;
+    }
     if (!parseFloat(d.width) || !parseFloat(d.height)) {
       showToast('⚠ Please enter both width and height.', 'error');
       return;
@@ -556,7 +586,7 @@ function render() {
 function resetForm() {
   if (!confirm('Start a new quotation? Current data will be cleared.')) return;
   d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
-  d.width=''; d.height=''; d.quantity=1; d.matting=''; d.rushOrder='';
+  d.width=''; d.height=''; d.quantity=1; d.matting=''; d.mattingInches=''; d.rushOrder='';
   d.unit='ft'; d.notes=''; d.taxType='non-vat';
   step=0; render();
 }
@@ -597,6 +627,7 @@ function buildMessengerText() {
   lines.push('📐 SPECIFICATIONS');
   lines.push('• Frame Size: ' + w + ' × ' + h + ' ' + (d.unit || 'ft'));
   lines.push('• Matting: ' + (d.matting || '—'));
+  if (d.matting === 'With Matting') lines.push('• Matting Size: ' + mattingInchesVal() + ' in');
   lines.push('• Quantity: ' + qty + ' frame(s)');
   lines.push('• Total Area: ' + totalSqft().toFixed(2) + ' sq ft');
   lines.push('• Rush Order: ' + (d.rushOrder || 'No'));
@@ -620,6 +651,7 @@ function buildJobOrderText() {
   const line =
     'Size: ' + (w||'?') + ' × ' + (h||'?') + ' ' + (d.unit||'ft') + ', ' +
     'Matting: ' + (d.matting||'—') + ', ' +
+    (d.matting==='With Matting' ? 'Matting Size: ' + mattingInchesVal() + ' in, ' : '') +
     'Quantity: ' + qty + ' frame(s), ' +
     'Total Area: ' + totalSqft().toFixed(2) + ' sq ft, ' +
     'Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No') + ', ' +
@@ -683,8 +715,10 @@ function saveToSheet() {
     rawHeight:    parseFloat(d.height)||0,
     unit:         d.unit||'ft',
     quantity:     parseInt(d.quantity)||1,
-    matting:      d.matting,
-    ratePerSqft:  ratePerSqft(),
+    matting:        d.matting,
+    mattingInches:  d.matting==='With Matting' ? mattingInchesVal() : 0,
+    mattingRate:    d.matting==='With Matting' ? mattingRate() : 0,
+    ratePerSqft:    ratePerSqft(),
     rushOrder:    d.rushOrder,
     rushFee:      rushFeeAmt(),
     totalAmount:  grandTotal(),
