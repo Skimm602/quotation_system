@@ -422,7 +422,12 @@ function renderBody() {
             +'<div style="flex:1;font-size:13px;font-weight:600;color:#0A0A0A;">'+pt+'</div>'
             +'<div class="price-badge">'+php(PRICES[pt]||0)+'/book</div>'
             +'</label>';
-        }).join('') : '<div style="font-size:13px;color:#999;">Loading options…</div>'}
+        }).join('')
+          : (!pricesLoaded
+              ? '<div style="font-size:13px;color:#999;">Loading options…</div>'
+              : '<div class="info-strip" style="background:#FFF8E6;border-color:#F0D98C;color:#8A6D00;">'
+                + '<span>⚠</span><span>No printing options are configured. Add rows starting with “Printing” (e.g. “Printing (B/W)”) to the <strong>BookBind</strong> price sheet, then reload this page.</span>'
+                + '</div>')}
       </div>` : '';
 
     el.innerHTML = `
