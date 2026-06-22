@@ -139,7 +139,7 @@ function loadPricing() {
       pricesLoaded = true;
       renderBody();
     })
-    .withFailureHandler(function() { pricesLoaded = true; })
+    .withFailureHandler(function() { pricesLoaded = true; renderBody(); })
     .getBookbindPricing();
 }
 
