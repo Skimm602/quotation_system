@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -103,6 +103,7 @@ const PRODUCTS = [
   { id:'signage',  icon:'🪧', label:'Signage',       sub:'LED / Acrylic / Vinyl' },
   { id:'sticker',  icon:'🏷️', label:'Sticker',       sub:'Vinyl / Paper / Mirror'},
   { id:'risograph',icon:'🖨️', label:'Risograph',     sub:'News Print / BookPaper'},
+  { id:'uvprint',  icon:'🟦', label:'UV Print',      sub:'Flat / Cylindrical'    },
   { id:'receipt',  icon:'🧾', label:'Receipt',       sub:'Carbon Duplicate'      },
   { id:'bookbind', icon:'📚', label:'Bookbinding',   sub:'Hardbound / Softbound' },
   { id:'frame',    icon:'🖼️', label:'Photo Frame',   sub:'With / Without Matting'},
@@ -147,6 +148,8 @@ const d = {
   // risograph
   risoPaperType:'', risoSize:'', risoService:'', risoSides:'',
   risoQty:1, risoSortStaple:'No', risoRush:'No', risoDesign:'No',
+  // uv print
+  uvSurface:'', uvLogoType:'', uvQty:1, uvArea:4, uvRush:'No', uvDesign:'No',
   // totebag
   totebagSize:'', totebagQty:1, totebagRush:'No', totebagDesign:'No',
   // ticket
@@ -384,6 +387,40 @@ function calcRisoTotal() {
   return (rate * qty) + ssFee + rush + des;
 }
 
+// ── UV PRINT ──────────────────────────────────────────────────────
+function uvActiveLogos() {
+  const p = PRICING.uvprint || {};
+  const surf = (p.surfaces || {})[d.uvSurface];
+  return surf ? (surf.logos || {}) : {};
+}
+function uvActiveTier() {
+  const logos = uvActiveLogos();
+  const keys  = Object.keys(logos);
+  if (!keys.length) return null;
+  const logo  = (d.uvLogoType && logos[d.uvLogoType]) ? d.uvLogoType : keys[0];
+  const tiers = logos[logo] || [];
+  const qty   = parseInt(d.uvQty) || 0;
+  let active = null;
+  tiers.forEach(function(t) { if (qty >= t.min && (!t.max || qty <= t.max)) active = t; });
+  if (!active && tiers.length) {
+    const s = tiers.slice().sort(function(a, b) { return a.min - b.min; });
+    if (qty >= s[s.length - 1].min) active = s[s.length - 1];
+  }
+  return active;
+}
+function calcUvPrintTotal() {
+  const p = PRICING.uvprint || {};
+  const t = uvActiveTier();
+  if (!t) return 0;
+  let unit = parseFloat(t.price) || 0;
+  if (t.perSqIn) unit = unit * (parseFloat(d.uvArea) || 0);
+  const qty = parseInt(d.uvQty) || 0;
+  if (!unit || !qty) return 0;
+  const rush = d.uvRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.uvDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return (unit * qty) + rush + des;
+}
+
 function calcTotebagTotal() {
   const p = PRICING.totebag || {};
   if (!d.totebagSize || !d.totebagQty) return 0;
@@ -523,6 +560,7 @@ function calcTotal() {
   if (selectedProduct === 'signage')  return calcSignageTotal();
   if (selectedProduct === 'sticker')  return calcStickerTotal();
   if (selectedProduct === 'risograph')return calcRisoTotal();
+  if (selectedProduct === 'uvprint')  return calcUvPrintTotal();
   if (selectedProduct === 'totebag')  return calcTotebagTotal();
   if (selectedProduct === 'ticket')   return calcTicketTotal();
   if (selectedProduct === 'newsprint')return calcNewsprintTotal();
@@ -635,6 +673,7 @@ function renderSpecs() {
   if (selectedProduct === 'signage')  return renderSignageSpecs();
   if (selectedProduct === 'sticker')  return renderStickerSpecs();
   if (selectedProduct === 'risograph')return renderRisoSpecs();
+  if (selectedProduct === 'uvprint')  return renderUvPrintSpecs();
   if (selectedProduct === 'totebag')  return renderTotebagSpecs();
   if (selectedProduct === 'ticket')   return renderTicketSpecs();
   if (selectedProduct === 'newsprint')return renderNewsprintSpecs();
@@ -1267,6 +1306,88 @@ function renderRisoSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.risoDesign==='Yes'?' on':''}" onclick="d.risoDesign='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.risoDesign==='No'?' on':''}"  onclick="d.risoDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── UV PRINT SPECS ────────────────────────────────────────────────
+function selectUvSurface(name) {
+  d.uvSurface = name;
+  const surf = ((PRICING.uvprint || {}).surfaces || {})[name];
+  const keys = surf ? Object.keys(surf.logos || {}) : [];
+  d.uvLogoType = keys.length === 1 ? keys[0] : '';
+  if (!d.uvArea) d.uvArea = 4;
+  renderForm();
+}
+function renderUvPrintSpecs() {
+  const p        = PRICING.uvprint || {};
+  const surfaces = p.surfaces || {};
+  const SURF_ICONS = { 'Flat Surface':'🟦', 'Cylindrical Surface':'🥤' };
+  const surfKeys = Object.keys(surfaces).length ? Object.keys(surfaces) : ['Flat Surface','Cylindrical Surface'];
+  const surfCards = surfKeys.map(k => {
+    const sel  = d.uvSurface === k;
+    const desc = (surfaces[k] || {}).desc || '';
+    return `<div class="opt-card${sel?' active':''}" onclick="selectUvSurface('${k.replace(/'/g,"\\'")}')">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${SURF_ICONS[k]||'🖨️'} ${esc(k)}</div>
+        ${desc?`<div style="font-size:11px;color:#888;margin-top:2px;">${esc(desc)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const logos    = d.uvSurface ? ((surfaces[d.uvSurface] || {}).logos || {}) : {};
+  const logoKeys = Object.keys(logos);
+  const showLogos = d.uvSurface && logoKeys.length > 1;
+  const logoCards = showLogos ? logoKeys.map(k => {
+    const sel = d.uvLogoType === k;
+    return `<div class="opt-card${sel?' active':''}" onclick="d.uvLogoType='${k.replace(/'/g,"\\'")}';renderForm();">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <span style="font-size:13px;font-weight:600;">${esc(k)}</span>
+    </div>`;
+  }).join('') : '';
+
+  const isFlatUv = d.uvSurface === 'Flat Surface';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Surface Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${surfCards}</div>
+      </div>
+      ${showLogos ? `
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Logo / Print Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${logoCards}</div>
+      </div>` : ''}
+      ${isFlatUv ? `
+      <div>
+        <label class="field-label">Print Area per piece (sq. in.)</label>
+        <input type="number" class="field-input" id="uv_area" value="${parseFloat(d.uvArea)||4}" min="0.5" step="0.5"
+          style="font-size:18px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.uvArea=parseFloat(this.value)||0;" inputmode="decimal">
+        <div style="font-size:11px;color:#888;margin-top:4px;">Up to 4 sq.in. flat rate · 30+ pcs billed at ₱5/sq.in.</div>
+      </div>` : ''}
+      ${d.uvSurface ? `
+      <div>
+        <label class="field-label">Quantity (pcs)</label>
+        <input type="number" class="field-input" id="uv_qty" value="${d.uvQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.uvQty=parseInt(this.value)||1;" inputmode="numeric">
+      </div>` : ''}
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.uvRush==='Yes'?' on':''}" onclick="d.uvRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.uvRush==='No'?' on':''}"  onclick="d.uvRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.uvDesign==='Yes'?' on':''}" onclick="d.uvDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.uvDesign==='No'?' on':''}"  onclick="d.uvDesign='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -2276,6 +2397,11 @@ function renderReview() {
     if (d.risoSortStaple === 'Yes') specSummary += ' · Sort & Staple';
     if (d.risoRush       === 'Yes') specSummary += ' · Rush';
     if (d.risoDesign     === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'uvprint') {
+    specSummary = `UV Print · ${esc(d.uvSurface)||'—'}${d.uvLogoType?' · '+esc(d.uvLogoType):''} × ${d.uvQty} pc(s)`;
+    if (d.uvSurface === 'Flat Surface' && parseFloat(d.uvArea) > 0) specSummary += ` · ${d.uvArea} sq.in.`;
+    if (d.uvRush   === 'Yes') specSummary += ' · Rush';
+    if (d.uvDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'sticker') {
     specSummary = `${esc(d.stickerType)||'—'}${d.stickerPreCut === 'Yes' ? ' (Pre-cut)' : ''} · ${d.stickerWidth||'?'} × ${d.stickerHeight||'?'} ${esc(d.stickerUnit)} × ${d.stickerQty} pc(s)`;
     if (d.stickerRush   === 'Yes') specSummary += ' · Rush';
@@ -2498,6 +2624,15 @@ function nextStep() {
       if (!d.risoService)    { toast('Please select a service.','error');     return; }
       if (!d.risoSides)      { toast('Please select sides.','error');         return; }
       if (!d.risoQty || d.risoQty < 1) { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'uvprint') {
+      d.uvQty = parseInt(v('uv_qty')) || d.uvQty;
+      if (document.getElementById('uv_area')) d.uvArea = parseFloat(v('uv_area')) || d.uvArea;
+      const surf = ((PRICING.uvprint || {}).surfaces || {})[d.uvSurface];
+      const lk   = surf ? Object.keys(surf.logos || {}) : [];
+      if (!d.uvSurface)  { toast('Please select a surface type.','error'); return; }
+      if (lk.length > 1 && !d.uvLogoType) { toast('Please select a logo / print type.','error'); return; }
+      if (!d.uvQty || d.uvQty < 1) { toast('Quantity must be at least 1.','error'); return; }
     }
     if (selectedProduct === 'sticker') {
       d.stickerWidth  = v('stk_w')   || d.stickerWidth;
@@ -2749,6 +2884,28 @@ function submitRequest() {
       rushOrder:     d.risoRush, rushFee: rush,
       designService: d.risoDesign, designFee: des,
       totalAmount:   base + ssFee + rush + des,
+    });
+  }
+
+  if (selectedProduct === 'uvprint') {
+    const p    = PRICING.uvprint || {};
+    const t    = uvActiveTier();
+    let   unit = t ? (parseFloat(t.price) || 0) : 0;
+    if (t && t.perSqIn) unit = unit * (parseFloat(d.uvArea) || 0);
+    const qty  = parseInt(d.uvQty) || 1;
+    const base = unit * qty;
+    const rush = d.uvRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des  = d.uvDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      surface:       d.uvSurface,
+      logoType:      d.uvLogoType,
+      quantity:      qty,
+      areaSqIn:      d.uvSurface === 'Flat Surface' ? (parseFloat(d.uvArea) || 0) : 0,
+      rate:          unit,
+      baseAmount:    base,
+      rushOrder:     d.uvRush, rushFee: rush,
+      designService: d.uvDesign, designFee: des,
+      totalAmount:   base + rush + des,
     });
   }
 
@@ -3013,6 +3170,13 @@ function buildMessengerText(qn) {
     if (d.risoSortStaple === 'Yes') specsLine += '\nSort & Staple: Yes';
     if (d.risoRush       === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.risoDesign     === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'uvprint') {
+    specsLine = 'UV Print · ' + (d.uvSurface || '—');
+    if (d.uvLogoType) specsLine += ' · ' + d.uvLogoType;
+    if (d.uvSurface === 'Flat Surface' && parseFloat(d.uvArea) > 0) specsLine += '\nPrint Area: ' + d.uvArea + ' sq.in.';
+    specsLine += '\nQuantity: ' + d.uvQty + ' pc(s)';
+    if (d.uvRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.uvDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'sticker') {
     specsLine = (d.stickerType || '—') + (d.stickerPreCut === 'Yes' ? ' (Pre-cut)' : '');
     specsLine += '\nSize: ' + d.stickerWidth + ' × ' + d.stickerHeight + ' ' + d.stickerUnit + ' × ' + d.stickerQty + ' pc(s)';

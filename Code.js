@@ -15,6 +15,7 @@ const TSHIRT_SHEET            = 'Tshirt Quotations';
 const MUG_SHEET               = 'Mug Quotations';
 const STICKER_SHEET           = 'Sticker Quotations';
 const RISOGRAPH_SHEET         = 'Risograph Quotations';
+const UVPRINT_SHEET           = 'UV Print Quotations';
 const TOTEBAG_SHEET           = 'Totebag Quotations';
 const TICKET_SHEET            = 'Ticket Quotations';
 const NEWSPRINT_SHEET         = 'Newsprint Quotations';
@@ -302,6 +303,9 @@ function doGet(e) {
   }
   if (page === 'risograph') {
     return serveWithToken_('Risograph', 'Quotation System — Risograph', token, appUrl);
+  }
+  if (page === 'uvprint') {
+    return serveWithToken_('UvPrint', 'Quotation System — UV Print', token, appUrl);
   }
   if (page === 'totebag') {
     return serveWithToken_('Totebag', 'Quotation System — Tote Bag', token, appUrl);
@@ -1079,6 +1083,54 @@ function getDashboardData(token) {
       });
     }
 
+    // ── UV PRINT QUOTES ─────────────────────────────────────────
+    let uvPrintQuotes = [];
+    const uvSheet = ss.getSheetByName(UVPRINT_SHEET);
+    if (uvSheet) {
+      const udata  = uvSheet.getDataRange().getValues();
+      const uStart = udata.length > 0 && String(udata[0][0]).startsWith('UV-') ? 0 : 1;
+      uvPrintQuotes = udata.slice(uStart).filter(r => r[0] && String(r[0]).startsWith('UV-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[16] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          surface:          String(row[6]  || ''),
+          logoType:         String(row[7]  || ''),
+          quantity:         row[8]  || 0,
+          areaSqIn:         parseFloat(row[9])  || 0,
+          rate:             parseFloat(row[10]) || 0,
+          baseAmount:       parseFloat(row[11]) || 0,
+          rushOrder:        String(row[12] || ''),
+          rushFee:          parseFloat(row[13]) || 0,
+          designService:    String(row[14] || ''),
+          designFee:        parseFloat(row[15]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[17]) || 0,
+          notes:            String(row[18] || ''),
+          salesStaff:       String(row[19] || ''),
+          status:           String(row[20] || 'Pending'),
+          approvedBy:       String(row[21] || ''),
+          taxType:          String(row[22] || 'non-vat'),
+          taxAmount:        parseFloat(row[23]) || 0,
+          quoteType:        'uvprint',
+          signageType:      'UV Print — ' + String(row[6] || '') + (row[7] ? ' / ' + String(row[7] || '') : ''),
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[14] || ''), addonDesignFee: parseFloat(row[15]) || 0,
+          addonRush:   String(row[12] || ''), addonRushFee:   parseFloat(row[13]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── TOTE BAG QUOTES ─────────────────────────────────────────
     let totebagQuotes = [];
     const tbSheet = ss.getSheetByName(TOTEBAG_SHEET);
@@ -1424,7 +1476,7 @@ function getDashboardData(token) {
     }
 
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1452,7 +1504,7 @@ function getQuoteForPDF(token, quoteNum) {
   // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
   //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
   //     data builder, which already returns a render-ready quote object. ──
-  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-'];
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-'];
   if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
     try {
       const dash = getDashboardData(token);
@@ -1807,6 +1859,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isMug       = String(quoteNum).startsWith('MUG-');
   const isSticker   = String(quoteNum).startsWith('STK-');
   const isRiso      = String(quoteNum).startsWith('RG-');
+  const isUvPrint   = String(quoteNum).startsWith('UV-');
   const isTotebag   = String(quoteNum).startsWith('TB-');
   const isTicket    = String(quoteNum).startsWith('TKT-');
   const isNewsprint = String(quoteNum).startsWith('NL-');
@@ -1925,6 +1978,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Risograph order not found: ' + quoteNum);
+  }
+
+  if (isUvPrint) {
+    const sheet = ss.getSheetByName(UVPRINT_SHEET);
+    if (!sheet) throw new Error('UV Print Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 21).setValue(status);  // col U = Status
+        sheet.getRange(i+1, 22).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col V = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 24).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('UV Print order not found: ' + quoteNum);
   }
 
   if (isTotebag) {
@@ -2705,6 +2774,7 @@ function getPublicPricing() {
     bookbind: getBookbindPricing(),
     sticker:  (function(){ try{ return getStickerPricing(); }catch(e){ return null; } })(),
     risograph:(function(){ try{ return getRisographPricing(); }catch(e){ return null; } })(),
+    uvprint:  (function(){ try{ return getUvPrintPricing();   }catch(e){ return null; } })(),
     receipt:  (function(){ try{ return getReceiptPricing(); }catch(e){ return null; } })(),
     signage:  (function(){ try{ return getPricing(); }      catch(e){ return null; } })(),
     totebag:  (function(){ try{ return getTotebagPricing();  }catch(e){ return null; } })(),
@@ -2793,6 +2863,11 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'risograph') {
       specs = (data.paperType || '—') + ' · ' + (data.paperSize || '—') + ' · ' + (data.service || '—') + ' · ' + (data.sides || '—') + ' × ' + (data.quantity || 1) + ' ream(s)';
       if (data.sortStaple === 'Yes') specs += ' | Sort & Staple';
+    } else if (data.productType === 'uvprint') {
+      specs = 'UV Print · ' + (data.surface || '—')
+            + (data.logoType ? ' · ' + data.logoType : '')
+            + ' × ' + (data.quantity || 1) + ' pc(s)';
+      if (parseFloat(data.areaSqIn) > 0) specs += ' | ' + data.areaSqIn + ' sq.in.';
     } else if (data.productType === 'signage') {
       specs = (data.signageType || '—') + ' · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ' + (data.unit || 'ft') + ' × ' + (data.quantity || 1) + ' pc(s)';
       if (data.lighting)  specs += ' | ' + data.lighting;
@@ -3021,6 +3096,12 @@ function buildSpecsEmailDetail_(data, fallbackSpecs) {
       add('Service', data.service);
       add('Sides', data.sides);
       if (data.sortStaple === 'Yes') add('Sort & Staple', 'Yes');
+
+    } else if (t === 'uvprint') {
+      add('Surface', data.surface);
+      add('Logo Type', data.logoType);
+      if (parseFloat(data.areaSqIn) > 0) add('Print Area', data.areaSqIn + ' sq.in.');
+      if (parseFloat(data.rate)) add('Rate', peso(data.rate) + '/pc');
 
     } else if (t === 'signage') {
       add('Signage Type', data.signageType);
@@ -3613,6 +3694,153 @@ function getRisographPricing() {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET UV PRINT PRICING (live from the "UV Print" tab, gid=1189007383)
+// ══════════════════════════════════════════════════════════════════
+//  Sheet shape (two side-by-side blocks):
+//    Flat Surface  — col A qty range, col B price (per location, ≤4 sq.in.)
+//    Cylindrical   — col D qty range, cols E+ = one price column per logo type
+//  Each tier row is a quantity band: "1-2 pcs.", "3-10 pcs.", "30+ pcs.".
+function getUvPrintPricing() {
+  const defaults = {
+    surfaces: {
+      'Flat Surface': {
+        desc: 'Price per location (up to 4 sq. in.)',
+        logos: {
+          'Standard': [
+            { min: 1,  max: 2,  price: 250 },
+            { min: 3,  max: 10, price: 150 },
+            { min: 11, max: 29, price: 85  },
+            { min: 30, max: 0,  price: 5, perSqIn: true },
+          ],
+        },
+      },
+      'Cylindrical Surface': {
+        desc: 'Tumblers, Mugs & Bottles',
+        logos: {
+          'Pocket Logo (up to 2x2")': [
+            { min: 1,  max: 2,  price: 250 },
+            { min: 3,  max: 10, price: 150 },
+            { min: 11, max: 29, price: 85  },
+            { min: 30, max: 0,  price: 32, base: true },
+          ],
+          'Vertical Logo (up to 2x7")': [
+            { min: 1,  max: 2,  price: 350 },
+            { min: 3,  max: 10, price: 250 },
+            { min: 11, max: 29, price: 150 },
+            { min: 30, max: 0,  price: 60, base: true },
+          ],
+        },
+      },
+    },
+    rushFee:   150,
+    designFee: 250,
+    unitLabel: 'pc',
+  };
+
+  function parsePrice(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw > 0 ? raw : 0;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  // "1-2 pcs." -> {min:1,max:2}; "30+ pcs." -> {min:30,max:0 (open-ended)}
+  function parseQtyRange(raw) {
+    const s = String(raw || '').toLowerCase();
+    let m = s.match(/(\d+)\s*[-–—]\s*(\d+)/);
+    if (m) return { min: parseInt(m[1]), max: parseInt(m[2]) };
+    m = s.match(/(\d+)\s*\+/);
+    if (m) return { min: parseInt(m[1]), max: 0 };
+    m = s.match(/^\s*(\d+)\s*(?:pcs?\.?)?\s*$/);
+    if (m) return { min: parseInt(m[1]), max: parseInt(m[1]) };
+    return null;
+  }
+
+  try {
+    const ss    = getPriceDbSS_();
+    const sheet = ss.getSheetByName('UV Print')
+               || ss.getSheetByName('UV print')
+               || ss.getSheetByName('UVPrint')
+               || ss.getSheetByName('UV');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 4) return defaults;
+
+    // Header row = the one whose first cell is exactly "Quantity".
+    let hdr = -1;
+    for (let i = 0; i < rows.length; i++) {
+      if (/^quantity$/i.test(String(rows[i][0]).trim())) { hdr = i; break; }
+    }
+    if (hdr < 0) return defaults;
+
+    // The cylindrical block starts at the next column (>0) whose header is "Quantity".
+    let cylCol = -1;
+    for (let c = 1; c < rows[hdr].length; c++) {
+      if (/^quantity$/i.test(String(rows[hdr][c]).trim())) { cylCol = c; break; }
+    }
+
+    // Cylindrical logo columns + labels (everything after the cyl "Quantity").
+    const cylLogoCols = [];
+    const cylLogos    = {};
+    if (cylCol >= 0) {
+      for (let c = cylCol + 1; c < rows[hdr].length; c++) {
+        const lbl = String(rows[hdr][c] || '').trim();
+        if (lbl) { cylLogoCols.push({ col: c, label: lbl }); cylLogos[lbl] = []; }
+      }
+    }
+
+    const flatTiers = [];
+    for (let i = hdr + 1; i < rows.length; i++) {
+      const r = rows[i];
+
+      // Flat block — qty col 0, price col 1.
+      const fRange = parseQtyRange(r[0]);
+      if (fRange) {
+        const raw   = r[1];
+        const price = parsePrice(raw);
+        if (price > 0) {
+          const tier = { min: fRange.min, max: fRange.max, price: price };
+          if (/sq\.?\s*in/i.test(String(raw))) tier.perSqIn = true;
+          flatTiers.push(tier);
+        }
+      }
+
+      // Cylindrical block — qty col cylCol, prices in logo columns.
+      if (cylCol >= 0) {
+        const cRange = parseQtyRange(r[cylCol]);
+        if (cRange) {
+          cylLogoCols.forEach(function(lc) {
+            const raw   = r[lc.col];
+            const price = parsePrice(raw);
+            if (price > 0) {
+              const tier = { min: cRange.min, max: cRange.max, price: price };
+              if (/base/i.test(String(raw))) tier.base = true;
+              cylLogos[lc.label].push(tier);
+            }
+          });
+        }
+      }
+    }
+
+    const result = { surfaces: {}, rushFee: defaults.rushFee, designFee: defaults.designFee, unitLabel: defaults.unitLabel };
+    if (flatTiers.length) {
+      result.surfaces['Flat Surface'] = { desc: 'Price per location (up to 4 sq. in.)', logos: { 'Standard': flatTiers } };
+    }
+    const cylKeys = Object.keys(cylLogos).filter(function(k) { return cylLogos[k].length; });
+    if (cylKeys.length) {
+      const logos = {};
+      cylKeys.forEach(function(k) { logos[k] = cylLogos[k]; });
+      result.surfaces['Cylindrical Surface'] = { desc: 'Tumblers, Mugs & Bottles', logos: logos };
+    }
+
+    return Object.keys(result.surfaces).length ? result : defaults;
+  } catch(e) {
+    Logger.log('getUvPrintPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  GET TOTE BAG PRICING (live from the "Tote Bag" tab, gid=862123714)
 // ══════════════════════════════════════════════════════════════════
 //  Sheet shape (flexible):
@@ -3807,6 +4035,80 @@ function saveRisographOrder(data) {
 
   sheet.getRange(sheet.getLastRow(), 12, 1, 10).setNumberFormat('₱#,##0.00');
   try { notifyQuoteSaved_(quoteNum, 'Risograph', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE UV PRINT ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveUvPrintOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(UVPRINT_SHEET);
+  if (!sheet) sheet = ss.insertSheet(UVPRINT_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Surface', 'Logo Type', 'Quantity', 'Area (sq.in.)', 'Rate', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('UV-')) {
+    if (firstCell.startsWith('UV-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  lockQuoteNumbering_();
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'UV-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)     || 1;
+  const area      = parseFloat(data.areaSqIn)   || 0;
+  const rate      = parseFloat(data.rate)       || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (rate * qty);
+  const rushFee   = parseFloat(data.rushFee)    || 0;
+  const designFee = parseFloat(data.designFee)  || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.surface       || '',                   // G  - Surface
+    data.logoType      || '',                   // H  - Logo Type
+    qty,                                        // I  - Quantity
+    area,                                       // J  - Area (sq.in.)
+    parseFloat(rate.toFixed(2)),                // K  - Rate
+    parseFloat(baseAmt.toFixed(2)),             // L  - Base Amount
+    data.rushOrder     || '',                   // M  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // N  - Rush Fee
+    data.designService || '',                   // O  - Design Service
+    parseFloat(designFee.toFixed(2)),           // P  - Design Fee
+    '',                                         // Q  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // R  - Total Amount
+    data.notes         || '',                   // S  - Special Instructions
+    staffName,                                  // T  - Sales Staff
+    data.status || 'Pending',                   // U  - Status
+    '',                                         // V  - Approved By
+    data.taxType       || 'non-vat',            // W  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // X  - Tax Amount
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 11, 1, 8).setNumberFormat('₱#,##0.00');
+  sheet.getRange(sheet.getLastRow(), 24, 1, 1).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'UV Print', data); } catch(_) {}
   return quoteNum;
 }
 

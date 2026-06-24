@@ -25,6 +25,9 @@
       }
     ]
   },
+  "enabledPlugins": {
+    "impeccable@impeccable": true
+  },
   "extraKnownMarketplaces": {
     "impeccable": {
       "source": {
@@ -33,7 +36,9 @@
       }
     }
   },
-  "enabledPlugins": {
-    "impeccable@impeccable": true
+  "permissions": {
+    "additionalDirectories": [
+      "c:\\Users\\cymon\\.claude\\projects\\c--Users-cymon-Documents-github-quotation-system\\memory"
+    ]
   }
 }

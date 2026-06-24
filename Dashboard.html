@@ -149,6 +149,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
             <span class="nq-icon">🖨️</span>
             <span>Risograph Quote</span>
           </div>
+          <div class="nq-option" onclick="goToUvPrint()">
+            <span class="nq-icon">🟦</span>
+            <span>UV Print Quote</span>
+          </div>
           <div class="nq-option" onclick="goToTotebag()">
             <span class="nq-icon">👜</span>
             <span>Tote Bag Quote</span>
@@ -233,6 +237,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
         <button onclick="switchTab('risograph')" id="tab-risograph"
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
           RISOGRAPH
+        </button>
+        <button onclick="switchTab('uvprint')" id="tab-uvprint"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          UV PRINT
         </button>
         <button onclick="switchTab('totebag')" id="tab-totebag"
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
@@ -351,6 +359,7 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
             <option value="MUG">Mug</option>
             <option value="STICKER">Sticker</option>
             <option value="RISOGRAPH">Risograph</option>
+            <option value="UVPRINT">UV Print</option>
             <option value="RECEIPT">Receipt</option>
             <option value="SIGNAGE">Signage</option>
             <option value="BOOKBIND">Bookbinding</option>
@@ -628,6 +637,17 @@ function goToRisograph() {
   }).getAppUrl();
 }
 
+function goToUvPrint() {
+  document.getElementById('nqDropdown').classList.remove('open');
+  if (!TOKEN) return;
+  google.script.run.withSuccessHandler(function(url) {
+    const a = document.createElement('a');
+    a.href = url + '?page=uvprint&token=' + encodeURIComponent(TOKEN);
+    a.target = '_top'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+  }).getAppUrl();
+}
+
 function goToTotebag() {
   document.getElementById('nqDropdown').classList.remove('open');
   if (!TOKEN) return;
@@ -753,13 +773,13 @@ let currentTab = 'all';
 
 function switchTab(tab) {
   currentTab = tab;
-  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','totebag','ticket','newsprint','souvenir','keychain','acrylicsign','acrylicplate'].forEach(t => {
+  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','uvprint','totebag','ticket','newsprint','souvenir','keychain','acrylicsign','acrylicplate'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
     btn.style.borderBottom = t === tab ? '3px solid #E8151B' : '3px solid transparent';
     btn.style.color        = t === tab ? '#0A0A0A' : '#999';
   });
-  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', totebag:'TOTE BAG', ticket:'TICKETS', newsprint:'NEWSLETTER / NEWSPAPER', souvenir:'SOUVENIR PROGRAM', keychain:'ACRYLIC KEYCHAIN', acrylicsign:'ACRYLIC SIGNAGE', acrylicplate:'ACRYLIC PLATE NUMBER' };
+  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', uvprint:'UV PRINT', totebag:'TOTE BAG', ticket:'TICKETS', newsprint:'NEWSLETTER / NEWSPAPER', souvenir:'SOUVENIR PROGRAM', keychain:'ACRYLIC KEYCHAIN', acrylicsign:'ACRYLIC SIGNAGE', acrylicplate:'ACRYLIC PLATE NUMBER' };
   const el = document.getElementById('recentLabel');
   if (el) el.textContent = labels[tab] || 'QUOTATIONS';
   renderStats(); renderRecentTable();
@@ -775,6 +795,7 @@ function getFilteredByTab() {
   if (currentTab === 'mug')       return allQuotes.filter(q => String(q.quoteNum).startsWith('MUG-'));
   if (currentTab === 'sticker')   return allQuotes.filter(q => String(q.quoteNum).startsWith('STK-'));
   if (currentTab === 'risograph') return allQuotes.filter(q => String(q.quoteNum).startsWith('RG-'));
+  if (currentTab === 'uvprint')   return allQuotes.filter(q => String(q.quoteNum).startsWith('UV-'));
   if (currentTab === 'totebag')   return allQuotes.filter(q => String(q.quoteNum).startsWith('TB-'));
   if (currentTab === 'ticket')    return allQuotes.filter(q => String(q.quoteNum).startsWith('TKT-'));
   if (currentTab === 'newsprint') return allQuotes.filter(q => String(q.quoteNum).startsWith('NL-'));
@@ -1020,6 +1041,20 @@ function buildQuoteMessage(q) {
       q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
       q.sortStaple === 'Yes' ? 'Sort & Staple: Yes' : '',
       q.sortStapleFee>0 ? 'Sort & Staple Fee: ' + php(q.sortStapleFee) : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+      q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
+      q.designService === 'Yes' ? 'Design Service: Yes' : '',
+      q.designFee>0 ? 'Design / Artwork Fee: ' + php(q.designFee) : '',
+    ];
+  } else if (qn.startsWith('UV-')) {
+    title = '🟦 UV PRINTING QUOTATION';
+    specs = [
+      'Surface: '           + (q.surface  || '—'),
+      'Logo / Print Type: ' + (q.logoType || '—'),
+      (q.areaSqIn>0 ? 'Print Area: ' + q.areaSqIn + ' sq.in.' : ''),
+      'Quantity: '          + (q.quantity || 0) + ' pc(s)',
+      q.rate>0 ? 'Rate: ' + php(q.rate) + ' / pc' : '',
+      q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
       q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
       q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
       q.designService === 'Yes' ? 'Design Service: Yes' : '',
@@ -1320,6 +1355,17 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
   ${q.rushFee>0?row('Rush Fee', php(q.rushFee)):''}
   ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
   ${q.designFee>0?row('Design / Artwork Fee', php(q.designFee)):''}
+` : String(q.quoteNum).startsWith('UV-') ? `
+  ${row('Surface', '<span style="font-weight:600;">'+(q.surface||'—')+'</span>')}
+  ${row('Logo / Print Type', q.logoType||'—')}
+  ${q.areaSqIn>0?row('Print Area', q.areaSqIn+' sq.in.'):''}
+  ${row('Quantity', (q.quantity||0)+' pc(s)')}
+  ${q.rate>0?row('Rate', php(q.rate)+' / pc'):''}
+  ${row('Base Amount', php(q.baseAmount))}
+  ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+  ${q.rushFee>0?row('Rush Fee', php(q.rushFee)):''}
+  ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+  ${q.designFee>0?row('Design / Artwork Fee', php(q.designFee)):''}
 ` : String(q.quoteNum).startsWith('STK-') ? `
   ${row('Material', '<span style="font-weight:600;">'+(q.stickerType || (q.signageType||'').replace('Sticker — ','') || '—')+'</span>')}
   ${row('Pre-cut', q.layout === 'Pre-cut' ? '✓ Yes' : 'No')}
@@ -1529,6 +1575,7 @@ const PORTAL_PRODUCTS = [
   { id:'mug',      icon:'☕', label:'Mug',           active:true,  page:'customer-mug',      shortUrl:'https://tinyurl.com/4w5t5da7' },
   { id:'sticker',  icon:'🏷️', label:'Sticker',       active:true,  page:'customer-sticker'                                          },
   { id:'risograph',icon:'🖨️', label:'Risograph',     active:true,  page:'customer-risograph'                                        },
+  { id:'uvprint',  icon:'🟦', label:'UV Print',      active:true,  page:'customer-uvprint'                                          },
   { id:'tshirt',   icon:'👕', label:'T-Shirt',       active:true,  page:'customer-tshirt',   shortUrl:'https://tinyurl.com/387r4ncs' },
   { id:'receipt',  icon:'🧾', label:'Receipt',       active:true,  page:'customer-receipt',  shortUrl:'https://tinyurl.com/56v9ytx4' },
   { id:'signage',  icon:'🪧', label:'Signage',       active:true,  page:'customer-signage',  shortUrl:'https://tinyurl.com/una3rkbu' },
