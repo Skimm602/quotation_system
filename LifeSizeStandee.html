@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Life-Size Standee Quotation</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: '#E8151B', 'brand-dark': '#B00E12',
+        ink: '#0A0A0A', chalk: '#FFFFFF',
+      },
+      fontFamily: { display: ['Bebas Neue', 'sans-serif'], body: ['DM Sans', 'sans-serif'] },
+    }
+  }
+}
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #FFFFFF; color: #0A0A0A; min-height: 100vh; }
+.topnav { background: #FFFFFF; border-bottom: 1px solid #E5E5E5; position: sticky; top: 0; z-index: 100; }
+.logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 0.05em; color: #0A0A0A; }
+.step-circle { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid #E0E0E0; color: #999; transition: all 0.25s; background: #F5F5F5; cursor: pointer; flex-shrink: 0; }
+.step-circle.done { background: #E8151B; border-color: #E8151B; color: white; }
+.step-circle.active { background: white; border-color: white; color: #0A0A0A; box-shadow: 0 0 0 4px rgba(232,21,27,0.3); }
+.step-line { height: 1px; flex: 1; background: #E0E0E0; transition: background 0.25s; }
+.step-line.done { background: #E8151B; }
+.card { background: #FFFFFF; border: 1px solid #E5E5E5; border-radius: 4px; overflow: hidden; animation: fadeUp 0.3s ease both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.card-header-bar { background: #E8151B; height: 4px; width: 100%; }
+.field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #666; display: block; margin-bottom: 6px; }
+.req { color: #E8151B; }
+.field-input { width: 100%; background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 3px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0A; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.field-input:focus { border-color: #E8151B; box-shadow: 0 0 0 2px rgba(232,21,27,0.2); }
+.field-input::placeholder { color: #BBB; }
+textarea.field-input { min-height: 90px; resize: vertical; }
+.opt-card { border: 1px solid #E0E0E0; border-radius: 3px; padding: 14px 16px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 12px; }
+.opt-card:hover { border-color: #E8151B; background: #FFF8F8; }
+.opt-card.selected { border-color: #E8151B; background: #FFF0F0; box-shadow: 0 0 0 2px rgba(232,21,27,0.15); }
+.opt-card input[type=radio] { accent-color: #E8151B; flex-shrink: 0; }
+.yn-btn { flex: 1; padding: 10px 0; border: 1px solid #E0E0E0; border-radius: 3px; font-size: 13px; font-weight: 600; cursor: pointer; background: #FAFAFA; color: #888; transition: all 0.15s; text-align: center; }
+.yn-btn.yes.active { background: #E6FFF3; border-color: #1A6A3A; color: #1A6A3A; }
+.yn-btn.no.active  { background: #FFF5F5; border-color: #E8151B; color: #E8151B; }
+.computed-box { background: #FAFAFA; border: 1px solid #E0E0E0; border-radius: 3px; padding: 16px 18px; }
+.rate-pill { display: flex; align-items: center; gap: 8px; margin-top: 14px; background: #FFF0F0; border: 1px solid #FFCCCC; border-radius: 3px; padding: 12px 16px; font-size: 13px; color: #555; }
+.q-table { width: 100%; border-collapse: collapse; }
+.q-table tr { border-bottom: 1px solid #F0F0F0; }
+.q-table tr:last-child { border: none; }
+.q-table td { padding: 10px 0; font-size: 14px; color: #666; }
+.q-table td:last-child { text-align: right; color: #0A0A0A; font-weight: 500; }
+.q-table .sec-label { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #BBB; font-weight: 700; padding-top: 18px; }
+.q-table .total-row td { font-size: 20px; font-weight: 700; color: #E8151B; padding-top: 16px; border-top: 2px solid #E8151B; }
+.q-table .total-row td:last-child { color: #E8151B; }
+.q-table .sub-row td { font-size: 13px; color: #777; padding-top: 6px; }
+.btn-ghost { padding: 10px 22px; border: 1px solid #E0E0E0; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: #888; background: transparent; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+.btn-ghost:hover { border-color: #999; color: #333; }
+.btn-primary { padding: 10px 26px; background: #E8151B; border: none; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: white; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.04em; text-transform: uppercase; }
+.btn-primary:hover { background: #B00E12; }
+.btn-save { padding: 11px 28px; background: white; border: 1px solid #333; border-radius: 3px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; color: #0A0A0A; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+.btn-save:hover { background: #E8151B; border-color: #E8151B; color: white; }
+.btn-save.loading { opacity: 0.6; pointer-events: none; }
+.toast { position: fixed; bottom: 28px; right: 28px; background: #0A0A0A; border: 1px solid #333; color: white; padding: 14px 20px; border-radius: 3px; font-size: 13px; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 10px; transform: translateY(80px); opacity: 0; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 999; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: #0A2A1A; border-color: #1A6A3A; }
+.toast.error { background: #1A0000; border-color: #E8151B; }
+.section-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.05em; color: #0A0A0A; line-height: 1; }
+.section-title span { color: #E8151B; }
+.src-chip { display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:3px 9px; border-radius:999px; border:1px solid #E0E0E0; color:#999; background:#FAFAFA; }
+.src-chip.live { color:#1A6A3A; border-color:#1A6A3A; background:#E6FFF3; }
+.src-chip.backend { color:#0A4A8A; border-color:#0A4A8A; background:#EAF3FF; }
+.src-chip.default { color:#8A6500; border-color:#FFE08A; background:#FFF8E0; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topnav">
+  <div class="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-7 h-7 bg-brand flex items-center justify-center rounded-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2a3 3 0 100 6 3 3 0 000-6zM8 9h8l1 7h-2v6h-2v-6h-2v6H9v-6H7l1-7z"/></svg>
+      </div>
+      <span class="logo-text">Life-Size Standee</span><span style="font-size:14px;color:#999;margin-left:4px;letter-spacing:0.05em;"> QUOTATION</span>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn-ghost text-xs" onclick="resetForm()">NEW QUOTE</button>
+      <button class="btn-ghost text-xs" onclick="goToDashboard()" style="border-color:#0A0A0A;color:#0A0A0A;">← DASHBOARD</button>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="max-w-4xl mx-auto px-6 py-10 pb-20">
+  <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+    <div>
+      <div class="section-title">NEW LIFE-SIZE STANDEE <span>QUOTATION</span></div>
+      <p class="text-sm mt-1 tracking-wide" style="color:#999;">Priced per square foot — rate fetched live from the price sheet.</p>
+    </div>
+    <span id="priceSrcChip" class="src-chip" title="Where the current rate came from">⏳ Loading rate…</span>
+  </div>
+  <div id="stepper-wrap" class="mb-6 bg-gray-50 border border-gray-200 rounded-sm p-5 flex items-center gap-2 overflow-x-auto"></div>
+  <div class="card" id="formCard">
+    <div class="card-header-bar"></div>
+    <div class="px-7 py-5 border-b border-gray-100 flex items-center gap-4" id="cardHeader"></div>
+    <div class="px-7 py-7" id="cardBody"></div>
+    <div class="px-7 py-5 border-t border-gray-100 flex justify-between items-center bg-gray-50" id="cardFooter"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<input type="hidden" id="server-token" value="<?= injectedToken ?>">
+<input type="hidden" id="app-url"      value="<?= appUrl ?>">
+<input type="hidden" id="server-user"  value="<?= userName ?>">
+
+<script>
+const SERVER_TOKEN = (document.getElementById('server-token')||{}).value || '';
+const APP_URL      = (document.getElementById('app-url')||{}).value || '';
+
+function goToDashboard() {
+  if (SERVER_TOKEN && APP_URL) {
+    window.top.location.href = APP_URL + '?page=dashboard&token=' + encodeURIComponent(SERVER_TOKEN);
+  }
+}
+
+// ─── LIVE PRICING ─────────────────────────────────────────────────
+// Source: https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o (gid 1083662015)
+// The "Life-Size Standee" tab holds a single rate cell, e.g. "₱ 250 /sq.ft".
+const SHEET_ID  = '1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o';
+const SHEET_GID = '1083662015';
+const CSV_URL   = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/export?format=csv&gid=' + SHEET_GID;
+
+let PRICING = { ratePerSqft: 250, rushFee: 150, designFee: 250 };
+let pricesLoaded = false;
+let priceSource  = 'default'; // 'live' | 'backend' | 'default'
+
+function updateSrcChip() {
+  const el = document.getElementById('priceSrcChip');
+  if (!el) return;
+  if (!pricesLoaded) { el.className = 'src-chip'; el.textContent = '⏳ Loading rate…'; return; }
+  const rate = PRICING.ratePerSqft || 0;
+  if (priceSource === 'live')         { el.className = 'src-chip live';    el.textContent = '🟢 Live ' + php(rate) + '/sq ft'; }
+  else if (priceSource === 'backend') { el.className = 'src-chip backend'; el.textContent = '🔵 Live ' + php(rate) + '/sq ft'; }
+  else                                { el.className = 'src-chip default'; el.textContent = '🟡 Default ' + php(rate) + '/sq ft'; }
+}
+
+// Extract the per-sq.ft rate from the tab's CSV (handles "₱ 250 /sq.ft", commas, etc.)
+function parseStandeeRate(text) {
+  const rows = String(text || '').split(/\r?\n/);
+  for (const line of rows) {
+    if (/sq\.?\s*ft|\/\s*sq/i.test(line)) {
+      const m = line.replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+      if (m) return parseFloat(m[1]);
+    }
+  }
+  for (const line of rows) {
+    const m = line.replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    if (m) return parseFloat(m[1]);
+  }
+  return 0;
+}
+
+function fetchSheetCsv() {
+  const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const t = ctrl ? setTimeout(function(){ ctrl.abort(); }, 7000) : null;
+  return fetch(CSV_URL, ctrl ? { signal: ctrl.signal } : {})
+    .then(function(res){ if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
+    .then(function(txt){ if (t) clearTimeout(t); return txt; });
+}
+
+function loadPricing() {
+  // 1) Live client-side CSV fetch straight from the published sheet
+  fetchSheetCsv()
+    .then(function(csv) {
+      const rate = parseStandeeRate(csv);
+      if (rate > 0) {
+        PRICING.ratePerSqft = rate;
+        pricesLoaded = true; priceSource = 'live';
+        updateSrcChip(); renderBody();
+      } else { throw new Error('no rate parsed'); }
+    })
+    .catch(function() {
+      // 2) Fall back to an Apps Script backend getter if present
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(p) {
+            if (p) {
+              if (p.ratePerSqft > 0) PRICING.ratePerSqft = p.ratePerSqft;
+              if (p.rushFee     > 0) PRICING.rushFee     = p.rushFee;
+              if (p.designFee   > 0) PRICING.designFee   = p.designFee;
+            }
+            pricesLoaded = true; priceSource = 'backend';
+            updateSrcChip(); renderBody();
+          })
+          .withFailureHandler(function() {
+            pricesLoaded = true; priceSource = 'default';
+            updateSrcChip(); renderBody();
+          })
+          .getLifeSizeStandeePricing();
+      } else {
+        pricesLoaded = true; priceSource = 'default';
+        updateSrcChip(); renderBody();
+      }
+    });
+}
+
+// ─── STATE ────────────────────────────────────────────────────────
+let step = 0;
+
+const d = {
+  // Step 0 — Client Info
+  clientName: '', contact: '', email: '', dateNeeded: '',
+  // Step 1 — Standee Specs
+  width: '', height: '', quantity: 1,
+  material: '',          // optional descriptive (e.g. Sintra, Foam Board)
+  withEasel: '',         // 'Yes' / 'No' (optional — does not affect price)
+  rushOrder: '',
+  designService: '',
+  // Step 2 — Notes & Summary
+  notes: '',
+  taxType: 'non-vat',
+};
+
+// ─── CALCULATIONS ─────────────────────────────────────────────────
+function areaPerPc() { return (parseFloat(d.width)||0) * (parseFloat(d.height)||0); }
+function totalQty()  { return parseInt(d.quantity)||1; }
+function sqft()      { return areaPerPc() * totalQty(); }
+function baseAmt()   { return sqft() * (PRICING.ratePerSqft || 0); }
+function rushFeeAmt()  { return d.rushOrder === 'Yes' ? (PRICING.rushFee || 150) : 0; }
+function designFeeAmt(){ return d.designService === 'Yes' ? (PRICING.designFee || 250) : 0; }
+
+const VAT = 0.12;
+function subtotal()   { return baseAmt() + rushFeeAmt() + designFeeAmt(); }
+function taxAmt()     { const s=subtotal(); return d.taxType==='vat-exclusive'?s*VAT:d.taxType==='vat-inclusive'?s-s/(1+VAT):0; }
+function grandTotal() { return d.taxType==='vat-exclusive'?subtotal()*(1+VAT):subtotal(); }
+function dp()         { return grandTotal()*0.5; }
+function bal()        { return grandTotal()-dp(); }
+function php(n)       { return '₱'+(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s)       { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function v(id)        { return (document.getElementById(id)||{}).value||''; }
+
+function taxToggleHtml() {
+  const opts = [{key:'non-vat',label:'Non-VAT'},{key:'vat-inclusive',label:'VAT Incl. 12%'},{key:'vat-exclusive',label:'VAT Excl. 12%'}];
+  const tx = d.taxType||'non-vat';
+  const btns = opts.map(function(o){
+    const a=tx===o.key;
+    return '<button onclick="setTaxType(\''+o.key+'\')" style="padding:6px 14px;border:1px solid '+(a?'#E8151B':'#E0E0E0')+';border-radius:3px;font-size:12px;font-weight:'+(a?'700':'500')+';cursor:pointer;background:'+(a?'#E8151B':'#FAFAFA')+';color:'+(a?'#fff':'#888')+';transition:all .15s;">'+o.label+'</button>';
+  }).join('');
+  return '<tr><td colspan="2" style="padding:12px 0 6px;"><div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#BBB;margin-bottom:8px;">TAX</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+btns+'</div></td></tr>';
+}
+function setTaxType(key) { d.taxType=key; renderBody(); }
+
+// Live recompute of the area/cost box on the Specs step without a full re-render
+function liveCompute() {
+  d.width    = v('f_width');
+  d.height   = v('f_height');
+  d.quantity = v('f_quantity');
+  const sv = document.getElementById('sqftVal');     if (sv) sv.textContent = sqft() > 0 ? sqft().toFixed(2) : '—';
+  const dl = document.getElementById('dimLabel');    if (dl) dl.textContent = (parseFloat(d.width)||'?') + ' × ' + (parseFloat(d.height)||'?') + ' ft × ' + totalQty() + ' pc(s)';
+  const bv = document.getElementById('baseVal');     if (bv) bv.textContent = '= ' + php(baseAmt());
+  const cp = document.getElementById('costPreview'); if (cp) cp.innerHTML   = costPreviewHtml();
+}
+
+// ─── STEPS ────────────────────────────────────────────────────────
+const STEPS = [
+  { label: 'Client Info',   sub: 'Name, contact & date needed' },
+  { label: 'Standee Specs', sub: 'Size, quantity & finishing' },
+  { label: 'Quotation',     sub: 'Full breakdown & summary' },
+];
+
+function renderStepper() {
+  const el = document.getElementById('stepper-wrap');
+  el.innerHTML = '';
+  STEPS.forEach((s, i) => {
+    const st = i < step ? 'done' : i === step ? 'active' : '';
+    el.innerHTML += `
+      <div class="flex flex-col items-center gap-1 cursor-pointer min-w-fit" onclick="goTo(${i})">
+        <div class="step-circle ${st}">${i < step ? '✓' : i+1}</div>
+        <span style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${i===step?'#E8151B':i<step?'#999':'#BBB'};white-space:nowrap;">${s.label}</span>
+      </div>
+      ${i < STEPS.length-1 ? `<div class="step-line flex-1 ${i < step ? 'done' : ''}" style="margin-bottom:18px;"></div>` : ''}
+    `;
+  });
+}
+
+function renderHeader() {
+  const s = STEPS[step];
+  document.getElementById('cardHeader').innerHTML = `
+    <div style="width:42px;height:42px;background:#E8151B;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:white;">${step+1}</span>
+    </div>
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:#0A0A0A;line-height:1.1;">${s.label.toUpperCase()}</div>
+      <div style="font-size:12px;color:#555;margin-top:2px;">${s.sub}</div>
+    </div>`;
+}
+
+function costPreviewHtml() {
+  if (baseAmt() <= 0) return '';
+  return `
+    <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:3px;padding:14px 16px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:6px;">Estimated Cost</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Base (${sqft().toFixed(2)} sq ft × ${php(PRICING.ratePerSqft)})</span><span>${php(baseAmt())}</span></div>
+      ${rushFeeAmt()>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Rush Fee</span><span>${php(rushFeeAmt())}</span></div>`:''}
+      ${designFeeAmt()>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:4px;"><span>Design Fee</span><span>${php(designFeeAmt())}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;font-family:'Bebas Neue',sans-serif;font-size:26px;color:#E8151B;letter-spacing:0.03em;border-top:1px solid #E0E0E0;padding-top:8px;margin-top:4px;"><span style="font-size:13px;font-family:'DM Sans',sans-serif;font-weight:700;align-self:center;">TOTAL</span><span>${php(subtotal())}</span></div>
+    </div>`;
+}
+
+function renderBody() {
+  const el = document.getElementById('cardBody');
+
+  // ── STEP 0: CLIENT INFO ──────────────────────────────────────────
+  if (step === 0) {
+    el.innerHTML = `
+      <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
+        <div style="grid-column:1/-1;" class="flex flex-col gap-1">
+          <label class="field-label">Client Name <span class="req">*</span></label>
+          <div style="position:relative;">
+            <input class="field-input" id="f_name" value="${esc(d.clientName)}" placeholder="Juan dela Cruz / ABC Corp" autocomplete="off" oninput="custSearch(this.value)" onblur="setTimeout(custHideSuggest,150)">
+            <div id="custSuggestBox" style="position:absolute;left:0;right:0;top:100%;margin-top:2px;background:#fff;border:1px solid #E0E0E0;border-radius:4px;box-shadow:0 8px 20px rgba(0,0,0,0.10);max-height:230px;overflow-y:auto;display:none;z-index:60;"></div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Contact Number <span class="req">*</span></label>
+          <input class="field-input" id="f_contact" value="${esc(d.contact)}" placeholder="09XX XXX XXXX" maxlength="13" oninput="formatPhone(this)" onkeypress="return event.charCode>=48&&event.charCode<=57">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Email <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+          <input class="field-input" id="f_email" value="${esc(d.email||'')}" placeholder="email@example.com" type="email">
+        </div>
+        <div class="flex flex-col gap-1" style="grid-column:1/-1;">
+          <label class="field-label">Date Needed <span class="req">*</span></label>
+          <input class="field-input" id="f_dateneeded" type="date" value="${esc(d.dateNeeded||'')}" min="${new Date().toISOString().split('T')[0]}" style="max-width:240px;">
+        </div>
+      </div>`;
+  }
+
+  // ── STEP 1: STANDEE SPECS ────────────────────────────────────────
+  else if (step === 1) {
+    el.innerHTML = `
+      <div class="flex flex-col gap-5">
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Standee Size (in feet) <span class="req">*</span></label>
+          <div class="grid gap-5" style="grid-template-columns:1fr 1fr 1fr;">
+            <div class="flex flex-col gap-1">
+              <label class="field-label">Width (ft) <span class="req">*</span></label>
+              <input class="field-input" id="f_width" type="number" min="0" step="any" value="${esc(d.width)}" placeholder="e.g. 2" oninput="liveCompute()">
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="field-label">Height (ft) <span class="req">*</span></label>
+              <input class="field-input" id="f_height" type="number" min="0" step="any" value="${esc(d.height)}" placeholder="e.g. 6" oninput="liveCompute()">
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="field-label">Quantity <span class="req">*</span></label>
+              <input class="field-input" id="f_quantity" type="number" min="1" value="${totalQty()}" oninput="liveCompute()">
+            </div>
+          </div>
+        </div>
+
+        <div class="computed-box">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#666;">Total Billable Area</div>
+              <div style="font-size:12px;color:#555;margin-top:2px;" id="dimLabel">${parseFloat(d.width)||'?'} × ${parseFloat(d.height)||'?'} ft × ${totalQty()} pc(s)</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:#E8151B;line-height:1;" id="sqftVal">${sqft()>0?sqft().toFixed(2):'—'}</div>
+              <div style="font-size:11px;color:#555;">sq ft total</div>
+            </div>
+          </div>
+          <div class="rate-pill"><span>At <strong>${php(PRICING.ratePerSqft)}/sq ft</strong></span><strong id="baseVal" style="margin-left:auto;color:#E8151B;">= ${php(baseAmt())}</strong></div>
+        </div>
+
+        <div class="grid gap-5" style="grid-template-columns:1fr 1fr;">
+          <div class="flex flex-col gap-1">
+            <label class="field-label">Material / Board <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <input class="field-input" id="f_material" value="${esc(d.material||'')}" placeholder="e.g. Sintra Board, Foam Board" oninput="d.material=this.value;">
+          </div>
+          <div>
+            <label class="field-label" style="margin-bottom:10px;">With Easel / Stand? <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <div style="display:flex;gap:8px;">
+              <button class="yn-btn yes ${d.withEasel==='Yes'?'active':''}" onclick="d.withEasel='Yes';renderBody();">Yes</button>
+              <button class="yn-btn no  ${d.withEasel==='No' ?'active':''}" onclick="d.withEasel='No';renderBody();">No</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Rush Order? <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(rush fee applies)</span> <span class="req">*</span></label>
+          <div style="display:flex;gap:8px;">
+            <button class="yn-btn yes ${d.rushOrder==='Yes'?'active':''}" onclick="d.rushOrder='Yes';renderBody();">Yes — ${php(PRICING.rushFee||150)}</button>
+            <button class="yn-btn no  ${d.rushOrder==='No' ?'active':''}" onclick="d.rushOrder='No';renderBody();">No</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="field-label" style="margin-bottom:10px;">Design / Artwork Service? <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(design fee applies if Yes)</span> <span class="req">*</span></label>
+          <div style="display:flex;gap:8px;">
+            <button class="yn-btn yes ${d.designService==='Yes'?'active':''}" onclick="d.designService='Yes';renderBody();">Yes — ${php(PRICING.designFee||250)}</button>
+            <button class="yn-btn no  ${d.designService==='No' ?'active':''}" onclick="d.designService='No';renderBody();">No</button>
+          </div>
+        </div>
+
+        <div id="costPreview">${costPreviewHtml()}</div>
+
+        <div class="flex flex-col gap-1">
+          <label class="field-label">Special Instructions <span style="color:#BBB;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+          <textarea class="field-input" id="f_notes" oninput="d.notes=this.value" placeholder="Cut shape, base/stand details, color notes, delivery...">${esc(d.notes||'')}</textarea>
+        </div>
+      </div>`;
+  }
+
+  // ── STEP 2: QUOTATION SUMMARY ─────────────────────────────────────
+  else if (step === 2) {
+    el.innerHTML = `
+      <!-- Client Box -->
+      <div style="background:#FFFFFF;border:1px solid #E0E0E0;border-left:3px solid #E8151B;padding:16px 20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;">${esc(d.clientName)||'—'}</div>
+          <div style="font-size:12px;color:#555;margin-top:2px;">${esc(d.contact)||''}${d.email?' · '+esc(d.email):''}</div>
+          ${d.dateNeeded?`<div style="font-size:12px;color:#E8151B;margin-top:4px;font-weight:600;">📅 Date Needed: ${new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>`:''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#444;font-weight:700;">Quote Date</div>
+          <div style="font-size:13px;color:#888;margin-top:2px;">${new Date().toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})}</div>
+        </div>
+      </div>
+
+      <table class="q-table">
+        <tr><td colspan="2" class="sec-label">STANDEE SPECIFICATIONS</td></tr>
+        <tr><td>Product</td><td>Life-Size Standee</td></tr>
+        <tr><td>Dimensions</td><td>${(parseFloat(d.width)||0).toFixed(2)} × ${(parseFloat(d.height)||0).toFixed(2)} ft</td></tr>
+        <tr><td>Total Area</td><td><strong>${sqft().toFixed(2)} sq ft</strong></td></tr>
+        <tr><td>Quantity</td><td>${totalQty()} pc(s)</td></tr>
+        ${d.material?`<tr><td>Material / Board</td><td>${esc(d.material)}</td></tr>`:''}
+        ${d.withEasel?`<tr><td>With Easel / Stand</td><td>${esc(d.withEasel)}</td></tr>`:''}
+        <tr><td>Rush Order</td><td>${d.rushOrder||'—'}</td></tr>
+        <tr><td>Design Service</td><td>${d.designService||'—'}</td></tr>
+        ${d.notes?`<tr><td>Special Instructions</td><td>${esc(d.notes)}</td></tr>`:''}
+
+        <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
+        <tr><td>Base (${sqft().toFixed(2)} sq ft × ${php(PRICING.ratePerSqft)})</td><td>${php(baseAmt())}</td></tr>
+        ${rushFeeAmt()>0?`<tr><td>Rush Fee</td><td>${php(rushFeeAmt())}</td></tr>`:''}
+        ${designFeeAmt()>0?`<tr><td>Design Fee</td><td>${php(designFeeAmt())}</td></tr>`:''}
+
+        <tr><td colspan="2" style="height:8px;"></td></tr>
+        ${taxToggleHtml()}
+        ${taxAmt()>0?`<tr class="sub-row"><td>${d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)'}</td><td>${php(taxAmt())}</td></tr>`:''}
+        <tr class="total-row"><td>TOTAL AMOUNT</td><td>${php(grandTotal())}</td></tr>
+        <tr class="sub-row"><td>Downpayment (50%)</td><td>${php(dp())}</td></tr>
+        <tr class="sub-row"><td>Balance</td><td>${php(bal())}</td></tr>
+      </table>`;
+  }
+}
+
+function renderFooter() {
+  const el   = document.getElementById('cardFooter');
+  const back = step > 0 ? `<button class="btn-ghost" onclick="prev()">← BACK</button>` : `<span></span>`;
+  const next = step < STEPS.length - 1
+    ? `<div class="flex items-center gap-4">
+        <span style="font-size:11px;color:#444;letter-spacing:0.06em;text-transform:uppercase;">Step ${step+1} of ${STEPS.length}</span>
+        <button class="btn-primary" onclick="next()">CONTINUE →</button>
+      </div>`
+    : `<div class="flex items-center gap-3">
+        <select id="msgScriptType" title="Messenger script (opening/closing line)" style="font-family:inherit;font-size:11px;font-weight:600;padding:8px 10px;border:1px solid #D4D4D4;border-radius:4px;background:#fff;color:#333;cursor:pointer;">
+          <option value="walkin">Walk-in customer</option>
+          <option value="phone">Quoted over phone</option>
+          <option value="link">Customer filled the link</option>
+        </select>
+        <button class="btn-ghost" onclick="copyForMessenger()">📋 COPY</button>
+        <button class="btn-ghost" onclick="copyJobOrder()">🧾 COPY JO</button>
+        <button class="btn-save" id="saveBtn" onclick="saveToSheet()">💾 SAVE QUOTATION</button>
+      </div>`;
+  el.innerHTML = back + next;
+}
+
+// ─── CUSTOMER AUTOCOMPLETE ─────────────────────────────────────────
+var _custLastQuery = '';
+var _custSearchTimer = null, _custSuggestData = [], _custQ = '';
+function custSearch(q) {
+  q = (q == null ? '' : String(q));
+  d.clientName = q.trim();
+  _custQ = q.trim();
+  if (_custQ.length < 2) { clearTimeout(_custSearchTimer); custHideSuggest(); return; }
+  if (typeof google === 'undefined' || !google.script) return;
+  clearTimeout(_custSearchTimer);
+  var qNow = _custQ;
+  _custSearchTimer = setTimeout(function () {
+    google.script.run
+      .withSuccessHandler(function (list) { custRenderSuggest(list, qNow); })
+      .withFailureHandler(function () {})
+      .searchCustomersByName(qNow);
+  }, 220);
+}
+function custRenderSuggest(list, forQuery) {
+  const box = document.getElementById('custSuggestBox');
+  if (!box) return;
+  if (forQuery != null && forQuery !== _custQ) return;
+  _custSuggestData = list || [];
+  if (!_custSuggestData.length) { custHideSuggest(); return; }
+  box.innerHTML = _custSuggestData.map(function (c, i) {
+    const sub = [c.contact, c.email].filter(String).join(' · ');
+    return '<div onmousedown="custPick(' + i + ')" onmouseover="this.style.background=\'#FFF5F5\'" onmouseout="this.style.background=\'#fff\'" '
+      + 'style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #F0F0F0;background:#fff;">'
+      + '<div style="font-size:13px;font-weight:600;color:#0A0A0A;">' + esc(c.name) + '</div>'
+      + (sub ? '<div style="font-size:11px;color:#888;margin-top:1px;">' + esc(sub) + '</div>' : '')
+      + '</div>';
+  }).join('');
+  box.style.display = 'block';
+}
+function custPick(i) {
+  const c = _custSuggestData[i];
+  if (!c) return;
+  d.clientName = c.name;
+  if (c.contact) d.contact = c.contact;
+  if (c.email)   d.email   = c.email;
+  const nEl = document.getElementById('f_name');    if (nEl) nEl.value = c.name;
+  const cEl = document.getElementById('f_contact'); if (cEl && c.contact) cEl.value = c.contact;
+  const eEl = document.getElementById('f_email');   if (eEl && c.email)   eEl.value = c.email;
+  custHideSuggest();
+  custToast('✓ Existing customer — autofilled');
+}
+function custHideSuggest() {
+  const box = document.getElementById('custSuggestBox');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+}
+function lookupCustomer() {
+  const nameEl = document.getElementById('f_name');
+  const name = nameEl ? nameEl.value.trim() : '';
+  if (name.length < 2) return;
+  const q = name.toLowerCase();
+  if (q === _custLastQuery) return;
+  _custLastQuery = q;
+  if (typeof google === 'undefined' || !google.script) return;
+  google.script.run
+    .withSuccessHandler(function(rec){
+      if (!rec) return;
+      const cEl = document.getElementById('f_contact');
+      const eEl = document.getElementById('f_email');
+      if (cEl && !cEl.value && rec.contact) { cEl.value = rec.contact; d.contact = rec.contact; }
+      if (eEl && !eEl.value && rec.email)   { eEl.value = rec.email;   d.email = rec.email; }
+      custToast('✓ Existing customer — autofilled');
+    })
+    .withFailureHandler(function(){})
+    .lookupCustomerByName(name);
+}
+function custToast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'toast show';
+  setTimeout(function(){ el.className = 'toast'; }, 2500);
+}
+function formatPhone(input) {
+  let digits = input.value.replace(/\D/g, '');
+  if (digits.length > 11) digits = digits.slice(0, 11);
+  let f = digits;
+  if (digits.length > 4 && digits.length <= 7) f = digits.slice(0,4)+' '+digits.slice(4);
+  else if (digits.length > 7) f = digits.slice(0,4)+' '+digits.slice(4,7)+' '+digits.slice(7);
+  input.value = f; d.contact = f;
+  if (digits.length === 11) lookupCustomer();
+}
+
+function saveStep() {
+  if (step === 0) { d.clientName=v('f_name'); d.contact=v('f_contact'); d.email=v('f_email'); d.dateNeeded=v('f_dateneeded'); }
+  if (step === 1) {
+    d.width=v('f_width'); d.height=v('f_height'); d.quantity=v('f_quantity');
+    if (document.getElementById('f_material')) d.material = v('f_material');
+    if (document.getElementById('f_notes'))    d.notes    = v('f_notes');
+  }
+}
+
+function next() {
+  saveStep();
+  if (step === 0) {
+    const fields = [
+      { id:'f_name',       val:d.clientName, label:'Client Name' },
+      { id:'f_contact',    val:d.contact,    label:'Contact Number' },
+      { id:'f_dateneeded', val:d.dateNeeded, label:'Date Needed' },
+    ];
+    fields.forEach(f => { const el=document.getElementById(f.id); if(el) el.style.borderColor=''; });
+    const empty = fields.filter(f => !String(f.val).trim());
+    if (empty.length) {
+      empty.forEach(f => { const el=document.getElementById(f.id); if(el) el.style.borderColor='#E8151B'; });
+      showToast('⚠ Please fill in: ' + empty.map(f=>f.label).join(', '), 'error');
+      return;
+    }
+    const digits = d.contact.replace(/\D/g,'');
+    if (digits.length !== 11) {
+      document.getElementById('f_contact').style.borderColor='#E8151B';
+      showToast('⚠ Contact number must be 11 digits.', 'error');
+      return;
+    }
+  }
+  if (step === 1) {
+    if (!(parseFloat(d.width)  > 0)) { showToast('⚠ Please enter a valid Width.', 'error');  return; }
+    if (!(parseFloat(d.height) > 0)) { showToast('⚠ Please enter a valid Height.', 'error'); return; }
+    if (!(parseInt(d.quantity) >= 1)){ showToast('⚠ Quantity must be at least 1.', 'error'); return; }
+    if (!d.rushOrder)     { showToast('⚠ Please indicate if this is a Rush Order.', 'error'); return; }
+    if (!d.designService) { showToast('⚠ Please indicate if Design Service is needed.', 'error'); return; }
+  }
+  if (step < STEPS.length - 1) { step++; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+}
+
+function prev() { saveStep(); if (step > 0) { step--; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); } }
+function goTo(i) { if (i < step) { saveStep(); step = i; render(); } }
+
+function render() {
+  renderStepper(); renderHeader(); renderBody(); renderFooter();
+  const fc = document.getElementById('formCard');
+  fc.style.animation = 'none'; requestAnimationFrame(() => { fc.style.animation = ''; });
+}
+
+function resetForm() {
+  if (!confirm('Start a new quotation? Current data will be cleared.')) return;
+  d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
+  d.width=''; d.height=''; d.quantity=1; d.material=''; d.withEasel='';
+  d.rushOrder=''; d.designService='';
+  d.notes=''; d.taxType='non-vat';
+  step=0; render();
+}
+
+// ─── MESSENGER SCRIPT ──────────────────────────────────────────────
+var QUOTE_SCRIPTS = {
+  walkin: { opening: "Hi {client}, thank you for visiting Ormoc Printshoppe today! As discussed, here's a recap of your inquiry:",
+            closing: "Kindly confirm if everything is correct so we can proceed with your order. Reply here or message us directly anytime. 😊" },
+  phone:  { opening: "Hi {client}, as discussed over the phone, I've already encoded your specs into our system on your behalf. Here's a recap for your confirmation:",
+            closing: "Kindly confirm if everything is correct so we can proceed with your order. Reply here or message us directly anytime. 😊" },
+  link:   { opening: "Hi {client}! Thank you for submitting your specs. 😊 Here's a quick recap of your inquiry:",
+            closing: "Kindly confirm if everything is correct so we can proceed with your order. Reply here or message us directly anytime. 😊" }
+};
+function wrapMessengerText(specsText, clientName, scriptKey, salesName) {
+  var s = QUOTE_SCRIPTS[scriptKey] || QUOTE_SCRIPTS.walkin;
+  var c = (clientName && String(clientName).trim() && String(clientName).trim() !== '—')
+    ? String(clientName).trim() : '[client name]';
+  var sales = (salesName && String(salesName).trim()) ? String(salesName).trim() : '[Name of Sales Associate]';
+  return s.opening.replace('{client}', c) + '\n\n' + specsText + '\n\n'
+       + s.closing + '\n— ' + sales + ', Ormoc Printshoppe';
+}
+
+function buildMessengerText() {
+  const tAmt = taxAmt();
+  const dateStr = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—';
+  const lines = [
+    '🧍 LIFE-SIZE STANDEE QUOTATION — Ormoc Printshoppe',
+    '━━━━━━━━━━━━━━━━━━━━━━━━',
+    '👤 Client: ' + (d.clientName || '—'),
+    '📞 Contact: ' + (d.contact || '—'),
+  ];
+  if (d.email) lines.push('✉️ Email: ' + d.email);
+  lines.push('📅 Date Needed: ' + dateStr);
+  lines.push('');
+  lines.push('📐 SPECIFICATIONS');
+  lines.push('• Dimensions: ' + (parseFloat(d.width)||0).toFixed(2) + ' × ' + (parseFloat(d.height)||0).toFixed(2) + ' ft');
+  lines.push('• Total Area: ' + sqft().toFixed(2) + ' sq ft');
+  lines.push('• Quantity: ' + totalQty() + ' pc(s)');
+  if (d.material)  lines.push('• Material: ' + d.material);
+  if (d.withEasel) lines.push('• With Easel/Stand: ' + d.withEasel);
+  lines.push('• Rush Order: ' + (d.rushOrder || 'No'));
+  lines.push('• Design Service: ' + (d.designService || 'No'));
+  if (d.notes) lines.push('• Notes: ' + d.notes);
+  lines.push('');
+  lines.push('💰 COST BREAKDOWN');
+  lines.push('• Base (' + sqft().toFixed(2) + ' sq ft × ' + php(PRICING.ratePerSqft) + '): ' + php(baseAmt()));
+  if (rushFeeAmt()>0)   lines.push('• Rush fee: ' + php(rushFeeAmt()));
+  if (designFeeAmt()>0) lines.push('• Design service: ' + php(designFeeAmt()));
+  if (tAmt>0) lines.push('• ' + (d.taxType==='vat-inclusive'?'VAT (12% incl.)':'VAT (12%)') + ': ' + php(tAmt));
+  lines.push('');
+  lines.push('💵 TOTAL: ' + php(grandTotal()));
+  lines.push('   Downpayment (50%): ' + php(dp()));
+  lines.push('   Balance: ' + php(bal()));
+  return lines.join('\n');
+}
+function buildJobOrderText() {
+  const parts = [
+    'Dimensions: ' + (parseFloat(d.width)||0).toFixed(2) + ' × ' + (parseFloat(d.height)||0).toFixed(2) + ' ft',
+    'Area: ' + sqft().toFixed(2) + ' sq ft',
+    'Quantity: ' + totalQty() + ' pc(s)',
+  ];
+  if (d.material)  parts.push('Material: ' + d.material);
+  if (d.withEasel) parts.push('Easel/Stand: ' + d.withEasel);
+  parts.push('Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'));
+  parts.push('Design Charge: ' + (d.designService==='Yes'?'Yes':'No'));
+  parts.push('Base ' + php(PRICING.ratePerSqft) + '/sqft × ' + sqft().toFixed(2) + ' = ' + php(baseAmt()));
+  return ['JOB ORDER', 'Date Needed: ' + (d.dateNeeded || '—'), 'Life-Size Standee', parts.join(', ') + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
+}
+function copyJobOrder() {
+  saveStep();
+  const text = buildJobOrderText();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(joToast).catch(function(){ joFallback(text); });
+  } else { joFallback(text); }
+}
+function joFallback(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+  joToast();
+}
+function joToast() {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = '🧾 Job Order copied!';
+  el.className = 'toast show';
+  setTimeout(function(){ el.className = 'toast'; }, 3000);
+}
+function copyForMessenger() {
+  saveStep();
+  const key   = (document.getElementById('msgScriptType')||{}).value || 'walkin';
+  const sales = (document.getElementById('server-user')||{}).value || '';
+  const text  = wrapMessengerText(buildMessengerText(), d.clientName, key, sales);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() { showCopyToast(); }).catch(function() { fallbackCopy(text); });
+  } else { fallbackCopy(text); }
+}
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+  showCopyToast();
+}
+function showCopyToast() {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = '📋 Copied! Paste it in Messenger.';
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 3000);
+}
+
+function saveToSheet() {
+  const btn = document.getElementById('saveBtn');
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    showToast('⚠ Saving is only available inside the deployed app.', 'error');
+    return;
+  }
+  btn.classList.add('loading'); btn.textContent = '⏳ SAVING...';
+  const payload = {
+    clientName:    d.clientName,
+    contact:       d.contact,
+    email:         d.email,
+    dateNeeded:    d.dateNeeded,
+    productType:   'Life-Size Standee',
+    width:         parseFloat(d.width)||0,
+    height:        parseFloat(d.height)||0,
+    quantity:      totalQty(),
+    sqft:          sqft(),
+    ratePerSqft:   PRICING.ratePerSqft||0,
+    material:      d.material,
+    withEasel:     d.withEasel,
+    baseAmount:    baseAmt(),
+    rushOrder:     d.rushOrder,
+    rushFee:       rushFeeAmt(),
+    designService: d.designService,
+    designFee:     designFeeAmt(),
+    totalAmount:   grandTotal(),
+    notes:         d.notes,
+    salesStaff:    (document.getElementById('server-user')||{}).value||'',
+    taxType:       d.taxType||'non-vat',
+    taxAmount:     taxAmt(),
+    token:         SERVER_TOKEN,
+  };
+  google.script.run
+    .withSuccessHandler(function(qn) {
+      showToast('✓ Saved — ' + qn, 'success');
+      btn.classList.remove('loading'); btn.textContent = '✓ SAVED';
+      btn.style.background='#0A2A1A'; btn.style.borderColor='#1A6A3A'; btn.style.color='#4AE89A';
+    })
+    .withFailureHandler(function(err) {
+      showToast('⚠ ' + (err && err.message ? err.message : 'Save failed'), 'error');
+      btn.classList.remove('loading'); btn.textContent = '💾 SAVE QUOTATION';
+    })
+    .saveLifeSizeStandeeOrder(payload);
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => { t.className = 'toast ' + type; }, 3500);
+}
+
+render();
+updateSrcChip();
+loadPricing();
+</script>
+</body>
+</html>
