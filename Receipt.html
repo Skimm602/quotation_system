@@ -107,6 +107,16 @@ select.field-input option { background: var(--gray-100); }
 .mt-4 { margin-top: 16px; } .mt-5 { margin-top: 20px; } .mt-6 { margin-top: 24px; }
 .gap-2 { gap: 8px; } .gap-3 { gap: 12px; }
 .flex { display: flex; } .flex-col { flex-direction: column; } .flex-1 { flex: 1; }
+.quote-client-box { background:#fff; border:1px solid var(--gray-200); border-left:3px solid var(--red); padding:16px 20px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; }
+.q-table { width:100%; border-collapse:collapse; }
+.q-table tr { border-bottom:1px solid #F0F0F0; }
+.q-table tr:last-child { border:none; }
+.q-table td { padding:10px 0; font-size:14px; color:#666; }
+.q-table td:last-child { text-align:right; color:var(--ink); font-weight:500; }
+.q-table .sec-label { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:#BBB; font-weight:700; padding-top:18px; }
+.q-table .total-row td { font-size:20px; font-weight:700; color:var(--red); padding-top:16px; border-top:2px solid var(--red); }
+.q-table .total-row td:last-child { color:var(--red); }
+.q-table .sub-row td { font-size:13px; color:#777; padding-top:6px; }
 </style>
 </head>
 <body>
@@ -172,7 +182,8 @@ const STEPS = [
   { label: 'Customer Type',  sub: 'New or returning — required documents' },
   { label: 'Specifications', sub: 'Copies, size & pages per booklet' },
   { label: 'Page & Paper',   sub: 'Paper type, colors & print finishing' },
-  { label: 'Order Summary',  sub: 'Quantity, date needed & total price' },
+  { label: 'Order Details',  sub: 'Quantity, date needed & rush order' },
+  { label: 'Quotation',      sub: 'Full specs recap & total' },
 ];
 
 const COLOR_LIMITS = {
@@ -561,6 +572,60 @@ function renderBody() {
       ${taxToggleHtml()}
       <div id="totalsArea">${totalsAreaHtml()}</div>`;
   }
+
+  // STEP 5 — Quotation (read-only recap of all specs, same as other forms)
+  else if (step===5) {
+    const clientName = receiptClientName();
+    const dateStr   = d.dateNeeded ? new Date(d.dateNeeded).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '';
+    const quoteDate = new Date().toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'});
+    const base   = computeTotal();
+    const rush   = rushFeeAmt();
+    const tAmt   = receiptTaxAmt();
+    const total  = computeFinalTotal();
+    const dpAmt  = total*0.5, balAmt = total-dpAmt;
+    const tLabel = (d.taxType==='vat-inclusive') ? 'VAT (12% incl.)' : 'VAT (12%)';
+    const row    = findPriceRow();
+    const unit   = row ? row.sellingPrice : 0;
+    const tierNote = (row && d.qty>0 && row.booklets!==d.qty)
+      ? `<tr class="sub-row"><td colspan="2" style="color:#7A5500;">ℹ️ Custom quantity — charged at the ${row.booklets}-booklet price tier (${php(unit)} / booklet)</td></tr>`
+      : '';
+    el.innerHTML=`
+      <div class="quote-client-box">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.05em;color:var(--ink);">${esc(clientName)||'—'}</div>
+          ${d.company && clientName!==d.company ? `<div style="font-size:12px;color:var(--gray-500);margin-top:2px;">${esc(d.company)}</div>` : ''}
+          <div style="font-size:12px;color:var(--gray-500);margin-top:2px;">${esc(d.mobile)||''}${d.email?' · '+esc(d.email):''}</div>
+          ${dateStr ? `<div style="font-size:12px;color:var(--red);margin-top:4px;font-weight:600;">📅 Date Needed: ${dateStr}</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#444;font-weight:700;">Quote Date</div>
+          <div style="font-size:13px;color:var(--gray-500);margin-top:2px;">${quoteDate}</div>
+        </div>
+      </div>
+      <table class="q-table">
+        <tr><td colspan="2" class="sec-label">SPECIFICATIONS</td></tr>
+        <tr><td>Customer Type</td><td>${d.customerType==='new'?'New Customer':'Old / Returning'}</td></tr>
+        <tr><td>Number of Copies</td><td>${esc(d.copies)||'—'}</td></tr>
+        <tr><td>Size</td><td>${esc(d.size)||'—'}</td></tr>
+        <tr><td>Pages per Booklet</td><td>50</td></tr>
+        <tr><td>Paper Type</td><td>${esc(d.paperType)||'—'}</td></tr>
+        <tr><td>Paper Colors</td><td>${d.colors&&d.colors.length?esc(d.colors.join(', ')):'—'}</td></tr>
+        <tr><td>Perforation</td><td>${esc(d.perforation)||'—'}</td></tr>
+        <tr><td>Numbering</td><td>${esc(d.numbering)||'—'}</td></tr>
+        ${d.numbering==='Yes'&&d.startingNo?`<tr><td>Starting No.</td><td>${esc(d.startingNo)}</td></tr>`:''}
+        <tr><td>Quantity</td><td>${d.qty||0} booklet(s)</td></tr>
+        <tr><td>Rush Order</td><td>${d.rushOrder||'—'}</td></tr>
+        ${d.notes?`<tr><td>Special Instructions</td><td>${esc(d.notes)}</td></tr>`:''}
+        <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
+        <tr><td>Booklets (${php(unit)} × ${d.qty||0})</td><td>${php(base)}</td></tr>
+        ${tierNote}
+        ${rush>0?`<tr><td>Rush Fee</td><td>${php(rush)}</td></tr>`:''}
+        ${tAmt>0?`<tr class="sub-row"><td>${tLabel}</td><td>${php(tAmt)}</td></tr>`:''}
+        <tr class="total-row"><td>TOTAL AMOUNT</td><td>${php(total)}</td></tr>
+        <tr class="sub-row"><td>Downpayment (50%)</td><td>${php(dpAmt)}</td></tr>
+        <tr class="sub-row"><td>Balance</td><td>${php(balAmt)}</td></tr>
+      </table>`;
+  }
 }
 
 function totalsAreaHtml() {
@@ -694,6 +759,14 @@ function next() {
     const limit=COLOR_LIMITS[d.copies]||1;
     const chosen=d.colors.filter(c=>c!=='White');
     if (chosen.length<1){showToast(`Please select at least 1 paper color (besides White).`,'error');return;}
+  }
+  if (step===4) {
+    d.qty = d.qtyIsCustom ? (parseInt(v('f_qty_other'))||d.qty) : (parseInt(v('f_qty'))||d.qty);
+    d.dateNeeded = v('f_dateneeded') || d.dateNeeded;
+    d.notes = v('f_notes') || d.notes;
+    if (!d.qty)        { showToast('Please select Quantity.','error');    return; }
+    if (!d.dateNeeded) { showToast('Please select Date Needed.','error'); return; }
+    if (!d.rushOrder)  { showToast('Please indicate if this is a Rush Order.','error'); return; }
   }
   if (step<STEPS.length-1){step++;render();window.scrollTo({top:0,behavior:'smooth'});}
 }
