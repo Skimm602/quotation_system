@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, acrylicplaque: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -114,6 +114,7 @@ const PRODUCTS = [
   { id:'keychain', icon:'🔑', label:'Keychain',      sub:'Acrylic + Vinyl'       },
   { id:'acrylicsign', icon:'🪧', label:'Acrylic Sign', sub:'Per sq.ft · 1 layer' },
   { id:'acrylicplate', icon:'🚗', label:'Plate Number', sub:'Motorcycle / Car'    },
+  { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', sub:'Acrylic / Crystal'  },
 ];
 
 const d = {
@@ -164,6 +165,8 @@ const d = {
   acsignType:'', acsignWidth:'', acsignHeight:'', acsignUnit:'ft', acsignQty:1, acsignRush:'No', acsignDesign:'No',
   // acrylic plate number
   plateType:'', plateText:'', plateQty:1, plateRush:'No', plateDesign:'No',
+  // acrylic plaque
+  plaqueMaterial:'', plaqueType:'', plaqueText:'', plaqueQty:1, plaqueRush:'No', plaqueDesign:'No',
   // proof of payment (optional, sent as email attachment)
   proofFile: { name: '', mime: '', base64: '' },
 };
@@ -185,6 +188,13 @@ function updateEst(id, fn) {
 function plateEstHtml() {
   const t   = plateTypeObj();
   const qty = parseInt(d.plateQty) || 0;
+  return (t && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function plaqueEstHtml() {
+  const t   = plaqueTypeObj();
+  const qty = parseInt(d.plaqueQty) || 0;
   return (t && qty)
     ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
     : '';
@@ -550,6 +560,26 @@ function calcAcrylicPlateTotal() {
   return base + rush + des;
 }
 
+function plaqueMaterials() {
+  const s = [];
+  (((PRICING.acrylicplaque || {}).types) || []).forEach(t => { if (s.indexOf(t.material) < 0) s.push(t.material); });
+  return s;
+}
+function plaqueOptions() { return (((PRICING.acrylicplaque || {}).types) || []).filter(t => t.material === d.plaqueMaterial); }
+function plaqueTypeObj() { return (((PRICING.acrylicplaque || {}).types) || []).find(t => t.material === d.plaqueMaterial && t.name === d.plaqueType) || null; }
+function selectPlaqueMaterial(m) { d.plaqueMaterial = m; d.plaqueType = ''; renderForm(); }
+function selectPlaqueType(idx) { const o = plaqueOptions()[idx]; if (o) d.plaqueType = o.name; renderForm(); }
+function calcAcrylicPlaqueTotal() {
+  const p   = PRICING.acrylicplaque || {};
+  const t   = plaqueTypeObj();
+  const qty = parseInt(d.plaqueQty) || 0;
+  if (!t || !qty) return 0;
+  const base = (t.price || 0) * qty;
+  const rush = d.plaqueRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+  const des  = d.plaqueDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
+
 function calcTotal() {
   if (selectedProduct === 'mug')      return calcMugTotal();
   if (selectedProduct === 'tshirt')   return calcTshirtTotal();
@@ -568,6 +598,7 @@ function calcTotal() {
   if (selectedProduct === 'keychain') return calcKeychainTotal();
   if (selectedProduct === 'acrylicsign') return calcAcrylicSignTotal();
   if (selectedProduct === 'acrylicplate') return calcAcrylicPlateTotal();
+  if (selectedProduct === 'acrylicplaque') return calcAcrylicPlaqueTotal();
   return 0;
 }
 
@@ -681,6 +712,7 @@ function renderSpecs() {
   if (selectedProduct === 'keychain') return renderKeychainSpecs();
   if (selectedProduct === 'acrylicsign') return renderAcrylicSignSpecs();
   if (selectedProduct === 'acrylicplate') return renderAcrylicPlateSpecs();
+  if (selectedProduct === 'acrylicplaque') return renderAcrylicPlaqueSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
 }
 
@@ -732,6 +764,78 @@ function renderAcrylicPlateSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.plateRush==='Yes'?' on':''}" onclick="d.plateRush='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.plateRush==='No'?' on':''}"  onclick="d.plateRush='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── ACRYLIC PLAQUE SPECS ──────────────────────────────────────────
+function renderAcrylicPlaqueSpecs() {
+  const p    = PRICING.acrylicplaque || {};
+  const mats = plaqueMaterials();
+  if (!d.plaqueMaterial && mats.length) d.plaqueMaterial = mats[0];
+  const opts = plaqueOptions();
+
+  const matCards = mats.map((m) => {
+    const sel   = d.plaqueMaterial === m;
+    const icon  = m === 'Crystal Glass' ? '💎' : '🟦';
+    const count = (((PRICING.acrylicplaque||{}).types)||[]).filter(x => x.material === m).length;
+    return `<div class="opt-card${sel?' active':''}" onclick="selectPlaqueMaterial('${esc(m).replace(/'/g,"\\'")}')">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${icon} ${esc(m)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">${count} size(s)</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const optCards = opts.map((o, idx) => {
+    const sel = d.plaqueType === o.name;
+    return `<div class="opt-card${sel?' active':''}" onclick="selectPlaqueType(${idx})">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${esc(o.name)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">₱${(o.price||0).toLocaleString('en-PH')}/pc</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const estLine = plaqueEstHtml();
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Material *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${matCards}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Plaque Type / Size *</label>
+        ${optCards ? `<div style="display:flex;flex-direction:column;gap:6px;">${optCards}</div>` : `<div style="font-size:12px;color:#999;">Select a material to see sizes.</div>`}
+      </div>
+      <div>
+        <label class="field-label">Name / Engraving Text <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="plq_text" value="${esc(d.plaqueText||'')}" placeholder="e.g. Certificate of Appreciation — Juan D."
+          oninput="d.plaqueText=this.value;">
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="plq_qty" value="${d.plaqueQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.plaqueQty=parseInt(this.value)||1;updateEst('plq_est',plaqueEstHtml);" inputmode="numeric">
+        <div id="plq_est">${estLine}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.plaqueRush==='Yes'?' on':''}" onclick="d.plaqueRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.plaqueRush==='No'?' on':''}"  onclick="d.plaqueRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Design / Artwork Service? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.designFee||250).toLocaleString()})</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.plaqueDesign==='Yes'?' on':''}" onclick="d.plaqueDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.plaqueDesign==='No'?' on':''}"  onclick="d.plaqueDesign='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -2449,6 +2553,11 @@ function renderReview() {
     if (d.plateText) specSummary += ` · "${esc(d.plateText)}"`;
     if (d.plateRush   === 'Yes') specSummary += ' · Rush';
     if (d.plateDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'acrylicplaque') {
+    specSummary = `Acrylic Plaque · ${esc(d.plaqueMaterial)||'—'} ${esc(d.plaqueType)||''} × ${d.plaqueQty||0} pc(s)`;
+    if (d.plaqueText) specSummary += ` · "${esc(d.plaqueText)}"`;
+    if (d.plaqueRush   === 'Yes') specSummary += ' · Rush';
+    if (d.plaqueDesign === 'Yes') specSummary += ' · Design';
   }
 
   const dateLabel = d.dateNeeded
@@ -2702,6 +2811,13 @@ function nextStep() {
       d.plateQty  = parseInt(v('ap_qty')) || d.plateQty;
       if (!d.plateType || !plateTypeObj()) { toast('Please select a plate type.','error'); return; }
       if (!d.plateQty || d.plateQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'acrylicplaque') {
+      d.plaqueText = v('plq_text') || d.plaqueText;
+      d.plaqueQty  = parseInt(v('plq_qty')) || d.plaqueQty;
+      if (!d.plaqueMaterial)                 { toast('Please select a material.','error'); return; }
+      if (!d.plaqueType || !plaqueTypeObj()) { toast('Please select a plaque type / size.','error'); return; }
+      if (!d.plaqueQty || d.plaqueQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
     }
   }
   if (formStep === 2) { submitRequest(); return; }
@@ -3102,6 +3218,27 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'acrylicplaque') {
+    const p    = PRICING.acrylicplaque || {};
+    const t    = plaqueTypeObj() || { price: 0 };
+    const up   = t.price || 0;
+    const qty  = parseInt(d.plaqueQty) || 1;
+    const base = up * qty;
+    const rush = d.plaqueRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+    const des  = d.plaqueDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      plaqueMaterial: d.plaqueMaterial,
+      plaqueType:     d.plaqueType,
+      plaqueText:     d.plaqueText,
+      quantity:       qty,
+      unitPrice:      up,
+      baseAmount:     base,
+      rushOrder:      d.plaqueRush,   rushFee:   rush,
+      designService:  d.plaqueDesign, designFee: des,
+      totalAmount:    base + rush + des,
+    });
+  }
+
   google.script.run
     .withSuccessHandler(function(qn) {
       screen = 'success';
@@ -3235,6 +3372,12 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + (d.plateQty || 0) + ' pc(s)';
     if (d.plateRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.plateDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'acrylicplaque') {
+    specsLine = 'Acrylic Plaque · ' + (d.plaqueMaterial || '—') + (d.plaqueType ? ' ' + d.plaqueType : '');
+    if (d.plaqueText) specsLine += '\nName / Engraving Text: ' + d.plaqueText;
+    specsLine += '\nQuantity: ' + (d.plaqueQty || 0) + ' pc(s)';
+    if (d.plaqueRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.plaqueDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   }
 
   return [

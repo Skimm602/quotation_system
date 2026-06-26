@@ -350,7 +350,8 @@
     const isKeychain  = String(q.quoteNum || '').startsWith('KC-');
     const isAcrylicSign = String(q.quoteNum || '').startsWith('AS-');
     const isAcrylicPlate = String(q.quoteNum || '').startsWith('AP-');
-    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate;
+    const isAcrylicPlaque = String(q.quoteNum || '').startsWith('PLQ-');
+    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isAcrylicPlaque;
 
     if (isTarpMulti) {
       // One row per item in the cart
@@ -527,12 +528,19 @@
       } else if (isAcrylicPlate) {
         descParts.push('<strong>Acrylic Plate Number — ' + (q.plateType || '') + '</strong>');
         if (q.plateText) descParts.push('Name / Plate Text: ' + q.plateText);
+      } else if (isAcrylicPlaque) {
+        descParts.push('<strong>Acrylic Plaque — ' + (q.plaqueMaterial || '') + (q.plaqueType ? ' ' + q.plaqueType : '') + '</strong>');
+        if (q.plaqueText) descParts.push('Engraving Text: ' + q.plaqueText);
       }
-      if (isAcrylicPlate && q.items && q.items.length > 1) {
+      if ((isAcrylicPlate || isAcrylicPlaque) && q.items && q.items.length > 1) {
         q.items.forEach(function(it) {
-          const dp = ['<strong>Acrylic Plate Number — ' + (it.plateType || '') + '</strong>'];
-          if (it.plateText) dp.push('Name / Plate Text: ' + it.plateText);
+          const dp = isAcrylicPlaque
+            ? ['<strong>Acrylic Plaque — ' + (it.plaqueMaterial || '') + (it.plaqueType ? ' ' + it.plaqueType : '') + '</strong>']
+            : ['<strong>Acrylic Plate Number — ' + (it.plateType || '') + '</strong>'];
+          if (isAcrylicPlaque) { if (it.plaqueText) dp.push('Engraving Text: ' + it.plaqueText); }
+          else { if (it.plateText) dp.push('Name / Plate Text: ' + it.plateText); }
           if (it.rushOrder === 'Yes') dp.push('Rush Order: Yes');
+          if (it.designService === 'Yes') dp.push('Design Service: Yes');
           rows += `<tr>
             <td class="center">${lineNum++}</td>
             <td style="line-height:1.75;">${dp.join('<br>')}</td>

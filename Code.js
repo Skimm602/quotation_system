@@ -23,6 +23,7 @@ const SOUVENIR_SHEET          = 'Souvenir Quotations';
 const KEYCHAIN_SHEET          = 'Keychain Quotations';
 const ACRYLICSIGN_SHEET       = 'Acrylic Signage Quotations';
 const ACRYLICPLATE_SHEET      = 'Acrylic Plate Quotations';
+const ACRYLICPLAQUE_SHEET     = 'Acrylic Plaque Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_INFO_SHEET     = 'Customer Info';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
@@ -327,6 +328,9 @@ function doGet(e) {
   }
   if (page === 'acrylicplate') {
     return serveWithToken_('AcrylicPlate', 'Quotation System — Acrylic Plate Number', token, appUrl);
+  }
+  if (page === 'acrylicplaque') {
+    return serveWithToken_('AcrylicPlaque', 'Quotation System — Acrylic Plaque', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1475,8 +1479,59 @@ function getDashboardData(token) {
       });
     }
 
+    // ── ACRYLIC PLAQUE QUOTES ───────────────────────────────────
+    let acrylicPlaqueQuotes = [];
+    const plqSheet = ss.getSheetByName(ACRYLICPLAQUE_SHEET);
+    if (plqSheet) {
+      const qdata  = plqSheet.getDataRange().getValues();
+      const qStart = qdata.length > 0 && String(qdata[0][0]).startsWith('PLQ-') ? 0 : 1;
+      acrylicPlaqueQuotes = qdata.slice(qStart).filter(r => r[0] && String(r[0]).startsWith('PLQ-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel  = String(row[16] || '');
+        const material = String(row[6] || '');
+        const pType    = String(row[7] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          plaqueMaterial:   material,
+          plaqueType:       pType,
+          plaqueText:       String(row[8] || ''),
+          quantity:         row[9]  || 0,
+          unitPrice:        parseFloat(row[10]) || 0,
+          baseAmount:       parseFloat(row[11]) || 0,
+          rushOrder:        String(row[12] || ''),
+          rushFee:          parseFloat(row[13]) || 0,
+          designService:    String(row[14] || ''),
+          designFee:        parseFloat(row[15]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[17]) || 0,
+          notes:            String(row[18] || ''),
+          salesStaff:       String(row[19] || ''),
+          status:           String(row[20] || 'Pending'),
+          approvedBy:       String(row[21] || ''),
+          taxType:          String(row[22] || 'non-vat'),
+          taxAmount:        parseFloat(row[23]) || 0,
+          items: (function(){ try { const j = String(row[24]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e){ return []; } })(),
+          quoteType:        'acrylicplaque',
+          signageType:      'Acrylic Plaque — ' + (material ? material + (pType ? ' ' + pType : '') : pType),
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[14] || ''), addonDesignFee: parseFloat(row[15]) || 0,
+          addonRush:   String(row[12] || ''), addonRushFee:   parseFloat(row[13]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...acrylicPlaqueQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1504,7 +1559,7 @@ function getQuoteForPDF(token, quoteNum) {
   // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
   //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
   //     data builder, which already returns a render-ready quote object. ──
-  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-'];
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'PLQ-'];
   if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
     try {
       const dash = getDashboardData(token);
@@ -1867,6 +1922,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isKeychain  = String(quoteNum).startsWith('KC-');
   const isAcrylicSign = String(quoteNum).startsWith('AS-');
   const isAcrylicPlate = String(quoteNum).startsWith('AP-');
+  const isAcrylicPlaque = String(quoteNum).startsWith('PLQ-');
 
   if (isReceipt) {
     const sheet = ss.getSheetByName(RECEIPT_SHEET);
@@ -2106,6 +2162,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Acrylic Plate order not found: ' + quoteNum);
+  }
+
+  if (isAcrylicPlaque) {
+    const sheet = ss.getSheetByName(ACRYLICPLAQUE_SHEET);
+    if (!sheet) throw new Error('Acrylic Plaque Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 21).setValue(status);  // col U = Status
+        sheet.getRange(i+1, 22).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col V = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 25).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Acrylic Plaque order not found: ' + quoteNum);
   }
 
   if (isTarp) {
@@ -2784,6 +2856,7 @@ function getPublicPricing() {
     keychain: (function(){ try{ return getKeychainPricing(); }catch(e){ return null; } })(),
     acrylicsign:(function(){ try{ return getAcrylicSignPricing(); }catch(e){ return null; } })(),
     acrylicplate:(function(){ try{ return getAcrylicPlatePricing(); }catch(e){ return null; } })(),
+    acrylicplaque:(function(){ try{ return getAcrylicPlaquePricing(); }catch(e){ return null; } })(),
   };
 }
 
@@ -2897,6 +2970,10 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'acrylicplate') {
       specs = 'Acrylic Plate Number · ' + (data.plateType || '—') + ' × ' + (data.quantity || 1) + ' pc(s)';
       if (data.plateText) specs += ' | Text: ' + data.plateText;
+    } else if (data.productType === 'acrylicplaque') {
+      specs = 'Acrylic Plaque · ' + (data.plaqueMaterial || '—')
+            + (data.plaqueType ? ' ' + data.plaqueType : '') + ' × ' + (data.quantity || 1) + ' pc(s)';
+      if (data.plaqueText) specs += ' | Text: ' + data.plaqueText;
     }
 
     sheet.appendRow([
@@ -5145,6 +5222,146 @@ function saveAcrylicPlateOrder(data) {
 
   sheet.getRange(sheet.getLastRow(), 10, 1, 8).setNumberFormat('₱#,##0.00');
   try { notifyQuoteSaved_(quoteNum, 'Acrylic Plate Number', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  GET ACRYLIC PLAQUE PRICING (live from "Acrylic Plaques" tab)
+// ══════════════════════════════════════════════════════════════════
+//  Two side-by-side catalogs in the tab:
+//    cols A/B → "Acrylic" material  (size | price)
+//    cols D/E → "Crystal Glass"     (option | price)
+//  Row 1 holds the material headers. Flat price per piece.
+//  Rush = ₱250 or 5% whichever higher; Design ₱250.
+function getAcrylicPlaquePricing() {
+  const defaults = {
+    types: [
+      { material: 'Acrylic', name: '6"',    price: 910  },
+      { material: 'Acrylic', name: '8"',    price: 1100 },
+      { material: 'Acrylic', name: '10"',   price: 1300 },
+      { material: 'Acrylic', name: '10.5"', price: 1400 },
+      { material: 'Acrylic', name: '11.5"', price: 1500 },
+      { material: 'Acrylic', name: '12.5"', price: 1700 },
+      { material: 'Acrylic', name: '13.5"', price: 1800 },
+      { material: 'Crystal Glass', name: 'Octagon 7" dia', price: 3300 },
+      { material: 'Crystal Glass', name: 'Octagon Medium', price: 2600 },
+    ],
+    rushFlat: 250, rushPct: 0.05, designFee: 250,
+  };
+
+  function num(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  function txt(raw) { return String(raw == null ? '' : raw).trim(); }
+
+  try {
+    const ss    = getPriceDbSS_();
+    const sheet = ss.getSheetByName('Acrylic Plaques')
+               || ss.getSheetByName('Acrylic Plaque')
+               || ss.getSheetByName('Acrylic Plaques ');
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) return defaults;
+
+    // Parse each catalog block independently. The first text-only cell
+    // (text present, no price beside it) is treated as the material header;
+    // every subsequent priced row belongs to that material.
+    const blocks = [ { nameCol: 0, priceCol: 1 }, { nameCol: 3, priceCol: 4 } ];
+    const types  = [];
+    blocks.forEach(function(b) {
+      let material = '';
+      for (let i = 0; i < rows.length; i++) {
+        const name  = txt(rows[i][b.nameCol]);
+        const price = num(rows[i][b.priceCol]);
+        if (!name) continue;
+        if (!material && price <= 0 && /[a-z]/i.test(name)) { material = name; continue; }
+        if (material && price > 0) types.push({ material: material, name: name, price: price });
+      }
+    });
+
+    if (!types.length) return defaults;
+    return { types: types, rushFlat: defaults.rushFlat, rushPct: defaults.rushPct, designFee: defaults.designFee };
+  } catch(e) {
+    Logger.log('getAcrylicPlaquePricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE ACRYLIC PLAQUE ORDER
+// ══════════════════════════════════════════════════════════════════
+function saveAcrylicPlaqueOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(ACRYLICPLAQUE_SHEET);
+  if (!sheet) sheet = ss.insertSheet(ACRYLICPLAQUE_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Material', 'Plaque Type', 'Engraving Text', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount', 'Items JSON',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('PLQ-')) {
+    if (firstCell.startsWith('PLQ-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  lockQuoteNumbering_();
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'PLQ-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName     || '',                  // C  - Client Name
+    data.contact        || '',                  // D  - Contact
+    data.email          || '',                  // E  - Email
+    data.dateNeeded     || '',                  // F  - Date Needed
+    data.plaqueMaterial || '',                  // G  - Material
+    data.plaqueType     || '',                  // H  - Plaque Type
+    data.plaqueText     || '',                  // I  - Engraving Text
+    qty,                                        // J  - Quantity
+    parseFloat(unitP.toFixed(2)),               // K  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // L  - Base Amount
+    data.rushOrder      || '',                  // M  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // N  - Rush Fee
+    data.designService  || '',                  // O  - Design Service
+    parseFloat(designFee.toFixed(2)),           // P  - Design Fee
+    '',                                         // Q  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // R  - Total Amount
+    data.notes          || '',                  // S  - Special Instructions
+    staffName,                                  // T  - Sales Staff
+    data.status || 'Pending',                   // U  - Status
+    '',                                         // V  - Approved By
+    data.taxType        || 'non-vat',           // W  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // X  - Tax Amount
+    (data.items && data.items.length) ? JSON.stringify(data.items) : '[]',  // Y - Items JSON
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 11, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Acrylic Plaque', data); } catch(_) {}
   return quoteNum;
 }
 
