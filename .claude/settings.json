@@ -11,7 +11,8 @@
       "Bash(unzip -p pricedb.xlsx xl/workbook.xml)",
       "Bash(clasp push *)",
       "Bash(clasp deployments *)",
-      "Bash(clasp deploy *)"
+      "Bash(clasp deploy *)",
+      "mcp__code-review-graph__semantic_search_nodes_tool"
     ],
     "additionalDirectories": [
       "c:\\Users\\cymon\\.claude\\projects\\c--Users-cymon-Documents-github-quotation-system\\memory"

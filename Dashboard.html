@@ -53,23 +53,25 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
 @keyframes slideIn { from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);} }
 .page-section.active { animation:slideIn 0.25s ease both; }
 
-/* ── NEW QUOTE DROPDOWN ── */
-.nq-wrapper { position:relative; display:inline-block; }
-.nq-dropdown {
-  display:none; position:absolute; top:calc(100% + 6px); right:0;
-  background:#fff; border:1px solid #E5E5E5; border-radius:4px;
-  box-shadow:0 8px 24px rgba(0,0,0,0.12); min-width:190px;
-  z-index:200; overflow:hidden; animation:fadeIn 0.15s ease both;
+/* ── NEW QUOTE PICKER ── */
+.nq-search-wrap { position:relative; }
+.nq-search-wrap::before { content:'🔍'; position:absolute; left:13px; top:50%; transform:translateY(-50%); font-size:14px; opacity:0.5; pointer-events:none; }
+.nq-search {
+  width:100%; background:#F9F9F9; border:1.5px solid #E5E5E5; border-radius:4px;
+  padding:11px 14px 11px 38px; font-family:'DM Sans',sans-serif; font-size:14px;
+  color:#0A0A0A; outline:none; transition:all 0.15s;
 }
-.nq-dropdown.open { display:block; }
+.nq-search:focus { border-color:#E8151B; box-shadow:0 0 0 2px rgba(232,21,27,0.1); }
+.nq-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:16px; max-height:50vh; overflow-y:auto; padding:2px; }
 .nq-option {
-  display:flex; align-items:center; gap:10px; padding:12px 16px;
-  font-size:12px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
-  color:#0A0A0A; cursor:pointer; border-bottom:1px solid #F0F0F0; transition:background 0.12s;
+  display:flex; align-items:center; gap:10px; padding:12px 14px;
+  background:#fff; border:1.5px solid #EEE; border-radius:4px;
+  font-size:12px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+  color:#0A0A0A; cursor:pointer; transition:all 0.12s; text-align:left;
 }
-.nq-option:last-child { border-bottom:none; }
-.nq-option:hover { background:#FFF5F5; color:#E8151B; }
-.nq-option .nq-icon { font-size:16px; line-height:1; }
+.nq-option:hover, .nq-option.nq-active { border-color:#E8151B; background:#FFF5F5; color:#E8151B; }
+.nq-option .nq-icon { font-size:18px; line-height:1; flex-shrink:0; }
+.nq-empty { grid-column:1 / -1; text-align:center; color:#AAA; font-size:13px; padding:28px 0; }
 </style>
 </head>
 <body>
@@ -109,85 +111,9 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
     <div class="flex gap-2 items-center">
       <span style="font-size:12px;color:#AAA;" id="topbarUser"></span>
 
-      <!-- NEW QUOTE DROPDOWN -->
-      <div class="nq-wrapper" id="nqWrapper">
-        <button class="btn-primary" onclick="toggleNewQuoteMenu(event)">+ NEW QUOTE ▾</button>
-        <div class="nq-dropdown" id="nqDropdown">
-          <div class="nq-option" onclick="newQuote()">
-            <span class="nq-icon">🪧</span>
-            <span>Signage Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToTarpaulin()">
-            <span class="nq-icon">🖨️</span>
-            <span>Tarpaulin Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToReceipt()">
-            <span class="nq-icon">🧾</span>
-            <span>Receipt Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToBookbind()">
-            <span class="nq-icon">📚</span>
-            <span>Bookbinding Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToFrame()">
-            <span class="nq-icon">🖼️</span>
-            <span>Frame Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToTshirt()">
-            <span class="nq-icon">👕</span>
-            <span>T-Shirt Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToMug()">
-            <span class="nq-icon">☕</span>
-            <span>Mug Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToSticker()">
-            <span class="nq-icon">🏷️</span>
-            <span>Sticker Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToRisograph()">
-            <span class="nq-icon">🖨️</span>
-            <span>Risograph Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToUvPrint()">
-            <span class="nq-icon">🟦</span>
-            <span>UV Print Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToTotebag()">
-            <span class="nq-icon">👜</span>
-            <span>Tote Bag Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToTicket()">
-            <span class="nq-icon">🎫</span>
-            <span>Tickets Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToNewsprint()">
-            <span class="nq-icon">📰</span>
-            <span>Newsletter / Newspaper Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToSouvenir()">
-            <span class="nq-icon">📖</span>
-            <span>Souvenir Program Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToKeychain()">
-            <span class="nq-icon">🔑</span>
-            <span>Acrylic Keychain Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToAcrylicSign()">
-            <span class="nq-icon">🪧</span>
-            <span>Acrylic Signage Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToAcrylicPlate()">
-            <span class="nq-icon">🚗</span>
-            <span>Acrylic Plate Number Quote</span>
-          </div>
-          <div class="nq-option" onclick="goToAcrylicPlaque()">
-            <span class="nq-icon">🏆</span>
-            <span>Acrylic Plaque Quote</span>
-          </div>
-        </div>
-      </div>
-      <!-- END NEW QUOTE DROPDOWN -->
+      <!-- NEW QUOTE PICKER -->
+      <button class="btn-primary" onclick="openNewQuoteMenu()">+ NEW QUOTE</button>
+      <!-- END NEW QUOTE PICKER -->
 
     </div>
   </div>
@@ -459,6 +385,26 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
   </div>
 </div>
 
+<!-- NEW QUOTE PICKER MODAL -->
+<div class="modal-bg" id="newQuoteModal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #F0F0F0;">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.05em;">New <span style="color:#E8151B;">Quote</span></div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">Type to search, then press Enter or pick a quote type</div>
+      </div>
+      <button onclick="closeModal('newQuoteModal')" style="background:none;border:none;font-size:20px;color:#CCC;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div style="padding:20px 24px 24px;">
+      <div class="nq-search-wrap">
+        <input id="nqSearch" class="nq-search" type="text" placeholder="Search quote type…" autocomplete="off" oninput="renderQuoteTypes()" onkeydown="onNqSearchKey(event)">
+      </div>
+      <div class="nq-grid" id="nqGrid"></div>
+    </div>
+  </div>
+</div>
+<!-- END NEW QUOTE PICKER MODAL -->
+
 <div class="toast" id="toast"></div>
 <input type="hidden" id="server-token" value="<?= injectedToken ?>">
 <input type="hidden" id="app-url"      value="<?= appUrl ?>">
@@ -537,208 +483,84 @@ function doLogout() {
     .logoutUser(t);
 }
 
-// ── NEW QUOTE DROPDOWN ──
-function toggleNewQuoteMenu(e) {
-  e.stopPropagation();
-  document.getElementById('nqDropdown').classList.toggle('open');
-}
-document.addEventListener('click', function() {
-  document.getElementById('nqDropdown')?.classList.remove('open');
-});
+// ── NEW QUOTE PICKER (searchable) ──
+const QUOTE_TYPES = [
+  { page:'index',         icon:'🪧', label:'Signage Quote' },
+  { page:'tarpaulin',     icon:'🖨️', label:'Tarpaulin Quote' },
+  { page:'receipt',       icon:'🧾', label:'Receipt Quote' },
+  { page:'bookbind',      icon:'📚', label:'Bookbinding Quote' },
+  { page:'frame',         icon:'🖼️', label:'Frame Quote' },
+  { page:'tshirt',        icon:'👕', label:'T-Shirt Quote' },
+  { page:'mug',           icon:'☕', label:'Mug Quote' },
+  { page:'sticker',       icon:'🏷️', label:'Sticker Quote' },
+  { page:'risograph',     icon:'🖨️', label:'Risograph Quote' },
+  { page:'uvprint',       icon:'🟦', label:'UV Print Quote' },
+  { page:'totebag',       icon:'👜', label:'Tote Bag Quote' },
+  { page:'ticket',        icon:'🎫', label:'Tickets Quote' },
+  { page:'newsprint',     icon:'📰', label:'Newsletter / Newspaper Quote' },
+  { page:'souvenir',      icon:'📖', label:'Souvenir Program Quote' },
+  { page:'keychain',      icon:'🔑', label:'Acrylic Keychain Quote' },
+  { page:'acrylicsign',   icon:'🪧', label:'Acrylic Signage Quote' },
+  { page:'acrylicplate',  icon:'🚗', label:'Acrylic Plate Number Quote' },
+  { page:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque Quote' },
+];
+let nqActiveIndex = 0;
 
-function newQuote() {
-  document.getElementById('nqDropdown').classList.remove('open');
+function openNewQuoteMenu() {
+  const search = document.getElementById('nqSearch');
+  search.value = '';
+  nqActiveIndex = 0;
+  renderQuoteTypes();
+  document.getElementById('newQuoteModal').classList.add('show');
+  setTimeout(function(){ search.focus(); }, 50);
+}
+
+function nqFilteredTypes() {
+  const q = document.getElementById('nqSearch').value.trim().toLowerCase();
+  if (!q) return QUOTE_TYPES;
+  return QUOTE_TYPES.filter(function(t){ return t.label.toLowerCase().includes(q); });
+}
+
+function renderQuoteTypes() {
+  const list = nqFilteredTypes();
+  if (nqActiveIndex > list.length - 1) nqActiveIndex = list.length - 1;
+  if (nqActiveIndex < 0) nqActiveIndex = 0;
+  const grid = document.getElementById('nqGrid');
+  if (!list.length) {
+    grid.innerHTML = '<div class="nq-empty">No quote type matches your search.</div>';
+    return;
+  }
+  grid.innerHTML = list.map(function(t, i){
+    return '<button type="button" class="nq-option' + (i === nqActiveIndex ? ' nq-active' : '') +
+           '" onclick="selectQuoteType(\'' + t.page + '\')">' +
+           '<span class="nq-icon">' + t.icon + '</span><span>' + t.label + '</span></button>';
+  }).join('');
+}
+
+function onNqSearchKey(e) {
+  const list = nqFilteredTypes();
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    nqActiveIndex = Math.min(nqActiveIndex + 1, list.length - 1);
+    renderQuoteTypes();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    nqActiveIndex = Math.max(nqActiveIndex - 1, 0);
+    renderQuoteTypes();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (list[nqActiveIndex]) selectQuoteType(list[nqActiveIndex].page);
+  } else if (e.key === 'Escape') {
+    closeModal('newQuoteModal');
+  }
+}
+
+function selectQuoteType(page) {
+  closeModal('newQuoteModal');
   if (!TOKEN) return;
   google.script.run.withSuccessHandler(function(url) {
     const a = document.createElement('a');
-    a.href = url + '?page=index&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToTarpaulin() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=tarpaulin&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToReceipt() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=receipt&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToBookbind() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=bookbind&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToFrame() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=frame&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToTshirt() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=tshirt&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToMug() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=mug&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToSticker() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=sticker&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToRisograph() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=risograph&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToUvPrint() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=uvprint&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToTotebag() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=totebag&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToTicket() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=ticket&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToNewsprint() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=newsprint&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToSouvenir() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=souvenir&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToKeychain() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=keychain&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToAcrylicSign() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=acrylicsign&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToAcrylicPlate() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=acrylicplate&token=' + encodeURIComponent(TOKEN);
-    a.target = '_top'; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-  }).getAppUrl();
-}
-
-function goToAcrylicPlaque() {
-  document.getElementById('nqDropdown').classList.remove('open');
-  if (!TOKEN) return;
-  google.script.run.withSuccessHandler(function(url) {
-    const a = document.createElement('a');
-    a.href = url + '?page=acrylicplaque&token=' + encodeURIComponent(TOKEN);
+    a.href = url + '?page=' + encodeURIComponent(page) + '&token=' + encodeURIComponent(TOKEN);
     a.target = '_top'; a.style.display = 'none';
     document.body.appendChild(a); a.click();
   }).getAppUrl();
