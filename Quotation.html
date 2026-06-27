@@ -351,7 +351,8 @@
     const isAcrylicSign = String(q.quoteNum || '').startsWith('AS-');
     const isAcrylicPlate = String(q.quoteNum || '').startsWith('AP-');
     const isAcrylicPlaque = String(q.quoteNum || '').startsWith('PLQ-');
-    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isAcrylicPlaque;
+    const isAcrylicDisplay = String(q.quoteNum || '').startsWith('AD-');
+    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isAcrylicPlaque || isAcrylicDisplay;
 
     if (isTarpMulti) {
       // One row per item in the cart
@@ -525,6 +526,10 @@
         descParts.push('<strong>' + (q.acsignType || 'Acrylic Signage') + '</strong>');
         descParts.push('Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ' + (q.unit||'ft') + (q.sqft ? ' (' + Number(q.sqft).toFixed(2) + ' sq.ft)' : ''));
         if (q.acsignBilledSqft) descParts.push('Billed: ' + Number(q.acsignBilledSqft).toFixed(2) + ' sq.ft @ ' + php(q.ratePerSqft || 0) + '/sq.ft');
+      } else if (isAcrylicDisplay) {
+        descParts.push('<strong>Acrylic Display' + (q.acdisplayType ? ' — ' + q.acdisplayType : '') + '</strong>');
+        descParts.push('Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ' + (q.unit||'ft') + (q.sqft ? ' (' + Number(q.sqft).toFixed(2) + ' sq.ft)' : ''));
+        if (q.acdisplayBilledSqft) descParts.push('Billed: ' + Number(q.acdisplayBilledSqft).toFixed(2) + ' sq.ft @ ' + php(q.ratePerSqft || 0) + '/sq.ft');
       } else if (isAcrylicPlate) {
         descParts.push('<strong>Acrylic Plate Number — ' + (q.plateType || '') + '</strong>');
         if (q.plateText) descParts.push('Name / Plate Text: ' + q.plateText);

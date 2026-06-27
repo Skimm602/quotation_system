@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, acrylicplaque: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, acrylicplaque: null, acrylicdisplay: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -115,6 +115,7 @@ const PRODUCTS = [
   { id:'acrylicsign', icon:'🪧', label:'Acrylic Sign', sub:'Per sq.ft · 1 layer' },
   { id:'acrylicplate', icon:'🚗', label:'Plate Number', sub:'Motorcycle / Car'    },
   { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', sub:'Acrylic / Crystal'  },
+  { id:'acrylicdisplay', icon:'🧊', label:'Acrylic Display', sub:'Per sq.ft · thickness' },
 ];
 
 const d = {
@@ -163,6 +164,8 @@ const d = {
   keychainSize:'', keychainCutType:'Standard', keychainQty:'', keychainDesignRef:'', keychainRush:'No', keychainDesign:'No',
   // acrylic signage
   acsignType:'', acsignWidth:'', acsignHeight:'', acsignUnit:'ft', acsignQty:1, acsignRush:'No', acsignDesign:'No',
+  // acrylic display
+  acdispType:'', acdispWidth:'', acdispHeight:'', acdispUnit:'ft', acdispQty:1, acdispRush:'No', acdispDesign:'No',
   // acrylic plate number
   plateType:'', plateText:'', plateQty:1, plateRush:'No', plateDesign:'No',
   // acrylic plaque
@@ -207,6 +210,15 @@ function acsignEstHtml() {
   if (!t || w <= 0 || h <= 0 || !qty) return '';
   const billed = acsignBilledSqft();
   return `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Billed: ${billed.toFixed(2)} sq.ft × ₱${(t.pricePerSqft||0).toLocaleString('en-PH')} × ${qty} pc(s) = ₱${(acsignUnitPrice()*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
+}
+function acdispEstHtml() {
+  const t   = acdispTypeObj();
+  const w   = parseFloat(d.acdispWidth)  || 0;
+  const h   = parseFloat(d.acdispHeight) || 0;
+  const qty = parseInt(d.acdispQty) || 0;
+  if (!t || w <= 0 || h <= 0 || !qty) return '';
+  const billed = acdispBilledSqft();
+  return `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Billed: ${billed.toFixed(2)} sq.ft × ₱${(t.pricePerSqft||0).toLocaleString('en-PH')} × ${qty} pc(s) = ₱${(acdispUnitPrice()*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
 }
 function keychainEstHtml() {
   const up  = keychainUnitPrice();
@@ -545,6 +557,44 @@ function calcAcrylicSignTotal() {
   return base + rush + des;
 }
 
+function acdispTypeObj() {
+  const list = (PRICING.acrylicdisplay || {}).types || [];
+  return list.find(t => t.name === d.acdispType) || null;
+}
+function acdispToFeet(val) {
+  const n = parseFloat(val) || 0;
+  const u = d.acdispUnit || 'ft';
+  if (u === 'in') return n / 12;
+  if (u === 'cm') return n / 30.48;
+  if (u === 'm')  return n * 3.280839895;
+  return n; // ft
+}
+function acdispAreaSqft() {
+  return acdispToFeet(d.acdispWidth) * acdispToFeet(d.acdispHeight);
+}
+function acdispBilledSqft() {
+  const t = acdispTypeObj();
+  const minSqft = t ? (t.minSqft || 1) : 1;
+  return Math.max(minSqft, acdispAreaSqft());
+}
+function acdispUnitPrice() {
+  const t = acdispTypeObj();
+  if (!t) return 0;
+  return (t.pricePerSqft || 0) * acdispBilledSqft();
+}
+function calcAcrylicDisplayTotal() {
+  const p   = PRICING.acrylicdisplay || {};
+  const t   = acdispTypeObj();
+  const w   = parseFloat(d.acdispWidth)  || 0;
+  const h   = parseFloat(d.acdispHeight) || 0;
+  const qty = parseInt(d.acdispQty) || 0;
+  if (!t || !w || !h || !qty) return 0;
+  const base = acdispUnitPrice() * qty;
+  const rush = d.acdispRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.acdispDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
+
 function plateTypeObj() {
   const list = (PRICING.acrylicplate || {}).types || [];
   return list.find(t => t.name === d.plateType) || null;
@@ -597,6 +647,7 @@ function calcTotal() {
   if (selectedProduct === 'souvenir') return calcSouvenirTotal();
   if (selectedProduct === 'keychain') return calcKeychainTotal();
   if (selectedProduct === 'acrylicsign') return calcAcrylicSignTotal();
+  if (selectedProduct === 'acrylicdisplay') return calcAcrylicDisplayTotal();
   if (selectedProduct === 'acrylicplate') return calcAcrylicPlateTotal();
   if (selectedProduct === 'acrylicplaque') return calcAcrylicPlaqueTotal();
   return 0;
@@ -711,6 +762,7 @@ function renderSpecs() {
   if (selectedProduct === 'souvenir') return renderSouvenirSpecs();
   if (selectedProduct === 'keychain') return renderKeychainSpecs();
   if (selectedProduct === 'acrylicsign') return renderAcrylicSignSpecs();
+  if (selectedProduct === 'acrylicdisplay') return renderAcrylicDisplaySpecs();
   if (selectedProduct === 'acrylicplate') return renderAcrylicPlateSpecs();
   if (selectedProduct === 'acrylicplaque') return renderAcrylicPlaqueSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
@@ -915,6 +967,85 @@ function renderAcrylicSignSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.acsignDesign==='Yes'?' on':''}" onclick="d.acsignDesign='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.acsignDesign==='No'?' on':''}"  onclick="d.acsignDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── ACRYLIC DISPLAY SPECS ─────────────────────────────────────────
+function selectAcdispType(idx) {
+  const list = (PRICING.acrylicdisplay || {}).types || [];
+  if (list[idx]) d.acdispType = list[idx].name;
+  renderForm();
+}
+
+function renderAcrylicDisplaySpecs() {
+  const p     = PRICING.acrylicdisplay || {};
+  const types = p.types || [];
+  // Auto-select if only one type
+  if (!d.acdispType && types.length === 1) d.acdispType = types[0].name;
+
+  const typeCards = types.map((t, idx) => {
+    const sel = d.acdispType === t.name;
+    return `<div class="opt-card${sel?' active':''}" onclick="selectAcdispType(${idx})">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">🧊 ${esc(t.name)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">₱${(t.pricePerSqft||0).toLocaleString('en-PH')}/sq.ft · min ${esc(t.minSize||'1x1 ft')}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const t       = acdispTypeObj();
+  const estLine = acdispEstHtml();
+  const remarkBox = (t && t.remarks)
+    ? `<div style="background:#FFF8E0;border:1px solid #FFE08A;border-radius:4px;padding:10px 12px;font-size:11px;color:#7A5500;line-height:1.5;">ℹ️ ${esc(t.remarks)}</div>`
+    : '';
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      ${types.length > 1 ? `
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Acrylic Thickness *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${typeCards}</div>
+      </div>` : (t ? `
+      <div style="background:#FAFAFA;border:1px solid #EEE;border-radius:4px;padding:12px 14px;">
+        <div style="font-size:13px;color:#444;">🧊 <strong>${esc(t.name)}</strong> · ₱${(t.pricePerSqft||0).toLocaleString('en-PH')}/sq.ft · min ${esc(t.minSize||'1x1 ft')}</div>
+      </div>` : '')}
+      <div>
+        <label class="field-label">Size (Width × Height) *</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
+          <input type="number" class="field-input" id="ad_w" value="${esc(String(d.acdispWidth||''))}" placeholder="Width" min="0.01" step="0.1"
+            oninput="d.acdispWidth=this.value;updateEst('ad_est',acdispEstHtml);" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
+          <input type="number" class="field-input" id="ad_h" value="${esc(String(d.acdispHeight||''))}" placeholder="Height" min="0.01" step="0.1"
+            oninput="d.acdispHeight=this.value;updateEst('ad_est',acdispEstHtml);" inputmode="decimal" style="text-align:center;">
+          <select class="field-input" id="ad_unit" onchange="d.acdispUnit=this.value;renderForm();"
+            style="max-width:80px;flex-shrink:0;font-weight:700;">
+            ${['ft','in','cm','m'].map(u=>`<option ${d.acdispUnit===u?'selected':''}>${u}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="ad_qty" value="${d.acdispQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.acdispQty=parseInt(this.value)||1;updateEst('ad_est',acdispEstHtml);" inputmode="numeric">
+        <div id="ad_est">${estLine}</div>
+      </div>
+      ${remarkBox}
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.acdispRush==='Yes'?' on':''}" onclick="d.acdispRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.acdispRush==='No'?' on':''}"  onclick="d.acdispRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.acdispDesign==='Yes'?' on':''}" onclick="d.acdispDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.acdispDesign==='No'?' on':''}"  onclick="d.acdispDesign='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -2548,6 +2679,10 @@ function renderReview() {
     specSummary = `${esc(d.acsignType)||'Acrylic Signage'} · ${d.acsignWidth||'?'} × ${d.acsignHeight||'?'} ${esc(d.acsignUnit||'ft')} × ${d.acsignQty||0} pc(s)`;
     if (d.acsignRush   === 'Yes') specSummary += ' · Rush';
     if (d.acsignDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'acrylicdisplay') {
+    specSummary = `Acrylic Display · ${esc(d.acdispType)||'—'} · ${d.acdispWidth||'?'} × ${d.acdispHeight||'?'} ${esc(d.acdispUnit||'ft')} × ${d.acdispQty||0} pc(s)`;
+    if (d.acdispRush   === 'Yes') specSummary += ' · Rush';
+    if (d.acdispDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'acrylicplate') {
     specSummary = `Acrylic Plate · ${esc(d.plateType)||'—'} × ${d.plateQty||0} pc(s)`;
     if (d.plateText) specSummary += ` · "${esc(d.plateText)}"`;
@@ -2805,6 +2940,14 @@ function nextStep() {
       if (!d.acsignType || !acsignTypeObj()) { toast('Please select a signage type.','error'); return; }
       if (!d.acsignWidth || !d.acsignHeight) { toast('Please enter the size (width × height).','error'); return; }
       if (!d.acsignQty || d.acsignQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'acrylicdisplay') {
+      d.acdispWidth  = v('ad_w') || d.acdispWidth;
+      d.acdispHeight = v('ad_h') || d.acdispHeight;
+      d.acdispQty    = parseInt(v('ad_qty')) || d.acdispQty;
+      if (!d.acdispType || !acdispTypeObj()) { toast('Please select an acrylic thickness.','error'); return; }
+      if (!d.acdispWidth || !d.acdispHeight) { toast('Please enter the size (width × height).','error'); return; }
+      if (!d.acdispQty || d.acdispQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
     }
     if (selectedProduct === 'acrylicplate') {
       d.plateText = v('ap_text') || d.plateText;
@@ -3198,6 +3341,32 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'acrylicdisplay') {
+    const p     = PRICING.acrylicdisplay || {};
+    const t     = acdispTypeObj() || {};
+    const w     = parseFloat(d.acdispWidth)  || 0;
+    const h     = parseFloat(d.acdispHeight) || 0;
+    const qty   = parseInt(d.acdispQty) || 1;
+    const billed= acdispBilledSqft();
+    const up    = acdispUnitPrice();
+    const base  = up * qty;
+    const rush  = d.acdispRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des   = d.acdispDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      acdisplayType: d.acdispType,
+      width:         w, height: h, unit: d.acdispUnit,
+      sqft:          acdispAreaSqft(),
+      billedSqft:    billed,
+      quantity:      qty,
+      ratePerSqft:   t.pricePerSqft || 0,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.acdispRush,   rushFee:   rush,
+      designService: d.acdispDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   if (selectedProduct === 'acrylicplate') {
     const p    = PRICING.acrylicplate || {};
     const t    = plateTypeObj() || { price: 0 };
@@ -3366,6 +3535,12 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + (d.acsignQty || 0) + ' pc(s)';
     if (d.acsignRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.acsignDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'acrylicdisplay') {
+    specsLine = 'Acrylic Display · ' + (d.acdispType || '—');
+    specsLine += '\nSize: ' + (d.acdispWidth || '?') + ' × ' + (d.acdispHeight || '?') + ' ' + (d.acdispUnit || 'ft');
+    specsLine += '\nQuantity: ' + (d.acdispQty || 0) + ' pc(s)';
+    if (d.acdispRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.acdispDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'acrylicplate') {
     specsLine = 'Acrylic Plate Number · ' + (d.plateType || '—');
     if (d.plateText) specsLine += '\nName / Plate Text: ' + d.plateText;
@@ -3442,7 +3617,7 @@ function copyMsg() {
 
 function resetAll() {
   screen = 'products'; selectedProduct = ''; formStep = 0;
-  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty','ticketQty','souvenirQty','acsignQty','plateQty'];
+  const qty1 = ['tarpQty','frameQty','bindQty','receiptQty','signageQty','stickerQty','risoQty','totebagQty','ticketQty','souvenirQty','acsignQty','acdispQty','plateQty'];
   Object.keys(d).forEach(k => {
     if (typeof d[k] === 'string') d[k] = '';
     else if (typeof d[k] === 'number') d[k] = k==='mugQty'?5:qty1.includes(k)?1:0;
@@ -3466,6 +3641,7 @@ function resetAll() {
   d.souvenirMaterial=''; d.souvenirPages=''; d.souvenirRush='No'; d.souvenirDesign='No';
   d.keychainSize=''; d.keychainCutType='Standard'; d.keychainQty=''; d.keychainDesignRef=''; d.keychainRush='No'; d.keychainDesign='No';
   d.acsignType=''; d.acsignWidth=''; d.acsignHeight=''; d.acsignUnit='ft'; d.acsignRush='No'; d.acsignDesign='No';
+  d.acdispType=''; d.acdispWidth=''; d.acdispHeight=''; d.acdispUnit='ft'; d.acdispRush='No'; d.acdispDesign='No';
   d.plateType=''; d.plateText=''; d.plateRush='No'; d.plateDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
