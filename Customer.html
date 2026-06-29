@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, acrylicplaque: null, acrylicdisplay: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, acrylicplaque: null, acrylicdisplay: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -116,6 +116,7 @@ const PRODUCTS = [
   { id:'acrylicplate', icon:'🚗', label:'Plate Number', sub:'Motorcycle / Car'    },
   { id:'certificate', icon:'📜', label:'Certificate',   sub:'Award / Gift'         },
   { id:'calendar',   icon:'📅', label:'Calendar',      sub:'Monthly / Poster'      },
+  { id:'meshcap',    icon:'🧢', label:'Mesh Cap',      sub:'Sublimation print'     },
   { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', sub:'Acrylic / Crystal'  },
   { id:'acrylicdisplay', icon:'🧊', label:'Acrylic Display', sub:'Per sq.ft · thickness' },
 ];
@@ -174,6 +175,8 @@ const d = {
   certType:'', certText:'', certQty:1, certRush:'No', certDesign:'No',
   // calendar
   calType:'', calSize:'', calText:'', calQty:100, calRush:'No', calDesign:'No',
+  // mesh cap
+  meshText:'', meshQty:20, meshRush:'No', meshDesign:'No',
   // acrylic plaque
   plaqueMaterial:'', plaqueType:'', plaqueText:'', plaqueQty:1, plaqueRush:'No', plaqueDesign:'No',
   // proof of payment (optional, sent as email attachment)
@@ -211,6 +214,14 @@ function certEstHtml() {
 function calEstHtml() {
   const t   = calObj();
   const qty = parseInt(d.calQty) || 0;
+  return (t && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function meshObj() { return (((PRICING.meshcap || {}).types) || [])[0] || null; }
+function meshEstHtml() {
+  const t   = meshObj();
+  const qty = parseInt(d.meshQty) || 0;
   return (t && qty)
     ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
     : '';
@@ -664,6 +675,16 @@ function calcCalendarTotal() {
   const des  = d.calDesign === 'Yes' ? (p.designFee || 250) : 0;
   return base + rush + des;
 }
+function calcMeshCapTotal() {
+  const p   = PRICING.meshcap || {};
+  const t   = meshObj();
+  const qty = parseInt(d.meshQty) || 0;
+  if (!t || !qty) return 0;
+  const base = (t.price || 0) * qty;
+  const rush = d.meshRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+  const des  = d.meshDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
 
 function plaqueMaterials() {
   const s = [];
@@ -706,6 +727,7 @@ function calcTotal() {
   if (selectedProduct === 'acrylicplate') return calcAcrylicPlateTotal();
   if (selectedProduct === 'certificate') return calcCertificateTotal();
   if (selectedProduct === 'calendar') return calcCalendarTotal();
+  if (selectedProduct === 'meshcap') return calcMeshCapTotal();
   if (selectedProduct === 'acrylicplaque') return calcAcrylicPlaqueTotal();
   return 0;
 }
@@ -823,6 +845,7 @@ function renderSpecs() {
   if (selectedProduct === 'acrylicplate') return renderAcrylicPlateSpecs();
   if (selectedProduct === 'certificate') return renderCertificateSpecs();
   if (selectedProduct === 'calendar') return renderCalendarSpecs();
+  if (selectedProduct === 'meshcap') return renderMeshCapSpecs();
   if (selectedProduct === 'acrylicplaque') return renderAcrylicPlaqueSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
 }
@@ -1003,6 +1026,53 @@ function renderCalendarSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.calDesign==='Yes'?' on':''}" onclick="d.calDesign='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.calDesign==='No'?' on':''}"  onclick="d.calDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── MESH CAP SPECS ────────────────────────────────────────────────
+function renderMeshCapSpecs() {
+  const p = PRICING.meshcap || {};
+  const t = meshObj() || { price: 140, specs: '' };
+  const estLine = meshEstHtml();
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Product</label>
+        <div class="opt-card active">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;">🧢 Mesh Cap</div>
+            <div style="font-size:11px;color:#888;margin-top:1px;">₱${(t.price||0).toLocaleString('en-PH')}/pc</div>
+            ${t.specs ? `<div style="font-size:10px;color:#AAA;margin-top:2px;">${esc(t.specs)}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Design / Logo Note <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="mesh_text" value="${esc(d.meshText||'')}" placeholder="e.g. Company logo, front + back print, team name"
+          oninput="d.meshText=this.value;">
+      </div>
+      <div>
+        <label class="field-label">Quantity (pcs) <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(min 20)</span></label>
+        <input type="number" class="field-input" id="mesh_qty" value="${d.meshQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.meshQty=parseInt(this.value)||1;updateEst('mesh_est',meshEstHtml);" inputmode="numeric">
+        <div id="mesh_est">${estLine}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.meshRush==='Yes'?' on':''}" onclick="d.meshRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.meshRush==='No'?' on':''}"  onclick="d.meshRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Design / Layout Service? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.designFee||250).toLocaleString()})</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.meshDesign==='Yes'?' on':''}" onclick="d.meshDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.meshDesign==='No'?' on':''}"  onclick="d.meshDesign='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -2885,6 +2955,11 @@ function renderReview() {
     if (d.calText) specSummary += ` · "${esc(d.calText)}"`;
     if (d.calRush   === 'Yes') specSummary += ' · Rush';
     if (d.calDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'meshcap') {
+    specSummary = `Mesh Cap · ${d.meshQty||0} pc(s)`;
+    if (d.meshText) specSummary += ` · "${esc(d.meshText)}"`;
+    if (d.meshRush   === 'Yes') specSummary += ' · Rush';
+    if (d.meshDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'acrylicplaque') {
     specSummary = `Acrylic Plaque · ${esc(d.plaqueMaterial)||'—'} ${esc(d.plaqueType)||''} × ${d.plaqueQty||0} pc(s)`;
     if (d.plaqueText) specSummary += ` · "${esc(d.plaqueText)}"`;
@@ -3164,6 +3239,11 @@ function nextStep() {
       if (!d.calType)              { toast('Please select a calendar type.','error'); return; }
       if (!d.calSize || !calObj()) { toast('Please select a size.','error'); return; }
       if (!d.calQty || d.calQty < 1) { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'meshcap') {
+      d.meshText = v('mesh_text') || d.meshText;
+      d.meshQty  = parseInt(v('mesh_qty')) || d.meshQty;
+      if (!d.meshQty || d.meshQty < 1) { toast('Quantity must be at least 1.','error'); return; }
     }
     if (selectedProduct === 'acrylicplaque') {
       d.plaqueText = v('plq_text') || d.plaqueText;
@@ -3638,6 +3718,26 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'meshcap') {
+    const p    = PRICING.meshcap || {};
+    const t    = meshObj() || { price: 0 };
+    const up   = t.price || 0;
+    const qty  = parseInt(d.meshQty) || 1;
+    const base = up * qty;
+    const rush = d.meshRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+    const des  = d.meshDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      meshType:      'Mesh Cap',
+      meshText:      d.meshText,
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.meshRush,   rushFee:   rush,
+      designService: d.meshDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   if (selectedProduct === 'acrylicplaque') {
     const p    = PRICING.acrylicplaque || {};
     const t    = plaqueTypeObj() || { price: 0 };
@@ -3810,6 +3910,12 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + (d.calQty || 0) + ' pc(s)';
     if (d.calRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.calDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'meshcap') {
+    specsLine = 'Mesh Cap';
+    if (d.meshText) specsLine += '\nDesign / Logo Note: ' + d.meshText;
+    specsLine += '\nQuantity: ' + (d.meshQty || 0) + ' pc(s)';
+    if (d.meshRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.meshDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'acrylicplaque') {
     specsLine = 'Acrylic Plaque · ' + (d.plaqueMaterial || '—') + (d.plaqueType ? ' ' + d.plaqueType : '');
     if (d.plaqueText) specsLine += '\nName / Engraving Text: ' + d.plaqueText;
@@ -3908,6 +4014,7 @@ function resetAll() {
   d.plateType=''; d.plateText=''; d.plateRush='No'; d.plateDesign='No';
   d.certType=''; d.certText=''; d.certQty=1; d.certRush='No'; d.certDesign='No';
   d.calType=''; d.calSize=''; d.calText=''; d.calQty=100; d.calRush='No'; d.calDesign='No';
+  d.meshText=''; d.meshQty=20; d.meshRush='No'; d.meshDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });

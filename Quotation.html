@@ -352,9 +352,10 @@
     const isAcrylicPlate = String(q.quoteNum || '').startsWith('AP-');
     const isCertificate = String(q.quoteNum || '').startsWith('CERT-');
     const isCalendar = String(q.quoteNum || '').startsWith('CAL-');
+    const isMeshCap = String(q.quoteNum || '').startsWith('MC-');
     const isAcrylicPlaque = String(q.quoteNum || '').startsWith('PLQ-');
     const isAcrylicDisplay = String(q.quoteNum || '').startsWith('AD-');
-    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isCertificate || isCalendar || isAcrylicPlaque || isAcrylicDisplay;
+    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isCertificate || isCalendar || isMeshCap || isAcrylicPlaque || isAcrylicDisplay;
 
     if (isTarpMulti) {
       // One row per item in the cart
@@ -541,11 +542,14 @@
       } else if (isCalendar) {
         descParts.push('<strong>Calendar — ' + (q.calType || '') + (q.calSize ? ' ' + q.calSize : '') + '</strong>');
         if (q.calText) descParts.push('Title / Year: ' + q.calText);
+      } else if (isMeshCap) {
+        descParts.push('<strong>Mesh Cap</strong>');
+        if (q.meshText) descParts.push('Design / Logo Note: ' + q.meshText);
       } else if (isAcrylicPlaque) {
         descParts.push('<strong>Acrylic Plaque — ' + (q.plaqueMaterial || '') + (q.plaqueType ? ' ' + q.plaqueType : '') + '</strong>');
         if (q.plaqueText) descParts.push('Engraving Text: ' + q.plaqueText);
       }
-      if ((isAcrylicPlate || isAcrylicPlaque || isCertificate || isCalendar) && q.items && q.items.length > 1) {
+      if ((isAcrylicPlate || isAcrylicPlaque || isCertificate || isCalendar || isMeshCap) && q.items && q.items.length > 1) {
         q.items.forEach(function(it) {
           const dp = isAcrylicPlaque
             ? ['<strong>Acrylic Plaque — ' + (it.plaqueMaterial || '') + (it.plaqueType ? ' ' + it.plaqueType : '') + '</strong>']
@@ -553,10 +557,13 @@
             ? ['<strong>Certificate — ' + (it.certType || '') + '</strong>']
             : isCalendar
             ? ['<strong>Calendar — ' + (it.calType || '') + (it.calSize ? ' ' + it.calSize : '') + '</strong>']
+            : isMeshCap
+            ? ['<strong>Mesh Cap</strong>']
             : ['<strong>Acrylic Plate Number — ' + (it.plateType || '') + '</strong>'];
           if (isAcrylicPlaque) { if (it.plaqueText) dp.push('Engraving Text: ' + it.plaqueText); }
           else if (isCertificate) { if (it.certText) dp.push('Title / Recipient: ' + it.certText); }
           else if (isCalendar) { if (it.calText) dp.push('Title / Year: ' + it.calText); }
+          else if (isMeshCap) { if (it.meshText) dp.push('Design / Logo Note: ' + it.meshText); }
           else { if (it.plateText) dp.push('Name / Plate Text: ' + it.plateText); }
           if (it.rushOrder === 'Yes') dp.push('Rush Order: Yes');
           if (it.designService === 'Yes') dp.push('Design Service: Yes');

@@ -27,6 +27,7 @@ const ACRYLICPLAQUE_SHEET     = 'Acrylic Plaque Quotations';
 const ACRYLICDISPLAY_SHEET    = 'Acrylic Display Quotations';
 const CERTIFICATE_SHEET       = 'Certificate Quotations';
 const CALENDAR_SHEET          = 'Calendar Quotations';
+const MESHCAP_SHEET           = 'Mesh Cap Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_INFO_SHEET     = 'Customer Info';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
@@ -343,6 +344,9 @@ function doGet(e) {
   }
   if (page === 'calendar') {
     return serveWithToken_('Calendar', 'Quotation System — Calendar', token, appUrl);
+  }
+  if (page === 'meshcap') {
+    return serveWithToken_('MeshCap', 'Quotation System — Mesh Cap', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1695,8 +1699,57 @@ function getDashboardData(token) {
       });
     }
 
+    // ── MESH CAP QUOTES ─────────────────────────────────────────
+    let meshCapQuotes = [];
+    const mcSheet = ss.getSheetByName(MESHCAP_SHEET);
+    if (mcSheet) {
+      const mdata  = mcSheet.getDataRange().getValues();
+      const mStart = mdata.length > 0 && String(mdata[0][0]).startsWith('MC-') ? 0 : 1;
+      meshCapQuotes = mdata.slice(mStart).filter(r => r[0] && String(r[0]).startsWith('MC-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel  = String(row[15] || '');
+        const meshType = String(row[6] || 'Mesh Cap');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          meshType:         meshType,
+          meshText:         String(row[7] || ''),
+          quantity:         row[8]  || 0,
+          unitPrice:        parseFloat(row[9])  || 0,
+          baseAmount:       parseFloat(row[10]) || 0,
+          rushOrder:        String(row[11] || ''),
+          rushFee:          parseFloat(row[12]) || 0,
+          designService:    String(row[13] || ''),
+          designFee:        parseFloat(row[14]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[16]) || 0,
+          notes:            String(row[17] || ''),
+          salesStaff:       String(row[18] || ''),
+          status:           String(row[19] || 'Pending'),
+          approvedBy:       String(row[20] || ''),
+          taxType:          String(row[21] || 'non-vat'),
+          taxAmount:        parseFloat(row[22]) || 0,
+          items: (function(){ try { const j = String(row[23]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e){ return []; } })(),
+          quoteType:        'meshcap',
+          signageType:      'Mesh Cap',
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[13] || ''), addonDesignFee: parseFloat(row[14]) || 0,
+          addonRush:   String(row[11] || ''), addonRushFee:   parseFloat(row[12]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...acrylicDisplayQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...meshCapQuotes, ...acrylicDisplayQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1724,7 +1777,7 @@ function getQuoteForPDF(token, quoteNum) {
   // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
   //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
   //     data builder, which already returns a render-ready quote object. ──
-  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'PLQ-', 'AD-'];
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'MC-', 'PLQ-', 'AD-'];
   if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
     try {
       const dash = getDashboardData(token);
@@ -2089,6 +2142,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isAcrylicPlate = String(quoteNum).startsWith('AP-');
   const isCertificate = String(quoteNum).startsWith('CERT-');
   const isCalendar = String(quoteNum).startsWith('CAL-');
+  const isMeshCap = String(quoteNum).startsWith('MC-');
   const isAcrylicPlaque = String(quoteNum).startsWith('PLQ-');
   const isAcrylicDisplay = String(quoteNum).startsWith('AD-');
 
@@ -2378,6 +2432,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Calendar order not found: ' + quoteNum);
+  }
+
+  if (isMeshCap) {
+    const sheet = ss.getSheetByName(MESHCAP_SHEET);
+    if (!sheet) throw new Error('Mesh Cap Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 20).setValue(status);  // col T = Status
+        sheet.getRange(i+1, 21).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col U = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 23).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Mesh Cap order not found: ' + quoteNum);
   }
 
   if (isAcrylicPlaque) {
@@ -3074,6 +3144,7 @@ function getPublicPricing() {
     acrylicplate:(function(){ try{ return getAcrylicPlatePricing(); }catch(e){ return null; } })(),
     certificate:(function(){ try{ return getCertificatePricing(); }catch(e){ return null; } })(),
     calendar:(function(){ try{ return getCalendarPricing(); }catch(e){ return null; } })(),
+    meshcap:(function(){ try{ return getMeshCapPricing(); }catch(e){ return null; } })(),
     acrylicplaque:(function(){ try{ return getAcrylicPlaquePricing(); }catch(e){ return null; } })(),
     acrylicdisplay:(function(){ try{ return getAcrylicDisplayPricing(); }catch(e){ return null; } })(),
   };
@@ -3196,6 +3267,9 @@ function submitCustomerRequest(data) {
       specs = 'Calendar · ' + (data.calType || '—') + (data.calSize ? ' · ' + data.calSize : '')
             + ' × ' + (data.quantity || 1) + ' pc(s)';
       if (data.calText) specs += ' | Title: ' + data.calText;
+    } else if (data.productType === 'meshcap') {
+      specs = 'Mesh Cap · ' + (data.quantity || 1) + ' pc(s)';
+      if (data.meshText) specs += ' | Design: ' + data.meshText;
     } else if (data.productType === 'acrylicplaque') {
       specs = 'Acrylic Plaque · ' + (data.plaqueMaterial || '—')
             + (data.plaqueType ? ' ' + data.plaqueType : '') + ' × ' + (data.quantity || 1) + ' pc(s)';
@@ -3463,6 +3537,10 @@ function buildSpecsEmailDetail_(data, fallbackSpecs) {
       add('Calendar Type', data.calType);
       add('Size', data.calSize);
       add('Title / Year', data.calText);
+
+    } else if (t === 'meshcap') {
+      add('Product', 'Mesh Cap');
+      add('Design / Logo Note', data.meshText);
 
     } else if (t === 'acrylicdisplay') {
       add('Thickness', data.acdisplayType || data.thickness);
@@ -6040,6 +6118,146 @@ function saveCalendarOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET MESH CAP PRICING  (live from the "Mesh Caps" price-DB tab)
+// ══════════════════════════════════════════════════════════════════
+//  Single flat-price product. Tab layout = a price cell ("₱140/pc")
+//  followed by label/value rows (print method / material / minimum
+//  order) which are collected into a descriptive `specs` string.
+//  Rush = ₱250 or 5% whichever higher; Design ₱250.
+function getMeshCapPricing() {
+  const defaults = {
+    types: [
+      { name: 'Mesh Cap', price: 140, unit: 'pc', specs: 'Print method: sublimation · Material: mesh cap · Minimum order: 20 pcs.' },
+    ],
+    rushFlat: 250, rushPct: 0.05, designFee: 250,
+  };
+
+  function num(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  function txt(raw) { return String(raw == null ? '' : raw).trim(); }
+
+  try {
+    const ss = getPriceDbSS_();
+    let sheet = ss.getSheetByName('Mesh Caps')
+             || ss.getSheetByName('Mesh Cap')
+             || ss.getSheetByName('Meshcap')
+             || ss.getSheetByName('Mesh Caps ');
+    if (!sheet) {
+      // Fallback: find a tab whose first cells mention "mesh cap".
+      const all = ss.getSheets();
+      for (let i = 0; i < all.length; i++) {
+        const lastCol = all[i].getLastColumn() || 1;
+        const first = all[i].getRange(1, 1, Math.min(8, all[i].getLastRow() || 1), lastCol).getValues()
+          .map(r => r.map(c => String(c || '').toLowerCase()).join(' ')).join(' ');
+        if (/mesh\s*cap/.test(first)) { sheet = all[i]; break; }
+      }
+    }
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    let price = 0;
+    const specParts = [];
+    let pendingKey = '';
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        const cell = txt(rows[r][c]);
+        if (!cell) continue;
+        if (!price && /(₱|php|\/\s*pc\b|per\s*pc|\/\s*piece)/i.test(cell)) { price = num(cell); continue; }
+        if (/:\s*$/.test(cell)) { pendingKey = cell.replace(/\s*:\s*$/, ''); continue; }
+        if (pendingKey) { specParts.push(pendingKey + ': ' + cell); pendingKey = ''; }
+        else specParts.push(cell);
+      }
+    }
+    if (price <= 0) return defaults;
+    const specs = specParts.join(' · ');
+    return {
+      types: [{ name: 'Mesh Cap', price: price, unit: 'pc', specs: specs || defaults.types[0].specs }],
+      rushFlat: defaults.rushFlat, rushPct: defaults.rushPct, designFee: defaults.designFee,
+    };
+  } catch (e) {
+    Logger.log('getMeshCapPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE MESH CAP ORDER  (appends to the main SS Mesh Cap tab)
+// ══════════════════════════════════════════════════════════════════
+function saveMeshCapOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(MESHCAP_SHEET);
+  if (!sheet) sheet = ss.insertSheet(MESHCAP_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Cap Type', 'Design / Logo Note', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount', 'Items JSON',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('MC-')) {
+    if (firstCell.startsWith('MC-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  lockQuoteNumbering_();
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'MC-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.meshType      || 'Mesh Cap',           // G  - Cap Type
+    data.meshText      || '',                   // H  - Design / Logo Note
+    qty,                                        // I  - Quantity
+    parseFloat(unitP.toFixed(2)),               // J  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // K  - Base Amount
+    data.rushOrder     || '',                   // L  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // M  - Rush Fee
+    data.designService || '',                   // N  - Design Service
+    parseFloat(designFee.toFixed(2)),           // O  - Design Fee
+    '',                                         // P  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // Q  - Total Amount
+    data.notes         || '',                   // R  - Special Instructions
+    staffName,                                  // S  - Sales Staff
+    data.status || 'Pending',                   // T  - Status
+    '',                                         // U  - Approved By
+    data.taxType       || 'non-vat',            // V  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // W  - Tax Amount
+    (data.items && data.items.length) ? JSON.stringify(data.items) : '[]',  // X - Items JSON
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 10, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Mesh Cap', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -6479,6 +6697,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('AP-'))  sheetName = ACRYLICPLATE_SHEET;
   else if (quoteNum.startsWith('CERT-')) sheetName = CERTIFICATE_SHEET;
   else if (quoteNum.startsWith('CAL-'))  sheetName = CALENDAR_SHEET;
+  else if (quoteNum.startsWith('MC-'))   sheetName = MESHCAP_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -6507,6 +6726,7 @@ else if (quoteNum.startsWith('AD-'))  ptCol = 21; // col U
 else if (quoteNum.startsWith('AP-'))  ptCol = 16; // col P
 else if (quoteNum.startsWith('CERT-')) ptCol = 16; // col P
 else if (quoteNum.startsWith('CAL-'))  ptCol = 17; // col Q
+else if (quoteNum.startsWith('MC-'))   ptCol = 16; // col P
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
