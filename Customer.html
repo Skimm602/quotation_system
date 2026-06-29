@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, acrylicplaque: null, acrylicdisplay: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, acrylicplaque: null, acrylicdisplay: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -114,6 +114,7 @@ const PRODUCTS = [
   { id:'keychain', icon:'🔑', label:'Keychain',      sub:'Acrylic + Vinyl'       },
   { id:'acrylicsign', icon:'🪧', label:'Acrylic Sign', sub:'Per sq.ft · 1 layer' },
   { id:'acrylicplate', icon:'🚗', label:'Plate Number', sub:'Motorcycle / Car'    },
+  { id:'certificate', icon:'📜', label:'Certificate',   sub:'Award / Gift'         },
   { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', sub:'Acrylic / Crystal'  },
   { id:'acrylicdisplay', icon:'🧊', label:'Acrylic Display', sub:'Per sq.ft · thickness' },
 ];
@@ -168,6 +169,8 @@ const d = {
   acdispType:'', acdispWidth:'', acdispHeight:'', acdispUnit:'ft', acdispQty:1, acdispRush:'No', acdispDesign:'No',
   // acrylic plate number
   plateType:'', plateText:'', plateQty:1, plateRush:'No', plateDesign:'No',
+  // certificate
+  certType:'', certText:'', certQty:1, certRush:'No', certDesign:'No',
   // acrylic plaque
   plaqueMaterial:'', plaqueType:'', plaqueText:'', plaqueQty:1, plaqueRush:'No', plaqueDesign:'No',
   // proof of payment (optional, sent as email attachment)
@@ -193,6 +196,13 @@ function plateEstHtml() {
   const qty = parseInt(d.plateQty) || 0;
   return (t && qty)
     ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function certEstHtml() {
+  const t   = certTypeObj();
+  const qty = parseInt(d.certQty) || 0;
+  return (t && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} copy(ies) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
     : '';
 }
 function plaqueEstHtml() {
@@ -610,6 +620,21 @@ function calcAcrylicPlateTotal() {
   return base + rush + des;
 }
 
+function certTypeObj() {
+  const list = (PRICING.certificate || {}).types || [];
+  return list.find(t => t.name === d.certType) || null;
+}
+function calcCertificateTotal() {
+  const p   = PRICING.certificate || {};
+  const t   = certTypeObj();
+  const qty = parseInt(d.certQty) || 0;
+  if (!t || !qty) return 0;
+  const base = (t.price || 0) * qty;
+  const rush = d.certRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+  const des  = d.certDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
+
 function plaqueMaterials() {
   const s = [];
   (((PRICING.acrylicplaque || {}).types) || []).forEach(t => { if (s.indexOf(t.material) < 0) s.push(t.material); });
@@ -649,6 +674,7 @@ function calcTotal() {
   if (selectedProduct === 'acrylicsign') return calcAcrylicSignTotal();
   if (selectedProduct === 'acrylicdisplay') return calcAcrylicDisplayTotal();
   if (selectedProduct === 'acrylicplate') return calcAcrylicPlateTotal();
+  if (selectedProduct === 'certificate') return calcCertificateTotal();
   if (selectedProduct === 'acrylicplaque') return calcAcrylicPlaqueTotal();
   return 0;
 }
@@ -764,6 +790,7 @@ function renderSpecs() {
   if (selectedProduct === 'acrylicsign') return renderAcrylicSignSpecs();
   if (selectedProduct === 'acrylicdisplay') return renderAcrylicDisplaySpecs();
   if (selectedProduct === 'acrylicplate') return renderAcrylicPlateSpecs();
+  if (selectedProduct === 'certificate') return renderCertificateSpecs();
   if (selectedProduct === 'acrylicplaque') return renderAcrylicPlaqueSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
 }
@@ -816,6 +843,60 @@ function renderAcrylicPlateSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.plateRush==='Yes'?' on':''}" onclick="d.plateRush='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.plateRush==='No'?' on':''}"  onclick="d.plateRush='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── CERTIFICATE SPECS ─────────────────────────────────────────────
+const CERT_ICONS = { 'Award Certificate':'🏅', 'Gift Certificate':'🎁' };
+function selectCertType(idx) {
+  const list = (PRICING.certificate || {}).types || [];
+  if (list[idx]) d.certType = list[idx].name;
+  renderForm();
+}
+function renderCertificateSpecs() {
+  const p     = PRICING.certificate || {};
+  const types = p.types || [];
+
+  const typeCards = types.map((t, idx) => {
+    const sel  = d.certType === t.name;
+    const icon = CERT_ICONS[t.name] || '📜';
+    return `<div class="opt-card${sel?' active':''}" onclick="selectCertType(${idx})">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${icon} ${esc(t.name)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">₱${(t.price||0).toLocaleString('en-PH')}/copy</div>
+        ${t.specs ? `<div style="font-size:10px;color:#AAA;margin-top:2px;">${esc(t.specs)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const estLine = certEstHtml();
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Certificate Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${typeCards}</div>
+      </div>
+      <div>
+        <label class="field-label">Certificate Title / Recipient <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="cert_text" value="${esc(d.certText||'')}" placeholder="e.g. Certificate of Recognition / Juan D."
+          oninput="d.certText=this.value;">
+      </div>
+      <div>
+        <label class="field-label">Quantity (copies)</label>
+        <input type="number" class="field-input" id="cert_qty" value="${d.certQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.certQty=parseInt(this.value)||1;updateEst('cert_est',certEstHtml);" inputmode="numeric">
+        <div id="cert_est">${estLine}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.certRush==='Yes'?' on':''}" onclick="d.certRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.certRush==='No'?' on':''}"  onclick="d.certRush='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -2688,6 +2769,11 @@ function renderReview() {
     if (d.plateText) specSummary += ` · "${esc(d.plateText)}"`;
     if (d.plateRush   === 'Yes') specSummary += ' · Rush';
     if (d.plateDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'certificate') {
+    specSummary = `Certificate · ${esc(d.certType)||'—'} × ${d.certQty||0} copy(ies)`;
+    if (d.certText) specSummary += ` · "${esc(d.certText)}"`;
+    if (d.certRush   === 'Yes') specSummary += ' · Rush';
+    if (d.certDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'acrylicplaque') {
     specSummary = `Acrylic Plaque · ${esc(d.plaqueMaterial)||'—'} ${esc(d.plaqueType)||''} × ${d.plaqueQty||0} pc(s)`;
     if (d.plaqueText) specSummary += ` · "${esc(d.plaqueText)}"`;
@@ -2954,6 +3040,12 @@ function nextStep() {
       d.plateQty  = parseInt(v('ap_qty')) || d.plateQty;
       if (!d.plateType || !plateTypeObj()) { toast('Please select a plate type.','error'); return; }
       if (!d.plateQty || d.plateQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'certificate') {
+      d.certText = v('cert_text') || d.certText;
+      d.certQty  = parseInt(v('cert_qty')) || d.certQty;
+      if (!d.certType || !certTypeObj()) { toast('Please select a certificate type.','error'); return; }
+      if (!d.certQty || d.certQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
     }
     if (selectedProduct === 'acrylicplaque') {
       d.plaqueText = v('plq_text') || d.plaqueText;
@@ -3387,6 +3479,26 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'certificate') {
+    const p    = PRICING.certificate || {};
+    const t    = certTypeObj() || { price: 0 };
+    const up   = t.price || 0;
+    const qty  = parseInt(d.certQty) || 1;
+    const base = up * qty;
+    const rush = d.certRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+    const des  = d.certDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      certType:      d.certType,
+      certText:      d.certText,
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.certRush,   rushFee:   rush,
+      designService: d.certDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   if (selectedProduct === 'acrylicplaque') {
     const p    = PRICING.acrylicplaque || {};
     const t    = plaqueTypeObj() || { price: 0 };
@@ -3547,6 +3659,12 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + (d.plateQty || 0) + ' pc(s)';
     if (d.plateRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.plateDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'certificate') {
+    specsLine = 'Certificate · ' + (d.certType || '—');
+    if (d.certText) specsLine += '\nTitle / Recipient: ' + d.certText;
+    specsLine += '\nQuantity: ' + (d.certQty || 0) + ' copy(ies)';
+    if (d.certRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.certDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'acrylicplaque') {
     specsLine = 'Acrylic Plaque · ' + (d.plaqueMaterial || '—') + (d.plaqueType ? ' ' + d.plaqueType : '');
     if (d.plaqueText) specsLine += '\nName / Engraving Text: ' + d.plaqueText;
@@ -3643,6 +3761,7 @@ function resetAll() {
   d.acsignType=''; d.acsignWidth=''; d.acsignHeight=''; d.acsignUnit='ft'; d.acsignRush='No'; d.acsignDesign='No';
   d.acdispType=''; d.acdispWidth=''; d.acdispHeight=''; d.acdispUnit='ft'; d.acdispRush='No'; d.acdispDesign='No';
   d.plateType=''; d.plateText=''; d.plateRush='No'; d.plateDesign='No';
+  d.certType=''; d.certText=''; d.certQty=1; d.certRush='No'; d.certDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });

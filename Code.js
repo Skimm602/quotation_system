@@ -25,6 +25,7 @@ const ACRYLICSIGN_SHEET       = 'Acrylic Signage Quotations';
 const ACRYLICPLATE_SHEET      = 'Acrylic Plate Quotations';
 const ACRYLICPLAQUE_SHEET     = 'Acrylic Plaque Quotations';
 const ACRYLICDISPLAY_SHEET    = 'Acrylic Display Quotations';
+const CERTIFICATE_SHEET       = 'Certificate Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_INFO_SHEET     = 'Customer Info';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
@@ -335,6 +336,9 @@ function doGet(e) {
   }
   if (page === 'acrylicdisplay') {
     return serveWithToken_('AcrylicDisplay', 'Quotation System — Acrylic Display', token, appUrl);
+  }
+  if (page === 'certificate') {
+    return serveWithToken_('Certificate', 'Quotation System — Certificate', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1483,6 +1487,55 @@ function getDashboardData(token) {
       });
     }
 
+    // ── CERTIFICATE QUOTES ──────────────────────────────────────
+    let certificateQuotes = [];
+    const certSheet = ss.getSheetByName(CERTIFICATE_SHEET);
+    if (certSheet) {
+      const cdata  = certSheet.getDataRange().getValues();
+      const cStart = cdata.length > 0 && String(cdata[0][0]).startsWith('CERT-') ? 0 : 1;
+      certificateQuotes = cdata.slice(cStart).filter(r => r[0] && String(r[0]).startsWith('CERT-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel  = String(row[15] || '');
+        const certType = String(row[6] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          certType:         certType,
+          certText:         String(row[7] || ''),
+          quantity:         row[8]  || 0,
+          unitPrice:        parseFloat(row[9])  || 0,
+          baseAmount:       parseFloat(row[10]) || 0,
+          rushOrder:        String(row[11] || ''),
+          rushFee:          parseFloat(row[12]) || 0,
+          designService:    String(row[13] || ''),
+          designFee:        parseFloat(row[14]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[16]) || 0,
+          notes:            String(row[17] || ''),
+          salesStaff:       String(row[18] || ''),
+          status:           String(row[19] || 'Pending'),
+          approvedBy:       String(row[20] || ''),
+          taxType:          String(row[21] || 'non-vat'),
+          taxAmount:        parseFloat(row[22]) || 0,
+          items: (function(){ try { const j = String(row[23]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e){ return []; } })(),
+          quoteType:        'certificate',
+          signageType:      'Certificate — ' + certType,
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[13] || ''), addonDesignFee: parseFloat(row[14]) || 0,
+          addonRush:   String(row[11] || ''), addonRushFee:   parseFloat(row[12]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── ACRYLIC PLAQUE QUOTES ───────────────────────────────────
     let acrylicPlaqueQuotes = [];
     const plqSheet = ss.getSheetByName(ACRYLICPLAQUE_SHEET);
@@ -1588,7 +1641,7 @@ function getDashboardData(token) {
     }
 
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...acrylicPlaqueQuotes, ...acrylicDisplayQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...acrylicDisplayQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1616,7 +1669,7 @@ function getQuoteForPDF(token, quoteNum) {
   // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
   //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
   //     data builder, which already returns a render-ready quote object. ──
-  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'PLQ-', 'AD-'];
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'PLQ-', 'AD-'];
   if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
     try {
       const dash = getDashboardData(token);
@@ -1979,6 +2032,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isKeychain  = String(quoteNum).startsWith('KC-');
   const isAcrylicSign = String(quoteNum).startsWith('AS-');
   const isAcrylicPlate = String(quoteNum).startsWith('AP-');
+  const isCertificate = String(quoteNum).startsWith('CERT-');
   const isAcrylicPlaque = String(quoteNum).startsWith('PLQ-');
   const isAcrylicDisplay = String(quoteNum).startsWith('AD-');
 
@@ -2236,6 +2290,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Acrylic Plate order not found: ' + quoteNum);
+  }
+
+  if (isCertificate) {
+    const sheet = ss.getSheetByName(CERTIFICATE_SHEET);
+    if (!sheet) throw new Error('Certificate Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 20).setValue(status);  // col T = Status
+        sheet.getRange(i+1, 21).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col U = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 23).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Certificate order not found: ' + quoteNum);
   }
 
   if (isAcrylicPlaque) {
@@ -2930,6 +3000,7 @@ function getPublicPricing() {
     keychain: (function(){ try{ return getKeychainPricing(); }catch(e){ return null; } })(),
     acrylicsign:(function(){ try{ return getAcrylicSignPricing(); }catch(e){ return null; } })(),
     acrylicplate:(function(){ try{ return getAcrylicPlatePricing(); }catch(e){ return null; } })(),
+    certificate:(function(){ try{ return getCertificatePricing(); }catch(e){ return null; } })(),
     acrylicplaque:(function(){ try{ return getAcrylicPlaquePricing(); }catch(e){ return null; } })(),
     acrylicdisplay:(function(){ try{ return getAcrylicDisplayPricing(); }catch(e){ return null; } })(),
   };
@@ -3045,6 +3116,9 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'acrylicplate') {
       specs = 'Acrylic Plate Number · ' + (data.plateType || '—') + ' × ' + (data.quantity || 1) + ' pc(s)';
       if (data.plateText) specs += ' | Text: ' + data.plateText;
+    } else if (data.productType === 'certificate') {
+      specs = 'Certificate · ' + (data.certType || '—') + ' × ' + (data.quantity || 1) + ' copy(ies)';
+      if (data.certText) specs += ' | Title: ' + data.certText;
     } else if (data.productType === 'acrylicplaque') {
       specs = 'Acrylic Plaque · ' + (data.plaqueMaterial || '—')
             + (data.plaqueType ? ' ' + data.plaqueType : '') + ' × ' + (data.quantity || 1) + ' pc(s)';
@@ -3303,6 +3377,10 @@ function buildSpecsEmailDetail_(data, fallbackSpecs) {
     } else if (t === 'acrylicplate') {
       add('Plate Type', data.plateType);
       add('Plate Text', data.plateText);
+
+    } else if (t === 'certificate') {
+      add('Certificate Type', data.certType);
+      add('Certificate Title', data.certText);
 
     } else if (t === 'acrylicdisplay') {
       add('Thickness', data.acdisplayType || data.thickness);
@@ -5446,6 +5524,146 @@ function saveAcrylicPlateOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET CERTIFICATE PRICING  (live from the "Certificates" price-DB tab)
+// ══════════════════════════════════════════════════════════════════
+//  Tab layout = two certificate types side by side, one per column:
+//    row 1 → type name (Award Certificate | Gift Certificate)
+//    row 2 → price     (₱ 30/copy        | ₱ 12/copy)
+//    rows 3+ → descriptive specs (Material / Size / Method)
+//  Flat price per copy. Rush = ₱250 or 5% whichever higher; Design ₱250.
+function getCertificatePricing() {
+  const defaults = {
+    types: [
+      { name: 'Award Certificate', price: 30, unit: 'copy', specs: 'Material: mirrorkote/vellum · Method: Laser print' },
+      { name: 'Gift Certificate',  price: 12, unit: 'copy', specs: 'Size: 3"x6" · Material: Colored high gloss paper (thicker) · Method: Laser print' },
+    ],
+    rushFlat: 250, rushPct: 0.05, designFee: 250,
+  };
+
+  function num(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+
+  try {
+    const ss = getPriceDbSS_();
+    let sheet = ss.getSheetByName('Certificates')
+             || ss.getSheetByName('Certificate')
+             || ss.getSheetByName('Award and Gift Certificate')
+             || ss.getSheetByName('Award & Gift Certificate');
+    if (!sheet) {
+      // Fallback: find a tab whose header row mentions "certificate".
+      const all = ss.getSheets();
+      for (let i = 0; i < all.length; i++) {
+        const lastCol = all[i].getLastColumn() || 1;
+        const first = all[i].getRange(1, 1, 1, lastCol).getValues()[0]
+          .map(c => String(c || '').toLowerCase()).join(' ');
+        if (first.indexOf('certificate') >= 0) { sheet = all[i]; break; }
+      }
+    }
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) return defaults;
+
+    const nCols = rows[0].length;
+    const types = [];
+    for (let c = 0; c < nCols; c++) {
+      const name = String(rows[0][c] || '').trim();
+      if (!name || !/certificate/i.test(name)) continue;
+      const price = num(rows[1] ? rows[1][c] : 0);
+      if (price <= 0) continue;
+      const specParts = [];
+      for (let r = 2; r < rows.length; r++) {
+        const cell = String((rows[r] && rows[r][c]) || '').trim();
+        if (cell) specParts.push(cell);
+      }
+      types.push({ name: name, price: price, unit: 'copy', specs: specParts.join(' · ') });
+    }
+    if (!types.length) return defaults;
+    return { types: types, rushFlat: defaults.rushFlat, rushPct: defaults.rushPct, designFee: defaults.designFee };
+  } catch (e) {
+    Logger.log('getCertificatePricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE CERTIFICATE ORDER  (appends to the main SS Certificate tab)
+// ══════════════════════════════════════════════════════════════════
+function saveCertificateOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(CERTIFICATE_SHEET);
+  if (!sheet) sheet = ss.insertSheet(CERTIFICATE_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Certificate Type', 'Certificate Title / Recipient', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount', 'Items JSON',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('CERT-')) {
+    if (firstCell.startsWith('CERT-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  lockQuoteNumbering_();
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'CERT-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.certType      || '',                   // G  - Certificate Type
+    data.certText      || '',                   // H  - Certificate Title / Recipient
+    qty,                                        // I  - Quantity
+    parseFloat(unitP.toFixed(2)),               // J  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // K  - Base Amount
+    data.rushOrder     || '',                   // L  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // M  - Rush Fee
+    data.designService || '',                   // N  - Design Service
+    parseFloat(designFee.toFixed(2)),           // O  - Design Fee
+    '',                                         // P  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // Q  - Total Amount
+    data.notes         || '',                   // R  - Special Instructions
+    staffName,                                  // S  - Sales Staff
+    data.status || 'Pending',                   // T  - Status
+    '',                                         // U  - Approved By
+    data.taxType       || 'non-vat',            // V  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // W  - Tax Amount
+    (data.items && data.items.length) ? JSON.stringify(data.items) : '[]',  // X - Items JSON
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 10, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Certificate', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  GET ACRYLIC PLAQUE PRICING (live from "Acrylic Plaques" tab)
 // ══════════════════════════════════════════════════════════════════
 //  Two side-by-side catalogs in the tab:
@@ -6023,6 +6241,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('AS-'))  sheetName = ACRYLICSIGN_SHEET;
   else if (quoteNum.startsWith('AD-'))  sheetName = ACRYLICDISPLAY_SHEET;
   else if (quoteNum.startsWith('AP-'))  sheetName = ACRYLICPLATE_SHEET;
+  else if (quoteNum.startsWith('CERT-')) sheetName = CERTIFICATE_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -6049,6 +6268,7 @@ else if (quoteNum.startsWith('KC-'))  ptCol = 19; // col S
 else if (quoteNum.startsWith('AS-'))  ptCol = 21; // col U
 else if (quoteNum.startsWith('AD-'))  ptCol = 21; // col U
 else if (quoteNum.startsWith('AP-'))  ptCol = 16; // col P
+else if (quoteNum.startsWith('CERT-')) ptCol = 16; // col P
 
 // Find the row
 for (let i = 1; i < data.length; i++) {

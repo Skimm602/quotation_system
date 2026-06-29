@@ -350,9 +350,10 @@
     const isKeychain  = String(q.quoteNum || '').startsWith('KC-');
     const isAcrylicSign = String(q.quoteNum || '').startsWith('AS-');
     const isAcrylicPlate = String(q.quoteNum || '').startsWith('AP-');
+    const isCertificate = String(q.quoteNum || '').startsWith('CERT-');
     const isAcrylicPlaque = String(q.quoteNum || '').startsWith('PLQ-');
     const isAcrylicDisplay = String(q.quoteNum || '').startsWith('AD-');
-    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isAcrylicPlaque || isAcrylicDisplay;
+    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isCertificate || isAcrylicPlaque || isAcrylicDisplay;
 
     if (isTarpMulti) {
       // One row per item in the cart
@@ -533,16 +534,22 @@
       } else if (isAcrylicPlate) {
         descParts.push('<strong>Acrylic Plate Number — ' + (q.plateType || '') + '</strong>');
         if (q.plateText) descParts.push('Name / Plate Text: ' + q.plateText);
+      } else if (isCertificate) {
+        descParts.push('<strong>Certificate — ' + (q.certType || '') + '</strong>');
+        if (q.certText) descParts.push('Title / Recipient: ' + q.certText);
       } else if (isAcrylicPlaque) {
         descParts.push('<strong>Acrylic Plaque — ' + (q.plaqueMaterial || '') + (q.plaqueType ? ' ' + q.plaqueType : '') + '</strong>');
         if (q.plaqueText) descParts.push('Engraving Text: ' + q.plaqueText);
       }
-      if ((isAcrylicPlate || isAcrylicPlaque) && q.items && q.items.length > 1) {
+      if ((isAcrylicPlate || isAcrylicPlaque || isCertificate) && q.items && q.items.length > 1) {
         q.items.forEach(function(it) {
           const dp = isAcrylicPlaque
             ? ['<strong>Acrylic Plaque — ' + (it.plaqueMaterial || '') + (it.plaqueType ? ' ' + it.plaqueType : '') + '</strong>']
+            : isCertificate
+            ? ['<strong>Certificate — ' + (it.certType || '') + '</strong>']
             : ['<strong>Acrylic Plate Number — ' + (it.plateType || '') + '</strong>'];
           if (isAcrylicPlaque) { if (it.plaqueText) dp.push('Engraving Text: ' + it.plaqueText); }
+          else if (isCertificate) { if (it.certText) dp.push('Title / Recipient: ' + it.certText); }
           else { if (it.plateText) dp.push('Name / Plate Text: ' + it.plateText); }
           if (it.rushOrder === 'Yes') dp.push('Rush Order: Yes');
           if (it.designService === 'Yes') dp.push('Design Service: Yes');
