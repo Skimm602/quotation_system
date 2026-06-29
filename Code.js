@@ -28,6 +28,7 @@ const ACRYLICDISPLAY_SHEET    = 'Acrylic Display Quotations';
 const CERTIFICATE_SHEET       = 'Certificate Quotations';
 const CALENDAR_SHEET          = 'Calendar Quotations';
 const MESHCAP_SHEET           = 'Mesh Cap Quotations';
+const CALLINGCARD_SHEET       = 'Calling Card Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_INFO_SHEET     = 'Customer Info';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
@@ -347,6 +348,9 @@ function doGet(e) {
   }
   if (page === 'meshcap') {
     return serveWithToken_('MeshCap', 'Quotation System — Mesh Cap', token, appUrl);
+  }
+  if (page === 'callingcard') {
+    return serveWithToken_('CallingCard', 'Quotation System — Calling Card', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1748,8 +1752,57 @@ function getDashboardData(token) {
       });
     }
 
+    // ── CALLING CARD QUOTES ─────────────────────────────────────
+    let callingCardQuotes = [];
+    const ccSheet = ss.getSheetByName(CALLINGCARD_SHEET);
+    if (ccSheet) {
+      const cdata  = ccSheet.getDataRange().getValues();
+      const cStart = cdata.length > 0 && String(cdata[0][0]).startsWith('CC-') ? 0 : 1;
+      callingCardQuotes = cdata.slice(cStart).filter(r => r[0] && String(r[0]).startsWith('CC-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[15] || '');
+        const ccType  = String(row[6] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          ccType:           ccType,
+          ccText:           String(row[7] || ''),
+          quantity:         row[8]  || 0,
+          unitPrice:        parseFloat(row[9])  || 0,
+          baseAmount:       parseFloat(row[10]) || 0,
+          rushOrder:        String(row[11] || ''),
+          rushFee:          parseFloat(row[12]) || 0,
+          designService:    String(row[13] || ''),
+          designFee:        parseFloat(row[14]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[16]) || 0,
+          notes:            String(row[17] || ''),
+          salesStaff:       String(row[18] || ''),
+          status:           String(row[19] || 'Pending'),
+          approvedBy:       String(row[20] || ''),
+          taxType:          String(row[21] || 'non-vat'),
+          taxAmount:        parseFloat(row[22]) || 0,
+          items: (function(){ try { const j = String(row[23]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e){ return []; } })(),
+          quoteType:        'callingcard',
+          signageType:      'Calling Card — ' + ccType,
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[13] || ''), addonDesignFee: parseFloat(row[14]) || 0,
+          addonRush:   String(row[11] || ''), addonRushFee:   parseFloat(row[12]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...meshCapQuotes, ...acrylicDisplayQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...meshCapQuotes, ...callingCardQuotes, ...acrylicDisplayQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1777,7 +1830,7 @@ function getQuoteForPDF(token, quoteNum) {
   // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
   //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
   //     data builder, which already returns a render-ready quote object. ──
-  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'MC-', 'PLQ-', 'AD-'];
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'MC-', 'CC-', 'PLQ-', 'AD-'];
   if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
     try {
       const dash = getDashboardData(token);
@@ -2143,6 +2196,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isCertificate = String(quoteNum).startsWith('CERT-');
   const isCalendar = String(quoteNum).startsWith('CAL-');
   const isMeshCap = String(quoteNum).startsWith('MC-');
+  const isCallingCard = String(quoteNum).startsWith('CC-');
   const isAcrylicPlaque = String(quoteNum).startsWith('PLQ-');
   const isAcrylicDisplay = String(quoteNum).startsWith('AD-');
 
@@ -2448,6 +2502,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Mesh Cap order not found: ' + quoteNum);
+  }
+
+  if (isCallingCard) {
+    const sheet = ss.getSheetByName(CALLINGCARD_SHEET);
+    if (!sheet) throw new Error('Calling Card Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 20).setValue(status);  // col T = Status
+        sheet.getRange(i+1, 21).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col U = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 23).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Calling Card order not found: ' + quoteNum);
   }
 
   if (isAcrylicPlaque) {
@@ -3145,6 +3215,7 @@ function getPublicPricing() {
     certificate:(function(){ try{ return getCertificatePricing(); }catch(e){ return null; } })(),
     calendar:(function(){ try{ return getCalendarPricing(); }catch(e){ return null; } })(),
     meshcap:(function(){ try{ return getMeshCapPricing(); }catch(e){ return null; } })(),
+    callingcard:(function(){ try{ return getCallingCardPricing(); }catch(e){ return null; } })(),
     acrylicplaque:(function(){ try{ return getAcrylicPlaquePricing(); }catch(e){ return null; } })(),
     acrylicdisplay:(function(){ try{ return getAcrylicDisplayPricing(); }catch(e){ return null; } })(),
   };
@@ -3270,6 +3341,9 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'meshcap') {
       specs = 'Mesh Cap · ' + (data.quantity || 1) + ' pc(s)';
       if (data.meshText) specs += ' | Design: ' + data.meshText;
+    } else if (data.productType === 'callingcard') {
+      specs = 'Calling Card · ' + (data.ccType || '—') + ' × ' + (data.quantity || 1) + ' set(s)';
+      if (data.ccText) specs += ' | Details: ' + data.ccText;
     } else if (data.productType === 'acrylicplaque') {
       specs = 'Acrylic Plaque · ' + (data.plaqueMaterial || '—')
             + (data.plaqueType ? ' ' + data.plaqueType : '') + ' × ' + (data.quantity || 1) + ' pc(s)';
@@ -3541,6 +3615,10 @@ function buildSpecsEmailDetail_(data, fallbackSpecs) {
     } else if (t === 'meshcap') {
       add('Product', 'Mesh Cap');
       add('Design / Logo Note', data.meshText);
+
+    } else if (t === 'callingcard') {
+      add('Print Type', data.ccType);
+      add('Name / Details', data.ccText);
 
     } else if (t === 'acrylicdisplay') {
       add('Thickness', data.acdisplayType || data.thickness);
@@ -6258,6 +6336,151 @@ function saveMeshCapOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET CALLING CARD PRICING  (live from the "Calling Card" price-DB tab)
+// ══════════════════════════════════════════════════════════════════
+//  Tab layout = two print types side by side, one per column:
+//    row 1 → type name (One - Side | Back-to-back)
+//    row 2 → price     (₱300       | ₱500)
+//    rows 3+ → descriptive lines (minimum order / material), usually only
+//              in the first column but applied to all types.
+//  Priced per set (minimum order shown in specs). Rush ₱250/5%; Design ₱250.
+function getCallingCardPricing() {
+  const defaults = {
+    types: [
+      { name: 'One-Side',     price: 300, unit: 'set', specs: 'Minimum order: 50 pcs. · Material: mirrorkote' },
+      { name: 'Back-to-back', price: 500, unit: 'set', specs: 'Minimum order: 50 pcs. · Material: mirrorkote' },
+    ],
+    rushFlat: 250, rushPct: 0.05, designFee: 250,
+  };
+
+  function num(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  function txt(raw) { return String(raw == null ? '' : raw).trim(); }
+
+  try {
+    const ss = getPriceDbSS_();
+    let sheet = ss.getSheetByName('Calling Card')
+             || ss.getSheetByName('Calling Cards')
+             || ss.getSheetByName('Calling Card ');
+    if (!sheet) {
+      const all = ss.getSheets();
+      for (let i = 0; i < all.length; i++) {
+        const lastCol = all[i].getLastColumn() || 1;
+        const first = all[i].getRange(1, 1, 1, lastCol).getValues()[0]
+          .map(c => String(c || '').toLowerCase()).join(' ');
+        if (/calling\s*card|one\s*-?\s*side|back\s*-?\s*to\s*-?\s*back/.test(first)) { sheet = all[i]; break; }
+      }
+    }
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) return defaults;
+
+    const nCols = rows[0].length;
+    // Shared descriptive specs (min order / material) gathered from rows 3+.
+    const sharedSpecs = [];
+    for (let r = 2; r < rows.length; r++) {
+      for (let c = 0; c < (rows[r] ? rows[r].length : 0); c++) {
+        const cell = txt(rows[r][c]);
+        if (cell && sharedSpecs.indexOf(cell) < 0) sharedSpecs.push(cell);
+      }
+    }
+    const specsStr = sharedSpecs.join(' · ');
+
+    const types = [];
+    for (let c = 0; c < nCols; c++) {
+      const name = txt(rows[0][c]).replace(/\s*-\s*/g, '-');
+      if (!name) continue;
+      const price = num(rows[1] ? rows[1][c] : 0);
+      if (price <= 0) continue;
+      types.push({ name: name, price: price, unit: 'set', specs: specsStr || defaults.types[0].specs });
+    }
+    if (!types.length) return defaults;
+    return { types: types, rushFlat: defaults.rushFlat, rushPct: defaults.rushPct, designFee: defaults.designFee };
+  } catch (e) {
+    Logger.log('getCallingCardPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE CALLING CARD ORDER  (appends to the main SS Calling Card tab)
+// ══════════════════════════════════════════════════════════════════
+function saveCallingCardOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(CALLINGCARD_SHEET);
+  if (!sheet) sheet = ss.insertSheet(CALLINGCARD_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Print Type', 'Name / Details', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount', 'Items JSON',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('CC-')) {
+    if (firstCell.startsWith('CC-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  lockQuoteNumbering_();
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'CC-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.ccType        || '',                   // G  - Print Type
+    data.ccText        || '',                   // H  - Name / Details
+    qty,                                        // I  - Quantity
+    parseFloat(unitP.toFixed(2)),               // J  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // K  - Base Amount
+    data.rushOrder     || '',                   // L  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // M  - Rush Fee
+    data.designService || '',                   // N  - Design Service
+    parseFloat(designFee.toFixed(2)),           // O  - Design Fee
+    '',                                         // P  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // Q  - Total Amount
+    data.notes         || '',                   // R  - Special Instructions
+    staffName,                                  // S  - Sales Staff
+    data.status || 'Pending',                   // T  - Status
+    '',                                         // U  - Approved By
+    data.taxType       || 'non-vat',            // V  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // W  - Tax Amount
+    (data.items && data.items.length) ? JSON.stringify(data.items) : '[]',  // X - Items JSON
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 10, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Calling Card', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -6698,6 +6921,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('CERT-')) sheetName = CERTIFICATE_SHEET;
   else if (quoteNum.startsWith('CAL-'))  sheetName = CALENDAR_SHEET;
   else if (quoteNum.startsWith('MC-'))   sheetName = MESHCAP_SHEET;
+  else if (quoteNum.startsWith('CC-'))   sheetName = CALLINGCARD_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -6727,6 +6951,7 @@ else if (quoteNum.startsWith('AP-'))  ptCol = 16; // col P
 else if (quoteNum.startsWith('CERT-')) ptCol = 16; // col P
 else if (quoteNum.startsWith('CAL-'))  ptCol = 17; // col Q
 else if (quoteNum.startsWith('MC-'))   ptCol = 16; // col P
+else if (quoteNum.startsWith('CC-'))   ptCol = 16; // col P
 
 // Find the row
 for (let i = 1; i < data.length; i++) {

@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, acrylicplaque: null, acrylicdisplay: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, callingcard: null, acrylicplaque: null, acrylicdisplay: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -117,6 +117,7 @@ const PRODUCTS = [
   { id:'certificate', icon:'📜', label:'Certificate',   sub:'Award / Gift'         },
   { id:'calendar',   icon:'📅', label:'Calendar',      sub:'Monthly / Poster'      },
   { id:'meshcap',    icon:'🧢', label:'Mesh Cap',      sub:'Sublimation print'     },
+  { id:'callingcard',icon:'📇', label:'Calling Card',  sub:'1-side / Back-to-back' },
   { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', sub:'Acrylic / Crystal'  },
   { id:'acrylicdisplay', icon:'🧊', label:'Acrylic Display', sub:'Per sq.ft · thickness' },
 ];
@@ -177,6 +178,8 @@ const d = {
   calType:'', calSize:'', calText:'', calQty:100, calRush:'No', calDesign:'No',
   // mesh cap
   meshText:'', meshQty:20, meshRush:'No', meshDesign:'No',
+  // calling card
+  ccType:'', ccText:'', ccQty:1, ccRush:'No', ccDesign:'No',
   // acrylic plaque
   plaqueMaterial:'', plaqueType:'', plaqueText:'', plaqueQty:1, plaqueRush:'No', plaqueDesign:'No',
   // proof of payment (optional, sent as email attachment)
@@ -224,6 +227,17 @@ function meshEstHtml() {
   const qty = parseInt(d.meshQty) || 0;
   return (t && qty)
     ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function ccTypeObj() {
+  const list = (PRICING.callingcard || {}).types || [];
+  return list.find(t => t.name === d.ccType) || null;
+}
+function ccEstHtml() {
+  const t   = ccTypeObj();
+  const qty = parseInt(d.ccQty) || 0;
+  return (t && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} set(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
     : '';
 }
 function plaqueEstHtml() {
@@ -685,6 +699,16 @@ function calcMeshCapTotal() {
   const des  = d.meshDesign === 'Yes' ? (p.designFee || 250) : 0;
   return base + rush + des;
 }
+function calcCallingCardTotal() {
+  const p   = PRICING.callingcard || {};
+  const t   = ccTypeObj();
+  const qty = parseInt(d.ccQty) || 0;
+  if (!t || !qty) return 0;
+  const base = (t.price || 0) * qty;
+  const rush = d.ccRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+  const des  = d.ccDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
 
 function plaqueMaterials() {
   const s = [];
@@ -728,6 +752,7 @@ function calcTotal() {
   if (selectedProduct === 'certificate') return calcCertificateTotal();
   if (selectedProduct === 'calendar') return calcCalendarTotal();
   if (selectedProduct === 'meshcap') return calcMeshCapTotal();
+  if (selectedProduct === 'callingcard') return calcCallingCardTotal();
   if (selectedProduct === 'acrylicplaque') return calcAcrylicPlaqueTotal();
   return 0;
 }
@@ -846,6 +871,7 @@ function renderSpecs() {
   if (selectedProduct === 'certificate') return renderCertificateSpecs();
   if (selectedProduct === 'calendar') return renderCalendarSpecs();
   if (selectedProduct === 'meshcap') return renderMeshCapSpecs();
+  if (selectedProduct === 'callingcard') return renderCallingCardSpecs();
   if (selectedProduct === 'acrylicplaque') return renderAcrylicPlaqueSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
 }
@@ -1073,6 +1099,67 @@ function renderMeshCapSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.meshDesign==='Yes'?' on':''}" onclick="d.meshDesign='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.meshDesign==='No'?' on':''}"  onclick="d.meshDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── CALLING CARD SPECS ────────────────────────────────────────────
+const CC_ICONS = { 'One-Side':'📇', 'Back-to-back':'🔁' };
+function selectCcType(idx) {
+  const list = (PRICING.callingcard || {}).types || [];
+  if (list[idx]) d.ccType = list[idx].name;
+  renderForm();
+}
+function renderCallingCardSpecs() {
+  const p     = PRICING.callingcard || {};
+  const types = p.types || [];
+
+  const typeCards = types.map((t, idx) => {
+    const sel  = d.ccType === t.name;
+    const icon = CC_ICONS[t.name] || '💳';
+    return `<div class="opt-card${sel?' active':''}" onclick="selectCcType(${idx})">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${icon} ${esc(t.name)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">₱${(t.price||0).toLocaleString('en-PH')}/set</div>
+        ${t.specs ? `<div style="font-size:10px;color:#AAA;margin-top:2px;">${esc(t.specs)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const estLine = ccEstHtml();
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Print Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${typeCards}</div>
+      </div>
+      <div>
+        <label class="field-label">Name / Details <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="cc_text" value="${esc(d.ccText||'')}" placeholder="e.g. Juan D. — Owner / Company name"
+          oninput="d.ccText=this.value;">
+      </div>
+      <div>
+        <label class="field-label">Quantity (sets) <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(1 set = 50 pcs)</span></label>
+        <input type="number" class="field-input" id="cc_qty" value="${d.ccQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.ccQty=parseInt(this.value)||1;updateEst('cc_est',ccEstHtml);" inputmode="numeric">
+        <div id="cc_est">${estLine}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.ccRush==='Yes'?' on':''}" onclick="d.ccRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.ccRush==='No'?' on':''}"  onclick="d.ccRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Design / Layout Service? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.designFee||250).toLocaleString()})</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.ccDesign==='Yes'?' on':''}" onclick="d.ccDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.ccDesign==='No'?' on':''}"  onclick="d.ccDesign='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -2960,6 +3047,11 @@ function renderReview() {
     if (d.meshText) specSummary += ` · "${esc(d.meshText)}"`;
     if (d.meshRush   === 'Yes') specSummary += ' · Rush';
     if (d.meshDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'callingcard') {
+    specSummary = `Calling Card · ${esc(d.ccType)||'—'} × ${d.ccQty||0} set(s)`;
+    if (d.ccText) specSummary += ` · "${esc(d.ccText)}"`;
+    if (d.ccRush   === 'Yes') specSummary += ' · Rush';
+    if (d.ccDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'acrylicplaque') {
     specSummary = `Acrylic Plaque · ${esc(d.plaqueMaterial)||'—'} ${esc(d.plaqueType)||''} × ${d.plaqueQty||0} pc(s)`;
     if (d.plaqueText) specSummary += ` · "${esc(d.plaqueText)}"`;
@@ -3244,6 +3336,12 @@ function nextStep() {
       d.meshText = v('mesh_text') || d.meshText;
       d.meshQty  = parseInt(v('mesh_qty')) || d.meshQty;
       if (!d.meshQty || d.meshQty < 1) { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'callingcard') {
+      d.ccText = v('cc_text') || d.ccText;
+      d.ccQty  = parseInt(v('cc_qty')) || d.ccQty;
+      if (!d.ccType || !ccTypeObj()) { toast('Please select a print type.','error'); return; }
+      if (!d.ccQty || d.ccQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
     }
     if (selectedProduct === 'acrylicplaque') {
       d.plaqueText = v('plq_text') || d.plaqueText;
@@ -3738,6 +3836,26 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'callingcard') {
+    const p    = PRICING.callingcard || {};
+    const t    = ccTypeObj() || { price: 0 };
+    const up   = t.price || 0;
+    const qty  = parseInt(d.ccQty) || 1;
+    const base = up * qty;
+    const rush = d.ccRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+    const des  = d.ccDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      ccType:        d.ccType,
+      ccText:        d.ccText,
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.ccRush,   rushFee:   rush,
+      designService: d.ccDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   if (selectedProduct === 'acrylicplaque') {
     const p    = PRICING.acrylicplaque || {};
     const t    = plaqueTypeObj() || { price: 0 };
@@ -3916,6 +4034,12 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + (d.meshQty || 0) + ' pc(s)';
     if (d.meshRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.meshDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'callingcard') {
+    specsLine = 'Calling Card · ' + (d.ccType || '—');
+    if (d.ccText) specsLine += '\nName / Details: ' + d.ccText;
+    specsLine += '\nQuantity: ' + (d.ccQty || 0) + ' set(s)';
+    if (d.ccRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.ccDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'acrylicplaque') {
     specsLine = 'Acrylic Plaque · ' + (d.plaqueMaterial || '—') + (d.plaqueType ? ' ' + d.plaqueType : '');
     if (d.plaqueText) specsLine += '\nName / Engraving Text: ' + d.plaqueText;
@@ -4015,6 +4139,7 @@ function resetAll() {
   d.certType=''; d.certText=''; d.certQty=1; d.certRush='No'; d.certDesign='No';
   d.calType=''; d.calSize=''; d.calText=''; d.calQty=100; d.calRush='No'; d.calDesign='No';
   d.meshText=''; d.meshQty=20; d.meshRush='No'; d.meshDesign='No';
+  d.ccType=''; d.ccText=''; d.ccQty=1; d.ccRush='No'; d.ccDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
