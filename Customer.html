@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, acrylicplaque: null, acrylicdisplay: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, acrylicplaque: null, acrylicdisplay: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -115,6 +115,7 @@ const PRODUCTS = [
   { id:'acrylicsign', icon:'🪧', label:'Acrylic Sign', sub:'Per sq.ft · 1 layer' },
   { id:'acrylicplate', icon:'🚗', label:'Plate Number', sub:'Motorcycle / Car'    },
   { id:'certificate', icon:'📜', label:'Certificate',   sub:'Award / Gift'         },
+  { id:'calendar',   icon:'📅', label:'Calendar',      sub:'Monthly / Poster'      },
   { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', sub:'Acrylic / Crystal'  },
   { id:'acrylicdisplay', icon:'🧊', label:'Acrylic Display', sub:'Per sq.ft · thickness' },
 ];
@@ -171,6 +172,8 @@ const d = {
   plateType:'', plateText:'', plateQty:1, plateRush:'No', plateDesign:'No',
   // certificate
   certType:'', certText:'', certQty:1, certRush:'No', certDesign:'No',
+  // calendar
+  calType:'', calSize:'', calText:'', calQty:100, calRush:'No', calDesign:'No',
   // acrylic plaque
   plaqueMaterial:'', plaqueType:'', plaqueText:'', plaqueQty:1, plaqueRush:'No', plaqueDesign:'No',
   // proof of payment (optional, sent as email attachment)
@@ -203,6 +206,13 @@ function certEstHtml() {
   const qty = parseInt(d.certQty) || 0;
   return (t && qty)
     ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} copy(ies) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function calEstHtml() {
+  const t   = calObj();
+  const qty = parseInt(d.calQty) || 0;
+  return (t && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
     : '';
 }
 function plaqueEstHtml() {
@@ -635,6 +645,26 @@ function calcCertificateTotal() {
   return base + rush + des;
 }
 
+function calTypeList() {
+  const seen = [];
+  (((PRICING.calendar || {}).types) || []).forEach(t => { if (seen.indexOf(t.calType) < 0) seen.push(t.calType); });
+  return seen;
+}
+function calOptions() { return (((PRICING.calendar || {}).types) || []).filter(t => t.calType === d.calType); }
+function calObj() { return (((PRICING.calendar || {}).types) || []).find(t => t.calType === d.calType && t.name === d.calSize) || null; }
+function selectCalType(m) { d.calType = m; d.calSize = ''; renderForm(); }
+function selectCalSize(idx) { const o = calOptions()[idx]; if (o) d.calSize = o.name; renderForm(); }
+function calcCalendarTotal() {
+  const p   = PRICING.calendar || {};
+  const t   = calObj();
+  const qty = parseInt(d.calQty) || 0;
+  if (!t || !qty) return 0;
+  const base = (t.price || 0) * qty;
+  const rush = d.calRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+  const des  = d.calDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
+
 function plaqueMaterials() {
   const s = [];
   (((PRICING.acrylicplaque || {}).types) || []).forEach(t => { if (s.indexOf(t.material) < 0) s.push(t.material); });
@@ -675,6 +705,7 @@ function calcTotal() {
   if (selectedProduct === 'acrylicdisplay') return calcAcrylicDisplayTotal();
   if (selectedProduct === 'acrylicplate') return calcAcrylicPlateTotal();
   if (selectedProduct === 'certificate') return calcCertificateTotal();
+  if (selectedProduct === 'calendar') return calcCalendarTotal();
   if (selectedProduct === 'acrylicplaque') return calcAcrylicPlaqueTotal();
   return 0;
 }
@@ -791,6 +822,7 @@ function renderSpecs() {
   if (selectedProduct === 'acrylicdisplay') return renderAcrylicDisplaySpecs();
   if (selectedProduct === 'acrylicplate') return renderAcrylicPlateSpecs();
   if (selectedProduct === 'certificate') return renderCertificateSpecs();
+  if (selectedProduct === 'calendar') return renderCalendarSpecs();
   if (selectedProduct === 'acrylicplaque') return renderAcrylicPlaqueSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
 }
@@ -897,6 +929,80 @@ function renderCertificateSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.certRush==='Yes'?' on':''}" onclick="d.certRush='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.certRush==='No'?' on':''}"  onclick="d.certRush='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── CALENDAR SPECS ────────────────────────────────────────────────
+function renderCalendarSpecs() {
+  const p     = PRICING.calendar || {};
+  const types = calTypeList();
+  if (!d.calType && types.length) d.calType = types[0];
+  const opts  = calOptions();
+
+  const typeCards = types.map((m) => {
+    const sel   = d.calType === m;
+    const lc    = String(m).toLowerCase();
+    const icon  = lc.indexOf('poster') >= 0 ? '🖼️' : lc.indexOf('2 month') >= 0 ? '📆' : '🗓️';
+    const count = (((PRICING.calendar||{}).types)||[]).filter(x => x.calType === m).length;
+    return `<div class="opt-card${sel?' active':''}" onclick="selectCalType('${esc(m).replace(/'/g,"\\'")}')">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${icon} ${esc(m)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">${count} size(s)</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const optCards = opts.map((o, idx) => {
+    const sel = d.calSize === o.name;
+    return `<div class="opt-card${sel?' active':''}" onclick="selectCalSize(${idx})">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${esc(o.name)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">₱${(o.price||0).toLocaleString('en-PH')}/pc</div>
+        ${o.specs ? `<div style="font-size:10px;color:#AAA;margin-top:2px;">${esc(o.specs)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const estLine = calEstHtml();
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Calendar Type *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${typeCards}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Size *</label>
+        ${optCards ? `<div style="display:flex;flex-direction:column;gap:6px;">${optCards}</div>` : `<div style="font-size:12px;color:#999;">Select a calendar type to see sizes.</div>`}
+      </div>
+      <div>
+        <label class="field-label">Title / Year <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="cal_text" value="${esc(d.calText||'')}" placeholder="e.g. 2026 Wall Calendar — Company X"
+          oninput="d.calText=this.value;">
+      </div>
+      <div>
+        <label class="field-label">Quantity (pcs) <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(min 100)</span></label>
+        <input type="number" class="field-input" id="cal_qty" value="${d.calQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.calQty=parseInt(this.value)||1;updateEst('cal_est',calEstHtml);" inputmode="numeric">
+        <div id="cal_est">${estLine}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.calRush==='Yes'?' on':''}" onclick="d.calRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.calRush==='No'?' on':''}"  onclick="d.calRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Design / Layout Service? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.designFee||250).toLocaleString()})</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.calDesign==='Yes'?' on':''}" onclick="d.calDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.calDesign==='No'?' on':''}"  onclick="d.calDesign='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -2774,6 +2880,11 @@ function renderReview() {
     if (d.certText) specSummary += ` · "${esc(d.certText)}"`;
     if (d.certRush   === 'Yes') specSummary += ' · Rush';
     if (d.certDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'calendar') {
+    specSummary = `Calendar · ${esc(d.calType)||'—'} ${esc(d.calSize)||''} × ${d.calQty||0} pc(s)`;
+    if (d.calText) specSummary += ` · "${esc(d.calText)}"`;
+    if (d.calRush   === 'Yes') specSummary += ' · Rush';
+    if (d.calDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'acrylicplaque') {
     specSummary = `Acrylic Plaque · ${esc(d.plaqueMaterial)||'—'} ${esc(d.plaqueType)||''} × ${d.plaqueQty||0} pc(s)`;
     if (d.plaqueText) specSummary += ` · "${esc(d.plaqueText)}"`;
@@ -3046,6 +3157,13 @@ function nextStep() {
       d.certQty  = parseInt(v('cert_qty')) || d.certQty;
       if (!d.certType || !certTypeObj()) { toast('Please select a certificate type.','error'); return; }
       if (!d.certQty || d.certQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'calendar') {
+      d.calText = v('cal_text') || d.calText;
+      d.calQty  = parseInt(v('cal_qty')) || d.calQty;
+      if (!d.calType)              { toast('Please select a calendar type.','error'); return; }
+      if (!d.calSize || !calObj()) { toast('Please select a size.','error'); return; }
+      if (!d.calQty || d.calQty < 1) { toast('Quantity must be at least 1.','error'); return; }
     }
     if (selectedProduct === 'acrylicplaque') {
       d.plaqueText = v('plq_text') || d.plaqueText;
@@ -3499,6 +3617,27 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'calendar') {
+    const p    = PRICING.calendar || {};
+    const t    = calObj() || { price: 0 };
+    const up   = t.price || 0;
+    const qty  = parseInt(d.calQty) || 1;
+    const base = up * qty;
+    const rush = d.calRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+    const des  = d.calDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      calType:       d.calType,
+      calSize:       d.calSize,
+      calText:       d.calText,
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.calRush,   rushFee:   rush,
+      designService: d.calDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   if (selectedProduct === 'acrylicplaque') {
     const p    = PRICING.acrylicplaque || {};
     const t    = plaqueTypeObj() || { price: 0 };
@@ -3665,6 +3804,12 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + (d.certQty || 0) + ' copy(ies)';
     if (d.certRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.certDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'calendar') {
+    specsLine = 'Calendar · ' + (d.calType || '—') + (d.calSize ? ' · ' + d.calSize : '');
+    if (d.calText) specsLine += '\nTitle / Year: ' + d.calText;
+    specsLine += '\nQuantity: ' + (d.calQty || 0) + ' pc(s)';
+    if (d.calRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.calDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'acrylicplaque') {
     specsLine = 'Acrylic Plaque · ' + (d.plaqueMaterial || '—') + (d.plaqueType ? ' ' + d.plaqueType : '');
     if (d.plaqueText) specsLine += '\nName / Engraving Text: ' + d.plaqueText;
@@ -3762,6 +3907,7 @@ function resetAll() {
   d.acdispType=''; d.acdispWidth=''; d.acdispHeight=''; d.acdispUnit='ft'; d.acdispRush='No'; d.acdispDesign='No';
   d.plateType=''; d.plateText=''; d.plateRush='No'; d.plateDesign='No';
   d.certType=''; d.certText=''; d.certQty=1; d.certRush='No'; d.certDesign='No';
+  d.calType=''; d.calSize=''; d.calText=''; d.calQty=100; d.calRush='No'; d.calDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });

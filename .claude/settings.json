@@ -16,7 +16,8 @@
       "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/htmlview\" -o pricedb.html)",
       "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/export?format=csv&gid=1452919646\")",
       "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/export?format=csv&gid=1616170189\")",
-      "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1ClnO3Z6xGXa2V6AVijXIfqIJDlI2zLVVKRJdEeE4ebM/export?format=csv&gid=550344897\")"
+      "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1ClnO3Z6xGXa2V6AVijXIfqIJDlI2zLVVKRJdEeE4ebM/export?format=csv&gid=550344897\")",
+      "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/gviz/tq?tqx=out:csv&sheet=Calendar\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\cymon\\.claude\\projects\\c--Users-cymon-Documents-github-quotation-system\\memory"

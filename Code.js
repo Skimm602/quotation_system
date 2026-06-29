@@ -26,6 +26,7 @@ const ACRYLICPLATE_SHEET      = 'Acrylic Plate Quotations';
 const ACRYLICPLAQUE_SHEET     = 'Acrylic Plaque Quotations';
 const ACRYLICDISPLAY_SHEET    = 'Acrylic Display Quotations';
 const CERTIFICATE_SHEET       = 'Certificate Quotations';
+const CALENDAR_SHEET          = 'Calendar Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_INFO_SHEET     = 'Customer Info';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
@@ -339,6 +340,9 @@ function doGet(e) {
   }
   if (page === 'certificate') {
     return serveWithToken_('Certificate', 'Quotation System — Certificate', token, appUrl);
+  }
+  if (page === 'calendar') {
+    return serveWithToken_('Calendar', 'Quotation System — Calendar', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1640,8 +1644,59 @@ function getDashboardData(token) {
       });
     }
 
+    // ── CALENDAR QUOTES ─────────────────────────────────────────
+    let calendarQuotes = [];
+    const calSheet = ss.getSheetByName(CALENDAR_SHEET);
+    if (calSheet) {
+      const cdata  = calSheet.getDataRange().getValues();
+      const cStart = cdata.length > 0 && String(cdata[0][0]).startsWith('CAL-') ? 0 : 1;
+      calendarQuotes = cdata.slice(cStart).filter(r => r[0] && String(r[0]).startsWith('CAL-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[16] || '');
+        const calType = String(row[6] || '');
+        const calSize = String(row[7] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          calType:          calType,
+          calSize:          calSize,
+          calText:          String(row[8] || ''),
+          quantity:         row[9]  || 0,
+          unitPrice:        parseFloat(row[10]) || 0,
+          baseAmount:       parseFloat(row[11]) || 0,
+          rushOrder:        String(row[12] || ''),
+          rushFee:          parseFloat(row[13]) || 0,
+          designService:    String(row[14] || ''),
+          designFee:        parseFloat(row[15]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[17]) || 0,
+          notes:            String(row[18] || ''),
+          salesStaff:       String(row[19] || ''),
+          status:           String(row[20] || 'Pending'),
+          approvedBy:       String(row[21] || ''),
+          taxType:          String(row[22] || 'non-vat'),
+          taxAmount:        parseFloat(row[23]) || 0,
+          items: (function(){ try { const j = String(row[24]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e){ return []; } })(),
+          quoteType:        'calendar',
+          signageType:      'Calendar — ' + (calType ? calType + (calSize ? ' ' + calSize : '') : calSize),
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[14] || ''), addonDesignFee: parseFloat(row[15]) || 0,
+          addonRush:   String(row[12] || ''), addonRushFee:   parseFloat(row[13]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...acrylicDisplayQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...acrylicDisplayQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1669,7 +1724,7 @@ function getQuoteForPDF(token, quoteNum) {
   // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
   //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
   //     data builder, which already returns a render-ready quote object. ──
-  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'PLQ-', 'AD-'];
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'PLQ-', 'AD-'];
   if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
     try {
       const dash = getDashboardData(token);
@@ -2033,6 +2088,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isAcrylicSign = String(quoteNum).startsWith('AS-');
   const isAcrylicPlate = String(quoteNum).startsWith('AP-');
   const isCertificate = String(quoteNum).startsWith('CERT-');
+  const isCalendar = String(quoteNum).startsWith('CAL-');
   const isAcrylicPlaque = String(quoteNum).startsWith('PLQ-');
   const isAcrylicDisplay = String(quoteNum).startsWith('AD-');
 
@@ -2306,6 +2362,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Certificate order not found: ' + quoteNum);
+  }
+
+  if (isCalendar) {
+    const sheet = ss.getSheetByName(CALENDAR_SHEET);
+    if (!sheet) throw new Error('Calendar Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 21).setValue(status);  // col U = Status
+        sheet.getRange(i+1, 22).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col V = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 25).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Calendar order not found: ' + quoteNum);
   }
 
   if (isAcrylicPlaque) {
@@ -3001,6 +3073,7 @@ function getPublicPricing() {
     acrylicsign:(function(){ try{ return getAcrylicSignPricing(); }catch(e){ return null; } })(),
     acrylicplate:(function(){ try{ return getAcrylicPlatePricing(); }catch(e){ return null; } })(),
     certificate:(function(){ try{ return getCertificatePricing(); }catch(e){ return null; } })(),
+    calendar:(function(){ try{ return getCalendarPricing(); }catch(e){ return null; } })(),
     acrylicplaque:(function(){ try{ return getAcrylicPlaquePricing(); }catch(e){ return null; } })(),
     acrylicdisplay:(function(){ try{ return getAcrylicDisplayPricing(); }catch(e){ return null; } })(),
   };
@@ -3119,6 +3192,10 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'certificate') {
       specs = 'Certificate · ' + (data.certType || '—') + ' × ' + (data.quantity || 1) + ' copy(ies)';
       if (data.certText) specs += ' | Title: ' + data.certText;
+    } else if (data.productType === 'calendar') {
+      specs = 'Calendar · ' + (data.calType || '—') + (data.calSize ? ' · ' + data.calSize : '')
+            + ' × ' + (data.quantity || 1) + ' pc(s)';
+      if (data.calText) specs += ' | Title: ' + data.calText;
     } else if (data.productType === 'acrylicplaque') {
       specs = 'Acrylic Plaque · ' + (data.plaqueMaterial || '—')
             + (data.plaqueType ? ' ' + data.plaqueType : '') + ' × ' + (data.quantity || 1) + ' pc(s)';
@@ -3381,6 +3458,11 @@ function buildSpecsEmailDetail_(data, fallbackSpecs) {
     } else if (t === 'certificate') {
       add('Certificate Type', data.certType);
       add('Certificate Title', data.certText);
+
+    } else if (t === 'calendar') {
+      add('Calendar Type', data.calType);
+      add('Size', data.calSize);
+      add('Title / Year', data.calText);
 
     } else if (t === 'acrylicdisplay') {
       add('Thickness', data.acdisplayType || data.thickness);
@@ -5804,6 +5886,160 @@ function saveAcrylicPlaqueOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET CALENDAR PRICING  (live from the "Calendar" price-DB tab)
+// ══════════════════════════════════════════════════════════════════
+//  Tab layout = three calendar layout types side by side, one per column:
+//    row 1 → type name (1 month per page | 2 months per page | poster type)
+//    rows 2+ → either "<size> = ₱<price>" size options, or descriptive
+//              lines (minimum order / material) collected as the type's specs.
+//  Two-level catalog (type → size). Rush = ₱250 or 5%; Design ₱250.
+function getCalendarPricing() {
+  const defaults = {
+    types: [
+      { calType: '1 month per page (12 pages)', name: '11"x17"', price: 28.50, specs: 'min order 100pcs · bond paper sub 20' },
+      { calType: '1 month per page (12 pages)', name: '17"x22"', price: 49,    specs: 'min order 100pcs · bond paper sub 20' },
+      { calType: '2 months per page (6 pages)', name: '11"x17"', price: 21.50, specs: 'min order 100pcs · bond paper sub 20' },
+      { calType: '2 months per page (6 pages)', name: '17"x22"', price: 33,    specs: 'min order 100pcs · bond paper sub 20' },
+      { calType: 'Poster type (1 page)',        name: '12"x18"', price: 80,    specs: 'material: foldcote' },
+    ],
+    rushFlat: 250, rushPct: 0.05, designFee: 250,
+  };
+
+  function num(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  function txt(raw) { return String(raw == null ? '' : raw).trim(); }
+
+  try {
+    const ss = getPriceDbSS_();
+    let sheet = ss.getSheetByName('Calendar')
+             || ss.getSheetByName('Calendars')
+             || ss.getSheetByName('Calendar ');
+    if (!sheet) {
+      // Fallback: find a tab whose header row mentions "per page" / "calendar".
+      const all = ss.getSheets();
+      for (let i = 0; i < all.length; i++) {
+        const lastCol = all[i].getLastColumn() || 1;
+        const first = all[i].getRange(1, 1, 1, lastCol).getValues()[0]
+          .map(c => String(c || '').toLowerCase()).join(' ');
+        if (/calendar|per\s*page|poster\s*type/.test(first)) { sheet = all[i]; break; }
+      }
+    }
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) return defaults;
+
+    const nCols = rows[0].length;
+    const types = [];
+    for (let c = 0; c < nCols; c++) {
+      const typeName = txt(rows[0][c]);
+      if (!typeName) continue;
+      const sizes = [];
+      const specParts = [];
+      for (let r = 1; r < rows.length; r++) {
+        const cell = txt(rows[r] && rows[r][c]);
+        if (!cell) continue;
+        const eq = cell.indexOf('=');
+        if (eq >= 0 && /\d/.test(cell.slice(eq))) {
+          const size  = cell.slice(0, eq).trim();
+          const price = num(cell.slice(eq + 1));
+          if (size && price > 0) sizes.push({ name: size, price: price });
+        } else {
+          specParts.push(cell);
+        }
+      }
+      const specs = specParts.join(' · ');
+      sizes.forEach(function(s) {
+        types.push({ calType: typeName, name: s.name, price: s.price, specs: specs });
+      });
+    }
+    if (!types.length) return defaults;
+    return { types: types, rushFlat: defaults.rushFlat, rushPct: defaults.rushPct, designFee: defaults.designFee };
+  } catch (e) {
+    Logger.log('getCalendarPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE CALENDAR ORDER  (appends to the main SS Calendar tab)
+// ══════════════════════════════════════════════════════════════════
+function saveCalendarOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(CALENDAR_SHEET);
+  if (!sheet) sheet = ss.insertSheet(CALENDAR_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Calendar Type', 'Size', 'Title / Year', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount', 'Items JSON',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('CAL-')) {
+    if (firstCell.startsWith('CAL-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  lockQuoteNumbering_();
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'CAL-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName     || '',                  // C  - Client Name
+    data.contact        || '',                  // D  - Contact
+    data.email          || '',                  // E  - Email
+    data.dateNeeded     || '',                  // F  - Date Needed
+    data.calType        || '',                  // G  - Calendar Type
+    data.calSize        || '',                  // H  - Size
+    data.calText        || '',                  // I  - Title / Year
+    qty,                                        // J  - Quantity
+    parseFloat(unitP.toFixed(2)),               // K  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // L  - Base Amount
+    data.rushOrder      || '',                  // M  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // N  - Rush Fee
+    data.designService  || '',                  // O  - Design Service
+    parseFloat(designFee.toFixed(2)),           // P  - Design Fee
+    '',                                         // Q  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // R  - Total Amount
+    data.notes          || '',                  // S  - Special Instructions
+    staffName,                                  // T  - Sales Staff
+    data.status || 'Pending',                   // U  - Status
+    '',                                         // V  - Approved By
+    data.taxType        || 'non-vat',           // W  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // X  - Tax Amount
+    (data.items && data.items.length) ? JSON.stringify(data.items) : '[]',  // Y - Items JSON
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 11, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Calendar', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -6242,6 +6478,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('AD-'))  sheetName = ACRYLICDISPLAY_SHEET;
   else if (quoteNum.startsWith('AP-'))  sheetName = ACRYLICPLATE_SHEET;
   else if (quoteNum.startsWith('CERT-')) sheetName = CERTIFICATE_SHEET;
+  else if (quoteNum.startsWith('CAL-'))  sheetName = CALENDAR_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -6269,6 +6506,7 @@ else if (quoteNum.startsWith('AS-'))  ptCol = 21; // col U
 else if (quoteNum.startsWith('AD-'))  ptCol = 21; // col U
 else if (quoteNum.startsWith('AP-'))  ptCol = 16; // col P
 else if (quoteNum.startsWith('CERT-')) ptCol = 16; // col P
+else if (quoteNum.startsWith('CAL-'))  ptCol = 17; // col Q
 
 // Find the row
 for (let i = 1; i < data.length; i++) {
