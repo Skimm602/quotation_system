@@ -19,7 +19,8 @@
       "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1ClnO3Z6xGXa2V6AVijXIfqIJDlI2zLVVKRJdEeE4ebM/export?format=csv&gid=550344897\")",
       "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/gviz/tq?tqx=out:csv&sheet=Calendar\")",
       "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/gviz/tq?tqx=out:csv&sheet=Mesh%20Caps\")",
-      "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/gviz/tq?tqx=out:csv&sheet=Calling%20Card\")"
+      "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/gviz/tq?tqx=out:csv&sheet=Calling%20Card\")",
+      "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/htmlview\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\cymon\\.claude\\projects\\c--Users-cymon-Documents-github-quotation-system\\memory"

@@ -29,6 +29,7 @@ const CERTIFICATE_SHEET       = 'Certificate Quotations';
 const CALENDAR_SHEET          = 'Calendar Quotations';
 const MESHCAP_SHEET           = 'Mesh Cap Quotations';
 const CALLINGCARD_SHEET       = 'Calling Card Quotations';
+const STANDEE_SHEET           = 'Standees';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_INFO_SHEET     = 'Customer Info';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
@@ -351,6 +352,9 @@ function doGet(e) {
   }
   if (page === 'callingcard') {
     return serveWithToken_('CallingCard', 'Quotation System — Calling Card', token, appUrl);
+  }
+  if (page === 'lifesizestandee') {
+    return serveWithToken_('LifeSizeStandee', 'Quotation System — Life-Size Standee', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1801,8 +1805,64 @@ function getDashboardData(token) {
       });
     }
 
+    // ── LIFE-SIZE STANDEE QUOTES ────────────────────────────────
+    let standeeQuotes = [];
+    const stdSheet = ss.getSheetByName(STANDEE_SHEET);
+    if (stdSheet) {
+      const sdata  = stdSheet.getDataRange().getValues();
+      const sStart = sdata.length > 0 && String(sdata[0][0]).startsWith('STD-') ? 0 : 1;
+      standeeQuotes = sdata.slice(sStart).filter(r => r[0] && String(r[0]).startsWith('STD-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel  = String(row[18] || '');
+        const material = String(row[11] || '');
+        const qtyNum   = parseInt(row[8]) || 0;
+        const baseNum  = parseFloat(row[13]) || 0;
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          width:            parseFloat(row[6]) || 0,
+          height:           parseFloat(row[7]) || 0,
+          unit:             'ft',
+          quantity:         qtyNum,
+          sqft:             parseFloat(row[9])  || 0,
+          ratePerSqft:      parseFloat(row[10]) || 0,
+          material:         material,
+          withEasel:        String(row[12] || ''),
+          unitPrice:        qtyNum > 0 ? parseFloat((baseNum / qtyNum).toFixed(2)) : 0,
+          baseAmount:       baseNum,
+          rushOrder:        String(row[14] || ''),
+          rushFee:          parseFloat(row[15]) || 0,
+          designService:    String(row[16] || ''),
+          designFee:        parseFloat(row[17]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[19]) || 0,
+          notes:            String(row[20] || ''),
+          salesStaff:       String(row[21] || ''),
+          status:           String(row[22] || 'Pending'),
+          approvedBy:       String(row[23] || ''),
+          taxType:          String(row[24] || 'non-vat'),
+          taxAmount:        parseFloat(row[25]) || 0,
+          items: [],
+          quoteType:        'lifesizestandee',
+          signageType:      'Life-Size Standee' + (material ? ' — ' + material : ''),
+          address: '', delivery: '', lighting: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[16] || ''), addonDesignFee: parseFloat(row[17]) || 0,
+          addonRush:   String(row[14] || ''), addonRushFee:   parseFloat(row[15]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...meshCapQuotes, ...callingCardQuotes, ...acrylicDisplayQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...meshCapQuotes, ...callingCardQuotes, ...standeeQuotes, ...acrylicDisplayQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1830,7 +1890,7 @@ function getQuoteForPDF(token, quoteNum) {
   // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
   //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
   //     data builder, which already returns a render-ready quote object. ──
-  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'MC-', 'CC-', 'PLQ-', 'AD-'];
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'MC-', 'CC-', 'STD-', 'PLQ-', 'AD-'];
   if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
     try {
       const dash = getDashboardData(token);
@@ -2197,6 +2257,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isCalendar = String(quoteNum).startsWith('CAL-');
   const isMeshCap = String(quoteNum).startsWith('MC-');
   const isCallingCard = String(quoteNum).startsWith('CC-');
+  const isStandee = String(quoteNum).startsWith('STD-');
   const isAcrylicPlaque = String(quoteNum).startsWith('PLQ-');
   const isAcrylicDisplay = String(quoteNum).startsWith('AD-');
 
@@ -2518,6 +2579,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Calling Card order not found: ' + quoteNum);
+  }
+
+  if (isStandee) {
+    const sheet = ss.getSheetByName(STANDEE_SHEET);
+    if (!sheet) throw new Error('Standees sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 23).setValue(status);  // col W = Status
+        sheet.getRange(i+1, 24).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col X = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 26).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Life-Size Standee order not found: ' + quoteNum);
   }
 
   if (isAcrylicPlaque) {
@@ -3216,6 +3293,7 @@ function getPublicPricing() {
     calendar:(function(){ try{ return getCalendarPricing(); }catch(e){ return null; } })(),
     meshcap:(function(){ try{ return getMeshCapPricing(); }catch(e){ return null; } })(),
     callingcard:(function(){ try{ return getCallingCardPricing(); }catch(e){ return null; } })(),
+    lifesizestandee:(function(){ try{ return getLifeSizeStandeePricing(); }catch(e){ return null; } })(),
     acrylicplaque:(function(){ try{ return getAcrylicPlaquePricing(); }catch(e){ return null; } })(),
     acrylicdisplay:(function(){ try{ return getAcrylicDisplayPricing(); }catch(e){ return null; } })(),
   };
@@ -3344,6 +3422,11 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'callingcard') {
       specs = 'Calling Card · ' + (data.ccType || '—') + ' × ' + (data.quantity || 1) + ' set(s)';
       if (data.ccText) specs += ' | Details: ' + data.ccText;
+    } else if (data.productType === 'lifesizestandee') {
+      specs = 'Life-Size Standee · ' + (data.width || '?') + ' × ' + (data.height || '?') + ' ft × '
+            + (data.quantity || 1) + ' pc(s)';
+      if (data.material)  specs += ' | Material: ' + data.material;
+      if (data.withEasel === 'Yes') specs += ' | With Easel';
     } else if (data.productType === 'acrylicplaque') {
       specs = 'Acrylic Plaque · ' + (data.plaqueMaterial || '—')
             + (data.plaqueType ? ' ' + data.plaqueType : '') + ' × ' + (data.quantity || 1) + ' pc(s)';
@@ -3619,6 +3702,13 @@ function buildSpecsEmailDetail_(data, fallbackSpecs) {
     } else if (t === 'callingcard') {
       add('Print Type', data.ccType);
       add('Name / Details', data.ccText);
+
+    } else if (t === 'lifesizestandee') {
+      add('Product', 'Life-Size Standee');
+      add('Size', dim(data.width) + ' × ' + dim(data.height) + ' ft'
+        + (parseFloat(data.sqft) ? ' (' + (parseFloat(data.sqft)).toFixed(2) + ' sqft)' : ''));
+      add('Material', data.material);
+      if (data.withEasel === 'Yes') add('With Easel', 'Yes');
 
     } else if (t === 'acrylicdisplay') {
       add('Thickness', data.acdisplayType || data.thickness);
@@ -6481,6 +6571,142 @@ function saveCallingCardOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET LIFE-SIZE STANDEE PRICING  (live from the "Life-Size Standee" tab)
+// ══════════════════════════════════════════════════════════════════
+//  Tab holds a single rate cell, e.g. "₱ 250 /sq.ft". Priced per sq.ft
+//  (Sintra / Foam board + sticker print). Rush ₱150 flat; Design ₱250.
+//  Only used as a fallback — the staff page fetches the CSV client-side.
+function getLifeSizeStandeePricing() {
+  const defaults = { ratePerSqft: 250, rushFee: 150, designFee: 250 };
+
+  function num(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+
+  try {
+    const ss = getPriceDbSS_();
+    let sheet = ss.getSheetByName('Life-Size Standee')
+             || ss.getSheetByName('Life Size Standee')
+             || ss.getSheetByName('Lifesize Standee')
+             || ss.getSheetByName('Standee')
+             || ss.getSheetByName('Standees');
+    if (!sheet) {
+      const all = ss.getSheets();
+      for (let i = 0; i < all.length; i++) {
+        const joined = all[i].getDataRange().getValues()
+          .map(r => r.map(c => String(c || '').toLowerCase()).join(' ')).join(' ');
+        if (/standee/.test(joined)) { sheet = all[i]; break; }
+      }
+    }
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    let rate = 0;
+    // Prefer a cell mentioning sq.ft.
+    for (let r = 0; r < rows.length && !rate; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        const cell = String(rows[r][c] || '');
+        if (/sq\.?\s*ft|\/\s*sq/i.test(cell)) { const n = num(cell); if (n > 0) { rate = n; break; } }
+      }
+    }
+    if (!rate) {
+      for (let r = 0; r < rows.length && !rate; r++) {
+        for (let c = 0; c < rows[r].length; c++) {
+          const n = num(rows[r][c]); if (n > 0) { rate = n; break; }
+        }
+      }
+    }
+    if (rate > 0) defaults.ratePerSqft = rate;
+    return defaults;
+  } catch (e) {
+    Logger.log('getLifeSizeStandeePricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE LIFE-SIZE STANDEE ORDER  (per-sqft; appends to the Standees tab)
+// ══════════════════════════════════════════════════════════════════
+function saveLifeSizeStandeeOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(STANDEE_SHEET);
+  if (!sheet) sheet = ss.insertSheet(STANDEE_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Width (ft)', 'Height (ft)', 'Quantity', 'Sq Ft', 'Rate / Sq Ft',
+    'Material', 'With Easel',
+    'Base Amount', 'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('STD-')) {
+    if (firstCell.startsWith('STD-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  lockQuoteNumbering_();
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'STD-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const width     = parseFloat(data.width)     || 0;
+  const height    = parseFloat(data.height)    || 0;
+  const sqft      = parseFloat(data.sqft)       || (width * height * qty);
+  const rate      = parseFloat(data.ratePerSqft) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (sqft * rate);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    width,                                      // G  - Width (ft)
+    height,                                     // H  - Height (ft)
+    qty,                                        // I  - Quantity
+    parseFloat(sqft.toFixed(2)),                // J  - Sq Ft
+    parseFloat(rate.toFixed(2)),                // K  - Rate / Sq Ft
+    data.material      || '',                   // L  - Material
+    data.withEasel     || '',                   // M  - With Easel
+    parseFloat(baseAmt.toFixed(2)),             // N  - Base Amount
+    data.rushOrder     || '',                   // O  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // P  - Rush Fee
+    data.designService || '',                   // Q  - Design Service
+    parseFloat(designFee.toFixed(2)),           // R  - Design Fee
+    '',                                         // S  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // T  - Total Amount
+    data.notes         || '',                   // U  - Special Instructions
+    staffName,                                  // V  - Sales Staff
+    data.status || 'Pending',                   // W  - Status
+    '',                                         // X  - Approved By
+    data.taxType       || 'non-vat',            // Y  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // Z  - Tax Amount
+  ]);
+
+  const r = sheet.getLastRow();
+  [11, 14, 16, 18, 20, 26].forEach(function(c){ sheet.getRange(r, c).setNumberFormat('₱#,##0.00'); });
+  try { notifyQuoteSaved_(quoteNum, 'Life-Size Standee', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
@@ -6922,6 +7148,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('CAL-'))  sheetName = CALENDAR_SHEET;
   else if (quoteNum.startsWith('MC-'))   sheetName = MESHCAP_SHEET;
   else if (quoteNum.startsWith('CC-'))   sheetName = CALLINGCARD_SHEET;
+  else if (quoteNum.startsWith('STD-'))  sheetName = STANDEE_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -6952,6 +7179,7 @@ else if (quoteNum.startsWith('CERT-')) ptCol = 16; // col P
 else if (quoteNum.startsWith('CAL-'))  ptCol = 17; // col Q
 else if (quoteNum.startsWith('MC-'))   ptCol = 16; // col P
 else if (quoteNum.startsWith('CC-'))   ptCol = 16; // col P
+else if (quoteNum.startsWith('STD-'))  ptCol = 19; // col S
 
 // Find the row
 for (let i = 1; i < data.length; i++) {

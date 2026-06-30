@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, callingcard: null, acrylicplaque: null, acrylicdisplay: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, callingcard: null, lifesizestandee: null, acrylicplaque: null, acrylicdisplay: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -118,6 +118,7 @@ const PRODUCTS = [
   { id:'calendar',   icon:'📅', label:'Calendar',      sub:'Monthly / Poster'      },
   { id:'meshcap',    icon:'🧢', label:'Mesh Cap',      sub:'Sublimation print'     },
   { id:'callingcard',icon:'📇', label:'Calling Card',  sub:'1-side / Back-to-back' },
+  { id:'lifesizestandee', icon:'🧍', label:'Standee',  sub:'Per sq.ft · Sintra'    },
   { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', sub:'Acrylic / Crystal'  },
   { id:'acrylicdisplay', icon:'🧊', label:'Acrylic Display', sub:'Per sq.ft · thickness' },
 ];
@@ -180,6 +181,8 @@ const d = {
   meshText:'', meshQty:20, meshRush:'No', meshDesign:'No',
   // calling card
   ccType:'', ccText:'', ccQty:1, ccRush:'No', ccDesign:'No',
+  // life-size standee
+  stdWidth:'', stdHeight:'', stdQty:1, stdMaterial:'', stdEasel:'No', stdRush:'No', stdDesign:'No',
   // acrylic plaque
   plaqueMaterial:'', plaqueType:'', plaqueText:'', plaqueQty:1, plaqueRush:'No', plaqueDesign:'No',
   // proof of payment (optional, sent as email attachment)
@@ -238,6 +241,14 @@ function ccEstHtml() {
   const qty = parseInt(d.ccQty) || 0;
   return (t && qty)
     ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} set(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function stdRate()  { return (PRICING.lifesizestandee || {}).ratePerSqft || 250; }
+function stdSqft()  { return (parseFloat(d.stdWidth)||0) * (parseFloat(d.stdHeight)||0) * (parseInt(d.stdQty)||1); }
+function stdEstHtml() {
+  const sq = stdSqft();
+  return (sq > 0)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${sq.toFixed(2)} sq.ft × ₱${stdRate().toLocaleString('en-PH')} = ₱${(sq*stdRate()).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
     : '';
 }
 function plaqueEstHtml() {
@@ -709,6 +720,14 @@ function calcCallingCardTotal() {
   const des  = d.ccDesign === 'Yes' ? (p.designFee || 250) : 0;
   return base + rush + des;
 }
+function calcLifeSizeStandeeTotal() {
+  const p    = PRICING.lifesizestandee || {};
+  const base = stdSqft() * stdRate();
+  if (base <= 0) return 0;
+  const rush = d.stdRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.stdDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
 
 function plaqueMaterials() {
   const s = [];
@@ -753,6 +772,7 @@ function calcTotal() {
   if (selectedProduct === 'calendar') return calcCalendarTotal();
   if (selectedProduct === 'meshcap') return calcMeshCapTotal();
   if (selectedProduct === 'callingcard') return calcCallingCardTotal();
+  if (selectedProduct === 'lifesizestandee') return calcLifeSizeStandeeTotal();
   if (selectedProduct === 'acrylicplaque') return calcAcrylicPlaqueTotal();
   return 0;
 }
@@ -872,6 +892,7 @@ function renderSpecs() {
   if (selectedProduct === 'calendar') return renderCalendarSpecs();
   if (selectedProduct === 'meshcap') return renderMeshCapSpecs();
   if (selectedProduct === 'callingcard') return renderCallingCardSpecs();
+  if (selectedProduct === 'lifesizestandee') return renderStandeeSpecs();
   if (selectedProduct === 'acrylicplaque') return renderAcrylicPlaqueSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
 }
@@ -1160,6 +1181,62 @@ function renderCallingCardSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.ccDesign==='Yes'?' on':''}" onclick="d.ccDesign='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.ccDesign==='No'?' on':''}"  onclick="d.ccDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── LIFE-SIZE STANDEE SPECS (per sq.ft) ───────────────────────────
+function renderStandeeSpecs() {
+  const p = PRICING.lifesizestandee || {};
+  const estLine = stdEstHtml();
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div style="background:#FAFAFA;border:1px solid #EEE;border-radius:4px;padding:12px 14px;">
+        <div style="font-size:13px;color:#444;">🧍 <strong>Life-Size Standee</strong> · ₱${stdRate().toLocaleString('en-PH')}/sq.ft</div>
+      </div>
+      <div>
+        <label class="field-label">Size (Width × Height in feet) *</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
+          <input type="number" class="field-input" id="std_w" value="${esc(String(d.stdWidth||''))}" placeholder="Width" min="0.01" step="0.1"
+            oninput="d.stdWidth=this.value;updateEst('std_est',stdEstHtml);" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
+          <input type="number" class="field-input" id="std_h" value="${esc(String(d.stdHeight||''))}" placeholder="Height" min="0.01" step="0.1"
+            oninput="d.stdHeight=this.value;updateEst('std_est',stdEstHtml);" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-weight:700;">ft</span>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="std_qty" value="${d.stdQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.stdQty=parseInt(this.value)||1;updateEst('std_est',stdEstHtml);" inputmode="numeric">
+        <div id="std_est">${estLine}</div>
+      </div>
+      <div>
+        <label class="field-label">Material <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="std_mat" value="${esc(d.stdMaterial||'')}" placeholder="e.g. Sintra Board, Foam Board"
+          oninput="d.stdMaterial=this.value;">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">With Easel / Stand?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.stdEasel==='Yes'?' on':''}" onclick="d.stdEasel='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.stdEasel==='No'?' on':''}"  onclick="d.stdEasel='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFee||150).toLocaleString()})</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.stdRush==='Yes'?' on':''}" onclick="d.stdRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.stdRush==='No'?' on':''}"  onclick="d.stdRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.designFee||250).toLocaleString()})</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.stdDesign==='Yes'?' on':''}" onclick="d.stdDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.stdDesign==='No'?' on':''}"  onclick="d.stdDesign='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -3052,6 +3129,12 @@ function renderReview() {
     if (d.ccText) specSummary += ` · "${esc(d.ccText)}"`;
     if (d.ccRush   === 'Yes') specSummary += ' · Rush';
     if (d.ccDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'lifesizestandee') {
+    specSummary = `Life-Size Standee · ${d.stdWidth||'?'} × ${d.stdHeight||'?'} ft × ${d.stdQty||0} pc(s)`;
+    if (d.stdMaterial) specSummary += ` · ${esc(d.stdMaterial)}`;
+    if (d.stdEasel  === 'Yes') specSummary += ' · Easel';
+    if (d.stdRush   === 'Yes') specSummary += ' · Rush';
+    if (d.stdDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'acrylicplaque') {
     specSummary = `Acrylic Plaque · ${esc(d.plaqueMaterial)||'—'} ${esc(d.plaqueType)||''} × ${d.plaqueQty||0} pc(s)`;
     if (d.plaqueText) specSummary += ` · "${esc(d.plaqueText)}"`;
@@ -3342,6 +3425,14 @@ function nextStep() {
       d.ccQty  = parseInt(v('cc_qty')) || d.ccQty;
       if (!d.ccType || !ccTypeObj()) { toast('Please select a print type.','error'); return; }
       if (!d.ccQty || d.ccQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'lifesizestandee') {
+      d.stdWidth    = v('std_w') || d.stdWidth;
+      d.stdHeight   = v('std_h') || d.stdHeight;
+      d.stdQty      = parseInt(v('std_qty')) || d.stdQty;
+      d.stdMaterial = v('std_mat') || d.stdMaterial;
+      if (!d.stdWidth || !d.stdHeight) { toast('Please enter the size (width × height).','error'); return; }
+      if (!d.stdQty || d.stdQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
     }
     if (selectedProduct === 'acrylicplaque') {
       d.plaqueText = v('plq_text') || d.plaqueText;
@@ -3856,6 +3947,28 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'lifesizestandee') {
+    const p    = PRICING.lifesizestandee || {};
+    const rate = stdRate();
+    const sq   = stdSqft();
+    const base = sq * rate;
+    const rush = d.stdRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des  = d.stdDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      width:         parseFloat(d.stdWidth)  || 0,
+      height:        parseFloat(d.stdHeight) || 0,
+      quantity:      parseInt(d.stdQty)      || 1,
+      sqft:          sq,
+      ratePerSqft:   rate,
+      material:      d.stdMaterial,
+      withEasel:     d.stdEasel,
+      baseAmount:    base,
+      rushOrder:     d.stdRush,   rushFee:   rush,
+      designService: d.stdDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   if (selectedProduct === 'acrylicplaque') {
     const p    = PRICING.acrylicplaque || {};
     const t    = plaqueTypeObj() || { price: 0 };
@@ -4040,6 +4153,14 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + (d.ccQty || 0) + ' set(s)';
     if (d.ccRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.ccDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'lifesizestandee') {
+    specsLine = 'Life-Size Standee';
+    if (d.stdMaterial) specsLine += ' · ' + d.stdMaterial;
+    specsLine += '\nSize: ' + (d.stdWidth || '?') + ' × ' + (d.stdHeight || '?') + ' ft';
+    specsLine += '\nQuantity: ' + (d.stdQty || 0) + ' pc(s)';
+    if (d.stdEasel  === 'Yes') specsLine += '\nWith Easel: Yes';
+    if (d.stdRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.stdDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'acrylicplaque') {
     specsLine = 'Acrylic Plaque · ' + (d.plaqueMaterial || '—') + (d.plaqueType ? ' ' + d.plaqueType : '');
     if (d.plaqueText) specsLine += '\nName / Engraving Text: ' + d.plaqueText;
@@ -4140,6 +4261,7 @@ function resetAll() {
   d.calType=''; d.calSize=''; d.calText=''; d.calQty=100; d.calRush='No'; d.calDesign='No';
   d.meshText=''; d.meshQty=20; d.meshRush='No'; d.meshDesign='No';
   d.ccType=''; d.ccText=''; d.ccQty=1; d.ccRush='No'; d.ccDesign='No';
+  d.stdWidth=''; d.stdHeight=''; d.stdQty=1; d.stdMaterial=''; d.stdEasel='No'; d.stdRush='No'; d.stdDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
