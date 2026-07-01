@@ -355,9 +355,10 @@
     const isMeshCap = String(q.quoteNum || '').startsWith('MC-');
     const isCallingCard = String(q.quoteNum || '').startsWith('CC-');
     const isStandee = String(q.quoteNum || '').startsWith('STD-');
+    const isCanvas = String(q.quoteNum || '').startsWith('CNV-');
     const isAcrylicPlaque = String(q.quoteNum || '').startsWith('PLQ-');
     const isAcrylicDisplay = String(q.quoteNum || '').startsWith('AD-');
-    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isCertificate || isCalendar || isMeshCap || isCallingCard || isStandee || isAcrylicPlaque || isAcrylicDisplay;
+    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isCertificate || isCalendar || isMeshCap || isCallingCard || isStandee || isCanvas || isAcrylicPlaque || isAcrylicDisplay;
 
     if (isTarpMulti) {
       // One row per item in the cart
@@ -555,6 +556,11 @@
         descParts.push('Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ft' + (q.sqft ? ' (' + Number(q.sqft).toFixed(2) + ' sq.ft)' : ''));
         if (q.ratePerSqft) descParts.push('Rate: ' + php(q.ratePerSqft) + '/sq.ft');
         if (q.withEasel === 'Yes') descParts.push('With Easel: Yes');
+      } else if (isCanvas) {
+        descParts.push('<strong>Canvas Print' + (q.material ? ' — ' + q.material : '') + '</strong>');
+        descParts.push('Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ft' + (q.sqft ? ' (' + Number(q.sqft).toFixed(2) + ' sq.ft)' : ''));
+        if (q.ratePerSqft) descParts.push('Rate: ' + php(q.ratePerSqft) + '/sq.ft');
+        if (q.withFrame === 'Yes') descParts.push('With Frame: Yes');
       } else if (isAcrylicPlaque) {
         descParts.push('<strong>Acrylic Plaque — ' + (q.plaqueMaterial || '') + (q.plaqueType ? ' ' + q.plaqueType : '') + '</strong>');
         if (q.plaqueText) descParts.push('Engraving Text: ' + q.plaqueText);

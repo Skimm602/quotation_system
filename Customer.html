@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, callingcard: null, lifesizestandee: null, acrylicplaque: null, acrylicdisplay: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, callingcard: null, lifesizestandee: null, canvas: null, acrylicplaque: null, acrylicdisplay: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -119,6 +119,7 @@ const PRODUCTS = [
   { id:'meshcap',    icon:'🧢', label:'Mesh Cap',      sub:'Sublimation print'     },
   { id:'callingcard',icon:'📇', label:'Calling Card',  sub:'1-side / Back-to-back' },
   { id:'lifesizestandee', icon:'🧍', label:'Standee',  sub:'Per sq.ft · Sintra'    },
+  { id:'canvas',     icon:'🖼️', label:'Canvas Print', sub:'Per sq.ft'             },
   { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', sub:'Acrylic / Crystal'  },
   { id:'acrylicdisplay', icon:'🧊', label:'Acrylic Display', sub:'Per sq.ft · thickness' },
 ];
@@ -183,6 +184,8 @@ const d = {
   ccType:'', ccText:'', ccQty:1, ccRush:'No', ccDesign:'No',
   // life-size standee
   stdWidth:'', stdHeight:'', stdQty:1, stdMaterial:'', stdEasel:'No', stdRush:'No', stdDesign:'No',
+  // canvas print
+  cnvWidth:'', cnvHeight:'', cnvQty:1, cnvFinish:'', cnvFrame:'No', cnvRush:'No', cnvDesign:'No',
   // acrylic plaque
   plaqueMaterial:'', plaqueType:'', plaqueText:'', plaqueQty:1, plaqueRush:'No', plaqueDesign:'No',
   // proof of payment (optional, sent as email attachment)
@@ -249,6 +252,14 @@ function stdEstHtml() {
   const sq = stdSqft();
   return (sq > 0)
     ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${sq.toFixed(2)} sq.ft × ₱${stdRate().toLocaleString('en-PH')} = ₱${(sq*stdRate()).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function cnvRate()  { return (PRICING.canvas || {}).ratePerSqft || 450; }
+function cnvSqft()  { return (parseFloat(d.cnvWidth)||0) * (parseFloat(d.cnvHeight)||0) * (parseInt(d.cnvQty)||1); }
+function cnvEstHtml() {
+  const sq = cnvSqft();
+  return (sq > 0)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${sq.toFixed(2)} sq.ft × ₱${cnvRate().toLocaleString('en-PH')} = ₱${(sq*cnvRate()).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
     : '';
 }
 function plaqueEstHtml() {
@@ -728,6 +739,14 @@ function calcLifeSizeStandeeTotal() {
   const des  = d.stdDesign === 'Yes' ? (p.designFee || 250) : 0;
   return base + rush + des;
 }
+function calcCanvasTotal() {
+  const p    = PRICING.canvas || {};
+  const base = cnvSqft() * cnvRate();
+  if (base <= 0) return 0;
+  const rush = d.cnvRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+  const des  = d.cnvDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
 
 function plaqueMaterials() {
   const s = [];
@@ -773,6 +792,7 @@ function calcTotal() {
   if (selectedProduct === 'meshcap') return calcMeshCapTotal();
   if (selectedProduct === 'callingcard') return calcCallingCardTotal();
   if (selectedProduct === 'lifesizestandee') return calcLifeSizeStandeeTotal();
+  if (selectedProduct === 'canvas') return calcCanvasTotal();
   if (selectedProduct === 'acrylicplaque') return calcAcrylicPlaqueTotal();
   return 0;
 }
@@ -893,6 +913,7 @@ function renderSpecs() {
   if (selectedProduct === 'meshcap') return renderMeshCapSpecs();
   if (selectedProduct === 'callingcard') return renderCallingCardSpecs();
   if (selectedProduct === 'lifesizestandee') return renderStandeeSpecs();
+  if (selectedProduct === 'canvas') return renderCanvasSpecs();
   if (selectedProduct === 'acrylicplaque') return renderAcrylicPlaqueSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
 }
@@ -1237,6 +1258,62 @@ function renderStandeeSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.stdDesign==='Yes'?' on':''}" onclick="d.stdDesign='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.stdDesign==='No'?' on':''}"  onclick="d.stdDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── CANVAS PRINT SPECS (per sq.ft) ────────────────────────────────
+function renderCanvasSpecs() {
+  const p = PRICING.canvas || {};
+  const estLine = cnvEstHtml();
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div style="background:#FAFAFA;border:1px solid #EEE;border-radius:4px;padding:12px 14px;">
+        <div style="font-size:13px;color:#444;">🖼️ <strong>Canvas Print</strong> · ₱${cnvRate().toLocaleString('en-PH')}/sq.ft</div>
+      </div>
+      <div>
+        <label class="field-label">Size (Width × Height in feet) *</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
+          <input type="number" class="field-input" id="cnv_w" value="${esc(String(d.cnvWidth||''))}" placeholder="Width" min="0.01" step="0.1"
+            oninput="d.cnvWidth=this.value;updateEst('cnv_est',cnvEstHtml);" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-size:18px;">×</span>
+          <input type="number" class="field-input" id="cnv_h" value="${esc(String(d.cnvHeight||''))}" placeholder="Height" min="0.01" step="0.1"
+            oninput="d.cnvHeight=this.value;updateEst('cnv_est',cnvEstHtml);" inputmode="decimal" style="text-align:center;">
+          <span style="color:#999;flex-shrink:0;font-weight:700;">ft</span>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Quantity</label>
+        <input type="number" class="field-input" id="cnv_qty" value="${d.cnvQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.cnvQty=parseInt(this.value)||1;updateEst('cnv_est',cnvEstHtml);" inputmode="numeric">
+        <div id="cnv_est">${estLine}</div>
+      </div>
+      <div>
+        <label class="field-label">Finishing / Type <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="cnv_fin" value="${esc(d.cnvFinish||'')}" placeholder="e.g. Matte, Glossy, Stretched, Rolled"
+          oninput="d.cnvFinish=this.value;">
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">With Frame / Stretcher?</label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.cnvFrame==='Yes'?' on':''}" onclick="d.cnvFrame='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.cnvFrame==='No'?' on':''}"  onclick="d.cnvFrame='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFee||150).toLocaleString()})</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.cnvRush==='Yes'?' on':''}" onclick="d.cnvRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.cnvRush==='No'?' on':''}"  onclick="d.cnvRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Need Design / Artwork? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.designFee||250).toLocaleString()})</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.cnvDesign==='Yes'?' on':''}" onclick="d.cnvDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.cnvDesign==='No'?' on':''}"  onclick="d.cnvDesign='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -3135,6 +3212,12 @@ function renderReview() {
     if (d.stdEasel  === 'Yes') specSummary += ' · Easel';
     if (d.stdRush   === 'Yes') specSummary += ' · Rush';
     if (d.stdDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'canvas') {
+    specSummary = `Canvas Print · ${d.cnvWidth||'?'} × ${d.cnvHeight||'?'} ft × ${d.cnvQty||0} pc(s)`;
+    if (d.cnvFinish) specSummary += ` · ${esc(d.cnvFinish)}`;
+    if (d.cnvFrame  === 'Yes') specSummary += ' · Frame';
+    if (d.cnvRush   === 'Yes') specSummary += ' · Rush';
+    if (d.cnvDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'acrylicplaque') {
     specSummary = `Acrylic Plaque · ${esc(d.plaqueMaterial)||'—'} ${esc(d.plaqueType)||''} × ${d.plaqueQty||0} pc(s)`;
     if (d.plaqueText) specSummary += ` · "${esc(d.plaqueText)}"`;
@@ -3433,6 +3516,14 @@ function nextStep() {
       d.stdMaterial = v('std_mat') || d.stdMaterial;
       if (!d.stdWidth || !d.stdHeight) { toast('Please enter the size (width × height).','error'); return; }
       if (!d.stdQty || d.stdQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'canvas') {
+      d.cnvWidth  = v('cnv_w') || d.cnvWidth;
+      d.cnvHeight = v('cnv_h') || d.cnvHeight;
+      d.cnvQty    = parseInt(v('cnv_qty')) || d.cnvQty;
+      d.cnvFinish = v('cnv_fin') || d.cnvFinish;
+      if (!d.cnvWidth || !d.cnvHeight) { toast('Please enter the size (width × height).','error'); return; }
+      if (!d.cnvQty || d.cnvQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
     }
     if (selectedProduct === 'acrylicplaque') {
       d.plaqueText = v('plq_text') || d.plaqueText;
@@ -3969,6 +4060,28 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'canvas') {
+    const p    = PRICING.canvas || {};
+    const rate = cnvRate();
+    const sq   = cnvSqft();
+    const base = sq * rate;
+    const rush = d.cnvRush   === 'Yes' ? (p.rushFee   || 150) : 0;
+    const des  = d.cnvDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      width:         parseFloat(d.cnvWidth)  || 0,
+      height:        parseFloat(d.cnvHeight) || 0,
+      quantity:      parseInt(d.cnvQty)      || 1,
+      sqft:          sq,
+      ratePerSqft:   rate,
+      material:      d.cnvFinish,
+      withFrame:     d.cnvFrame,
+      baseAmount:    base,
+      rushOrder:     d.cnvRush,   rushFee:   rush,
+      designService: d.cnvDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   if (selectedProduct === 'acrylicplaque') {
     const p    = PRICING.acrylicplaque || {};
     const t    = plaqueTypeObj() || { price: 0 };
@@ -4161,6 +4274,14 @@ function buildMessengerText(qn) {
     if (d.stdEasel  === 'Yes') specsLine += '\nWith Easel: Yes';
     if (d.stdRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.stdDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'canvas') {
+    specsLine = 'Canvas Print';
+    if (d.cnvFinish) specsLine += ' · ' + d.cnvFinish;
+    specsLine += '\nSize: ' + (d.cnvWidth || '?') + ' × ' + (d.cnvHeight || '?') + ' ft';
+    specsLine += '\nQuantity: ' + (d.cnvQty || 0) + ' pc(s)';
+    if (d.cnvFrame  === 'Yes') specsLine += '\nWith Frame: Yes';
+    if (d.cnvRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.cnvDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'acrylicplaque') {
     specsLine = 'Acrylic Plaque · ' + (d.plaqueMaterial || '—') + (d.plaqueType ? ' ' + d.plaqueType : '');
     if (d.plaqueText) specsLine += '\nName / Engraving Text: ' + d.plaqueText;
@@ -4262,6 +4383,7 @@ function resetAll() {
   d.meshText=''; d.meshQty=20; d.meshRush='No'; d.meshDesign='No';
   d.ccType=''; d.ccText=''; d.ccQty=1; d.ccRush='No'; d.ccDesign='No';
   d.stdWidth=''; d.stdHeight=''; d.stdQty=1; d.stdMaterial=''; d.stdEasel='No'; d.stdRush='No'; d.stdDesign='No';
+  d.cnvWidth=''; d.cnvHeight=''; d.cnvQty=1; d.cnvFinish=''; d.cnvFrame='No'; d.cnvRush='No'; d.cnvDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
