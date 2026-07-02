@@ -21,7 +21,8 @@
       "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/gviz/tq?tqx=out:csv&sheet=Mesh%20Caps\")",
       "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/gviz/tq?tqx=out:csv&sheet=Calling%20Card\")",
       "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/htmlview\")",
-      "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/export?format=csv&gid=1887517522\")"
+      "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/1uZQlQWBSAvee0g8gBiZytATD8T8VxN9V1DJxwGz5N7o/export?format=csv&gid=1887517522\")",
+      "Bash(node \"C:\\\\Users\\\\cymon\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-cymon-Documents-github-quotation-system\\\\7e967bd2-97a6-43fd-870f-68b039ff096d\\\\scratchpad\\\\fulldebug.js\" \"C:\\\\Users\\\\cymon\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-cymon-Documents-github-quotation-system\\\\7e967bd2-97a6-43fd-870f-68b039ff096d\\\\scratchpad\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\cymon\\.claude\\projects\\c--Users-cymon-Documents-github-quotation-system\\memory"

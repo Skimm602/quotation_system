@@ -6929,6 +6929,37 @@ function saveCanvasOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET PAYMENT TERMS  (live from the "Payment Terms" price-DB tab)
+// ══════════════════════════════════════════════════════════════════
+//  Tab rows = label | downpayment fraction (e.g. "50% Downpayment" | 0.5).
+//  Referenced by Index.html's loadPaymentTerms(); falls back to defaults.
+function getPaymentTerms() {
+  const defaults = [
+    { label: 'No Downpayment Required', value: 0    },
+    { label: '25% Downpayment',         value: 0.25 },
+    { label: '50% Downpayment',         value: 0.5  },
+    { label: 'Full Payment',            value: 1    },
+  ];
+  try {
+    const sheet = getPriceDbSS_().getSheetByName('Payment Terms');
+    if (!sheet) return defaults;
+    const rows = sheet.getDataRange().getValues();
+    const terms = [];
+    for (let i = 0; i < rows.length; i++) {
+      const label = String(rows[i][0] || '').trim();
+      if (!label) continue;
+      const value = parseFloat(rows[i][1]);
+      if (isNaN(value) || value < 0 || value > 1) continue;
+      terms.push({ label: label, value: value });
+    }
+    return terms.length ? terms : defaults;
+  } catch (e) {
+    Logger.log('getPaymentTerms error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  FIX TARP HEADERS (utility/one-time runner)
 // ══════════════════════════════════════════════════════════════════
 function fixTarpHeaders() {
