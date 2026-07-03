@@ -31,6 +31,7 @@ const MESHCAP_SHEET           = 'Mesh Cap Quotations';
 const CALLINGCARD_SHEET       = 'Calling Card Quotations';
 const STANDEE_SHEET           = 'Standees';
 const CANVAS_SHEET            = 'Canvas Quotations';
+const NAMEPLATE_SHEET         = 'Name Plate Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_INFO_SHEET     = 'Customer Info';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
@@ -359,6 +360,9 @@ function doGet(e) {
   }
   if (page === 'canvas') {
     return serveWithToken_('Canvas', 'Quotation System — Canvas Print', token, appUrl);
+  }
+  if (page === 'nameplate') {
+    return serveWithToken_('NamePlate', 'Quotation System — Name Plate', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1921,8 +1925,57 @@ function getDashboardData(token) {
       });
     }
 
+    // ── NAME PLATE QUOTES ───────────────────────────────────────
+    let namePlateQuotes = [];
+    const nplSheet = ss.getSheetByName(NAMEPLATE_SHEET);
+    if (nplSheet) {
+      const ndata  = nplSheet.getDataRange().getValues();
+      const nStart = ndata.length > 0 && String(ndata[0][0]).startsWith('NP-') ? 0 : 1;
+      namePlateQuotes = ndata.slice(nStart).filter(r => r[0] && String(r[0]).startsWith('NP-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel  = String(row[15] || '');
+        const material = String(row[6] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          npMaterial:       material,
+          npText:           String(row[7] || ''),
+          quantity:         row[8]  || 0,
+          unitPrice:        parseFloat(row[9])  || 0,
+          baseAmount:       parseFloat(row[10]) || 0,
+          rushOrder:        String(row[11] || ''),
+          rushFee:          parseFloat(row[12]) || 0,
+          designService:    String(row[13] || ''),
+          designFee:        parseFloat(row[14]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[16]) || 0,
+          notes:            String(row[17] || ''),
+          salesStaff:       String(row[18] || ''),
+          status:           String(row[19] || 'Pending'),
+          approvedBy:       String(row[20] || ''),
+          taxType:          String(row[21] || 'non-vat'),
+          taxAmount:        parseFloat(row[22]) || 0,
+          items: (function(){ try { const j = String(row[23]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e){ return []; } })(),
+          quoteType:        'nameplate',
+          signageType:      'Name Plate — ' + material,
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[13] || ''), addonDesignFee: parseFloat(row[14]) || 0,
+          addonRush:   String(row[11] || ''), addonRushFee:   parseFloat(row[12]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...meshCapQuotes, ...callingCardQuotes, ...standeeQuotes, ...canvasQuotes, ...acrylicDisplayQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...meshCapQuotes, ...callingCardQuotes, ...standeeQuotes, ...canvasQuotes, ...namePlateQuotes, ...acrylicDisplayQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -1950,7 +2003,7 @@ function getQuoteForPDF(token, quoteNum) {
   // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
   //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
   //     data builder, which already returns a render-ready quote object. ──
-  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'MC-', 'CC-', 'STD-', 'CNV-', 'PLQ-', 'AD-'];
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'MC-', 'CC-', 'STD-', 'CNV-', 'NP-', 'PLQ-', 'AD-'];
   if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
     try {
       const dash = getDashboardData(token);
@@ -2319,6 +2372,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isCallingCard = String(quoteNum).startsWith('CC-');
   const isStandee = String(quoteNum).startsWith('STD-');
   const isCanvas = String(quoteNum).startsWith('CNV-');
+  const isNamePlate = String(quoteNum).startsWith('NP-');
   const isAcrylicPlaque = String(quoteNum).startsWith('PLQ-');
   const isAcrylicDisplay = String(quoteNum).startsWith('AD-');
 
@@ -2672,6 +2726,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Canvas order not found: ' + quoteNum);
+  }
+
+  if (isNamePlate) {
+    const sheet = ss.getSheetByName(NAMEPLATE_SHEET);
+    if (!sheet) throw new Error('Name Plate Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 20).setValue(status);  // col T = Status
+        sheet.getRange(i+1, 21).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col U = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 23).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Name Plate order not found: ' + quoteNum);
   }
 
   if (isAcrylicPlaque) {
@@ -3372,6 +3442,7 @@ function getPublicPricing() {
     callingcard:(function(){ try{ return getCallingCardPricing(); }catch(e){ return null; } })(),
     lifesizestandee:(function(){ try{ return getLifeSizeStandeePricing(); }catch(e){ return null; } })(),
     canvas:(function(){ try{ return getCanvasPricing(); }catch(e){ return null; } })(),
+    nameplate:(function(){ try{ return getNamePlatePricing(); }catch(e){ return null; } })(),
     acrylicplaque:(function(){ try{ return getAcrylicPlaquePricing(); }catch(e){ return null; } })(),
     acrylicdisplay:(function(){ try{ return getAcrylicDisplayPricing(); }catch(e){ return null; } })(),
   };
@@ -3510,6 +3581,9 @@ function submitCustomerRequest(data) {
             + (data.quantity || 1) + ' pc(s)';
       if (data.material)  specs += ' | Finishing: ' + data.material;
       if (data.withFrame === 'Yes') specs += ' | With Frame';
+    } else if (data.productType === 'nameplate') {
+      specs = 'Name Plate · ' + (data.npMaterial || '—') + ' × ' + (data.quantity || 1) + ' pc(s)';
+      if (data.npText) specs += ' | Text: ' + data.npText;
     } else if (data.productType === 'acrylicplaque') {
       specs = 'Acrylic Plaque · ' + (data.plaqueMaterial || '—')
             + (data.plaqueType ? ' ' + data.plaqueType : '') + ' × ' + (data.quantity || 1) + ' pc(s)';
@@ -3799,6 +3873,10 @@ function buildSpecsEmailDetail_(data, fallbackSpecs) {
         + (parseFloat(data.sqft) ? ' (' + (parseFloat(data.sqft)).toFixed(2) + ' sqft)' : ''));
       add('Finishing / Type', data.material);
       if (data.withFrame === 'Yes') add('With Frame', 'Yes');
+
+    } else if (t === 'nameplate') {
+      add('Material', data.npMaterial);
+      add('Name / Title Text', data.npText);
 
     } else if (t === 'acrylicdisplay') {
       add('Thickness', data.acdisplayType || data.thickness);
@@ -6929,6 +7007,149 @@ function saveCanvasOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET NAME PLATE PRICING  (live from the "NamePlate" price-DB tab)
+// ══════════════════════════════════════════════════════════════════
+//  Tab layout = one flat price cell ("₱ 200") plus descriptive rows:
+//    size: 2 x 3 · material:Acrylic,Metal,Sheet · minimum order: 10 pcs.
+//  The material row is split into selectable type cards (all same price);
+//  the remaining rows become the shared `specs` string.
+//  Rush = ₱250 or 5% whichever higher; Design ₱250.
+function getNamePlatePricing() {
+  const DEF_SPECS = 'Size: 2 x 3 · Minimum order: 10 pcs.';
+  const defaults = {
+    types: [
+      { name: 'Acrylic', price: 200, unit: 'pc', specs: DEF_SPECS },
+      { name: 'Metal',   price: 200, unit: 'pc', specs: DEF_SPECS },
+      { name: 'Sheet',   price: 200, unit: 'pc', specs: DEF_SPECS },
+    ],
+    rushFlat: 250, rushPct: 0.05, designFee: 250,
+  };
+
+  function num(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  function txt(raw) { return String(raw == null ? '' : raw).trim(); }
+
+  try {
+    const ss = getPriceDbSS_();
+    let sheet = ss.getSheetByName('NamePlate')
+             || ss.getSheetByName('Name Plate')
+             || ss.getSheetByName('Nameplate')
+             || ss.getSheetByName('NamePlate ');
+    if (!sheet) {
+      const all = ss.getSheets();
+      for (let i = 0; i < all.length; i++) {
+        if (/name\s*plate/i.test(all[i].getName())) { sheet = all[i]; break; }
+      }
+    }
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    let price = 0;
+    let materials = [];
+    const specParts = [];
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        const cell = txt(rows[r][c]);
+        if (!cell) continue;
+        if (/^material/i.test(cell) && cell.indexOf(':') >= 0) {
+          materials = cell.slice(cell.indexOf(':') + 1).split(',').map(function(s){ return s.trim(); }).filter(String);
+          continue;
+        }
+        if (!price && /^(₱|php)?\s*[\d,]+(\.\d+)?\s*(\/?\s*pc\.?)?$/i.test(cell)) { price = num(cell); continue; }
+        specParts.push(cell);
+      }
+    }
+    if (price <= 0) return defaults;
+    if (!materials.length) materials = defaults.types.map(function(t){ return t.name; });
+    const specs = specParts.join(' · ') || DEF_SPECS;
+    return {
+      types: materials.map(function(m){ return { name: m, price: price, unit: 'pc', specs: specs }; }),
+      rushFlat: defaults.rushFlat, rushPct: defaults.rushPct, designFee: defaults.designFee,
+    };
+  } catch (e) {
+    Logger.log('getNamePlatePricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE NAME PLATE ORDER  (appends to the main SS Name Plate tab)
+// ══════════════════════════════════════════════════════════════════
+function saveNamePlateOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(NAMEPLATE_SHEET);
+  if (!sheet) sheet = ss.insertSheet(NAMEPLATE_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Material', 'Name / Title Text', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount', 'Items JSON',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('NP-')) {
+    if (firstCell.startsWith('NP-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  lockQuoteNumbering_();
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'NP-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.npMaterial    || '',                   // G  - Material
+    data.npText        || '',                   // H  - Name / Title Text
+    qty,                                        // I  - Quantity
+    parseFloat(unitP.toFixed(2)),               // J  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // K  - Base Amount
+    data.rushOrder     || '',                   // L  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // M  - Rush Fee
+    data.designService || '',                   // N  - Design Service
+    parseFloat(designFee.toFixed(2)),           // O  - Design Fee
+    '',                                         // P  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // Q  - Total Amount
+    data.notes         || '',                   // R  - Special Instructions
+    staffName,                                  // S  - Sales Staff
+    data.status || 'Pending',                   // T  - Status
+    '',                                         // U  - Approved By
+    data.taxType       || 'non-vat',            // V  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // W  - Tax Amount
+    (data.items && data.items.length) ? JSON.stringify(data.items) : '[]',  // X - Items JSON
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 10, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Name Plate', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  GET PAYMENT TERMS  (live from the "Payment Terms" price-DB tab)
 // ══════════════════════════════════════════════════════════════════
 //  Tab rows = label | downpayment fraction (e.g. "50% Downpayment" | 0.5).
@@ -7403,6 +7624,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('CC-'))   sheetName = CALLINGCARD_SHEET;
   else if (quoteNum.startsWith('STD-'))  sheetName = STANDEE_SHEET;
   else if (quoteNum.startsWith('CNV-'))  sheetName = CANVAS_SHEET;
+  else if (quoteNum.startsWith('NP-'))   sheetName = NAMEPLATE_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -7435,6 +7657,7 @@ else if (quoteNum.startsWith('MC-'))   ptCol = 16; // col P
 else if (quoteNum.startsWith('CC-'))   ptCol = 16; // col P
 else if (quoteNum.startsWith('STD-'))  ptCol = 19; // col S
 else if (quoteNum.startsWith('CNV-'))  ptCol = 19; // col S
+else if (quoteNum.startsWith('NP-'))   ptCol = 16; // col P
 
 // Find the row
 for (let i = 1; i < data.length; i++) {

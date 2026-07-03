@@ -356,9 +356,10 @@
     const isCallingCard = String(q.quoteNum || '').startsWith('CC-');
     const isStandee = String(q.quoteNum || '').startsWith('STD-');
     const isCanvas = String(q.quoteNum || '').startsWith('CNV-');
+    const isNamePlate = String(q.quoteNum || '').startsWith('NP-');
     const isAcrylicPlaque = String(q.quoteNum || '').startsWith('PLQ-');
     const isAcrylicDisplay = String(q.quoteNum || '').startsWith('AD-');
-    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isCertificate || isCalendar || isMeshCap || isCallingCard || isStandee || isCanvas || isAcrylicPlaque || isAcrylicDisplay;
+    const isSimpleUnit = isMug || isSticker || isRiso || isTotebag || isTicket || isNewsprint || isSouvenir || isKeychain || isAcrylicSign || isAcrylicPlate || isCertificate || isCalendar || isMeshCap || isCallingCard || isStandee || isCanvas || isNamePlate || isAcrylicPlaque || isAcrylicDisplay;
 
     if (isTarpMulti) {
       // One row per item in the cart
@@ -561,11 +562,14 @@
         descParts.push('Size: ' + (q.width||'?') + ' × ' + (q.height||'?') + ' ft' + (q.sqft ? ' (' + Number(q.sqft).toFixed(2) + ' sq.ft)' : ''));
         if (q.ratePerSqft) descParts.push('Rate: ' + php(q.ratePerSqft) + '/sq.ft');
         if (q.withFrame === 'Yes') descParts.push('With Frame: Yes');
+      } else if (isNamePlate) {
+        descParts.push('<strong>Name Plate — ' + (q.npMaterial || '') + '</strong>');
+        if (q.npText) descParts.push('Name / Title: ' + q.npText);
       } else if (isAcrylicPlaque) {
         descParts.push('<strong>Acrylic Plaque — ' + (q.plaqueMaterial || '') + (q.plaqueType ? ' ' + q.plaqueType : '') + '</strong>');
         if (q.plaqueText) descParts.push('Engraving Text: ' + q.plaqueText);
       }
-      if ((isAcrylicPlate || isAcrylicPlaque || isCertificate || isCalendar || isMeshCap || isCallingCard) && q.items && q.items.length > 1) {
+      if ((isAcrylicPlate || isAcrylicPlaque || isCertificate || isCalendar || isMeshCap || isCallingCard || isNamePlate) && q.items && q.items.length > 1) {
         q.items.forEach(function(it) {
           const dp = isAcrylicPlaque
             ? ['<strong>Acrylic Plaque — ' + (it.plaqueMaterial || '') + (it.plaqueType ? ' ' + it.plaqueType : '') + '</strong>']
@@ -577,12 +581,15 @@
             ? ['<strong>Mesh Cap</strong>']
             : isCallingCard
             ? ['<strong>Calling Card — ' + (it.ccType || '') + '</strong>']
+            : isNamePlate
+            ? ['<strong>Name Plate — ' + (it.npMaterial || '') + '</strong>']
             : ['<strong>Acrylic Plate Number — ' + (it.plateType || '') + '</strong>'];
           if (isAcrylicPlaque) { if (it.plaqueText) dp.push('Engraving Text: ' + it.plaqueText); }
           else if (isCertificate) { if (it.certText) dp.push('Title / Recipient: ' + it.certText); }
           else if (isCalendar) { if (it.calText) dp.push('Title / Year: ' + it.calText); }
           else if (isMeshCap) { if (it.meshText) dp.push('Design / Logo Note: ' + it.meshText); }
           else if (isCallingCard) { if (it.ccText) dp.push('Name / Details: ' + it.ccText); }
+          else if (isNamePlate) { if (it.npText) dp.push('Name / Title: ' + it.npText); }
           else { if (it.plateText) dp.push('Name / Plate Text: ' + it.plateText); }
           if (it.rushOrder === 'Yes') dp.push('Rush Order: Yes');
           if (it.designService === 'Yes') dp.push('Design Service: Yes');

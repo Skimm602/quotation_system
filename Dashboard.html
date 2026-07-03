@@ -224,6 +224,10 @@ body { font-family: 'DM Sans', sans-serif; background: #F7F7F7; color: #0A0A0A; 
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
           CANVAS
         </button>
+        <button onclick="switchTab('nameplate')" id="tab-nameplate"
+          style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
+          NAME PLATE
+        </button>
         <button onclick="switchTab('acrylicplaque')" id="tab-acrylicplaque"
           style="padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#999;">
           ACRYLIC PLAQUE
@@ -536,6 +540,7 @@ const QUOTE_TYPES = [
   { page:'callingcard',   icon:'📇', label:'Calling Card Quote' },
   { page:'lifesizestandee', icon:'🧍', label:'Life-Size Standee Quote' },
   { page:'canvas',        icon:'🖼️', label:'Canvas Print Quote' },
+  { page:'nameplate',     icon:'🪪', label:'Name Plate Quote' },
   { page:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque Quote' },
   { page:'acrylicdisplay', icon:'🧊', label:'Acrylic Display Quote' },
 ];
@@ -649,13 +654,13 @@ let currentTab = 'all';
 
 function switchTab(tab) {
   currentTab = tab;
-  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','uvprint','totebag','ticket','newsprint','souvenir','keychain','acrylicsign','acrylicplate','certificate','calendar','meshcap','callingcard','lifesizestandee','canvas','acrylicplaque','acrylicdisplay'].forEach(t => {
+  ['all','signage','tarpaulin','receipt','bookbind','frame','tshirt','mug','sticker','risograph','uvprint','totebag','ticket','newsprint','souvenir','keychain','acrylicsign','acrylicplate','certificate','calendar','meshcap','callingcard','lifesizestandee','canvas','nameplate','acrylicplaque','acrylicdisplay'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
     btn.style.borderBottom = t === tab ? '3px solid #E8151B' : '3px solid transparent';
     btn.style.color        = t === tab ? '#0A0A0A' : '#999';
   });
-  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', uvprint:'UV PRINT', totebag:'TOTE BAG', ticket:'TICKETS', newsprint:'NEWSLETTER / NEWSPAPER', souvenir:'SOUVENIR PROGRAM', keychain:'ACRYLIC KEYCHAIN', acrylicsign:'ACRYLIC SIGNAGE', acrylicplate:'ACRYLIC PLATE NUMBER', certificate:'CERTIFICATE', calendar:'CALENDAR', meshcap:'MESH CAP', callingcard:'CALLING CARD', lifesizestandee:'LIFE-SIZE STANDEE', canvas:'CANVAS PRINT', acrylicplaque:'ACRYLIC PLAQUE', acrylicdisplay:'ACRYLIC DISPLAY' };
+  const labels = { all:'QUOTATIONS', signage:'SIGNAGE', tarpaulin:'TARPAULIN', receipt:'RECEIPT', bookbind:'BOOKBINDING', frame:'FRAME', tshirt:'T-SHIRT', mug:'MUG', sticker:'STICKER', risograph:'RISOGRAPH', uvprint:'UV PRINT', totebag:'TOTE BAG', ticket:'TICKETS', newsprint:'NEWSLETTER / NEWSPAPER', souvenir:'SOUVENIR PROGRAM', keychain:'ACRYLIC KEYCHAIN', acrylicsign:'ACRYLIC SIGNAGE', acrylicplate:'ACRYLIC PLATE NUMBER', certificate:'CERTIFICATE', calendar:'CALENDAR', meshcap:'MESH CAP', callingcard:'CALLING CARD', lifesizestandee:'LIFE-SIZE STANDEE', canvas:'CANVAS PRINT', nameplate:'NAME PLATE', acrylicplaque:'ACRYLIC PLAQUE', acrylicdisplay:'ACRYLIC DISPLAY' };
   const el = document.getElementById('recentLabel');
   if (el) el.textContent = labels[tab] || 'QUOTATIONS';
   renderStats(); renderRecentTable();
@@ -685,6 +690,7 @@ function getFilteredByTab() {
   if (currentTab === 'callingcard') return allQuotes.filter(q => String(q.quoteNum).startsWith('CC-'));
   if (currentTab === 'lifesizestandee') return allQuotes.filter(q => String(q.quoteNum).startsWith('STD-'));
   if (currentTab === 'canvas') return allQuotes.filter(q => String(q.quoteNum).startsWith('CNV-'));
+  if (currentTab === 'nameplate') return allQuotes.filter(q => String(q.quoteNum).startsWith('NP-'));
   if (currentTab === 'acrylicplaque') return allQuotes.filter(q => String(q.quoteNum).startsWith('PLQ-'));
   if (currentTab === 'acrylicdisplay') return allQuotes.filter(q => String(q.quoteNum).startsWith('AD-'));
   return allQuotes;
@@ -731,6 +737,7 @@ function renderRecentTable() {
     const isCallingCard = String(q.quoteNum).startsWith('CC-');
     const isStandee = String(q.quoteNum).startsWith('STD-');
     const isCanvas = String(q.quoteNum).startsWith('CNV-');
+    const isNamePlate = String(q.quoteNum).startsWith('NP-');
     const isAcrylicPlaque = String(q.quoteNum).startsWith('PLQ-');
     const isAcrylicDisplay = String(q.quoteNum).startsWith('AD-');
     const typeLabel = isTarp
@@ -773,6 +780,8 @@ function renderRecentTable() {
       ? `<span style="color:#888;">${q.signageType||'Life-Size Standee'}</span>`
       : isCanvas
       ? `<span style="color:#888;">${q.signageType||'Canvas Print'}</span>`
+      : isNamePlate
+      ? `<span style="color:#888;">${q.signageType||'Name Plate'}</span>`
       : isAcrylicPlaque
       ? `<span style="color:#888;">${q.signageType||'Acrylic Plaque'}</span>`
       : isAcrylicDisplay
@@ -808,7 +817,7 @@ function renderAllQuotes() {
     let actions=`<button class="btn-sm" onclick="viewQuote('${q.quoteNum}')">View</button>`;
     if (canApprove&&q.status==='Pending') actions+=` <button class="btn-approve" onclick="updateStatus('${q.quoteNum}','Approved')">✓</button> <button class="btn-reject" onclick="updateStatus('${q.quoteNum}','Rejected')">✕</button>`;
     const qTypeLabel = String(q.quoteNum).startsWith('TQ-') ? 'Tarpaulin' : String(q.quoteNum).startsWith('RQ-') ? 'Receipt' : String(q.quoteNum).startsWith('BQ-') ? (q.signageType||'Bookbinding') : String(q.quoteNum).startsWith('FQ-') ? (q.signageType||'Frame') : String(q.quoteNum).startsWith('SH-') ? (q.signageType||'T-Shirt') : String(q.quoteNum).startsWith('MUG-') ? ('Mug — '+(q.mugType||'')) : String(q.quoteNum).startsWith('STK-') ? ('Sticker — '+(q.stickerType||'')+(q.layout==='Pre-cut'?' (Pre-cut)':''))
-      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : String(q.quoteNum).startsWith('TB-') ? ('Tote Bag — '+(q.totebagSize||'')) : String(q.quoteNum).startsWith('TKT-') ? ('Tickets — '+(q.ticketType||'')) : String(q.quoteNum).startsWith('NL-') ? ((q.newsCategory||'News')+' — '+(q.newsOption||'')) : String(q.quoteNum).startsWith('SP-') ? ('Souvenir — '+(q.souvenirMaterial||'')) : String(q.quoteNum).startsWith('KC-') ? ('Keychain — '+(q.keychainSize||'')+' '+(q.keychainCutType||'')) : String(q.quoteNum).startsWith('AS-') ? ('Acrylic Sign — '+(q.acsignType||'')) : String(q.quoteNum).startsWith('AP-') ? ('Acrylic Plate — '+(q.plateType||'')) : String(q.quoteNum).startsWith('CERT-') ? ('Certificate — '+(q.certType||'')) : String(q.quoteNum).startsWith('CAL-') ? ('Calendar — '+(q.calType||'')+(q.calSize?' '+q.calSize:'')) : String(q.quoteNum).startsWith('MC-') ? 'Mesh Cap' : String(q.quoteNum).startsWith('CC-') ? ('Calling Card — '+(q.ccType||'')) : String(q.quoteNum).startsWith('STD-') ? ('Life-Size Standee'+(q.material?' — '+q.material:'')) : String(q.quoteNum).startsWith('CNV-') ? ('Canvas Print'+(q.material?' — '+q.material:'')) : String(q.quoteNum).startsWith('PLQ-') ? ('Acrylic Plaque — '+(q.plaqueMaterial||'')+(q.plaqueType?' '+q.plaqueType:'')) : String(q.quoteNum).startsWith('AD-') ? ('Acrylic Display — '+(q.acdisplayType||'')) : (q.signageType||'—');
+      : String(q.quoteNum).startsWith('RG-') ? ('Risograph — '+(q.paperType||'')+' '+(q.paperSize||'')) : String(q.quoteNum).startsWith('TB-') ? ('Tote Bag — '+(q.totebagSize||'')) : String(q.quoteNum).startsWith('TKT-') ? ('Tickets — '+(q.ticketType||'')) : String(q.quoteNum).startsWith('NL-') ? ((q.newsCategory||'News')+' — '+(q.newsOption||'')) : String(q.quoteNum).startsWith('SP-') ? ('Souvenir — '+(q.souvenirMaterial||'')) : String(q.quoteNum).startsWith('KC-') ? ('Keychain — '+(q.keychainSize||'')+' '+(q.keychainCutType||'')) : String(q.quoteNum).startsWith('AS-') ? ('Acrylic Sign — '+(q.acsignType||'')) : String(q.quoteNum).startsWith('AP-') ? ('Acrylic Plate — '+(q.plateType||'')) : String(q.quoteNum).startsWith('CERT-') ? ('Certificate — '+(q.certType||'')) : String(q.quoteNum).startsWith('CAL-') ? ('Calendar — '+(q.calType||'')+(q.calSize?' '+q.calSize:'')) : String(q.quoteNum).startsWith('MC-') ? 'Mesh Cap' : String(q.quoteNum).startsWith('CC-') ? ('Calling Card — '+(q.ccType||'')) : String(q.quoteNum).startsWith('STD-') ? ('Life-Size Standee'+(q.material?' — '+q.material:'')) : String(q.quoteNum).startsWith('CNV-') ? ('Canvas Print'+(q.material?' — '+q.material:'')) : String(q.quoteNum).startsWith('NP-') ? ('Name Plate — '+(q.npMaterial||'')) : String(q.quoteNum).startsWith('PLQ-') ? ('Acrylic Plaque — '+(q.plaqueMaterial||'')+(q.plaqueType?' '+q.plaqueType:'')) : String(q.quoteNum).startsWith('AD-') ? ('Acrylic Display — '+(q.acdisplayType||'')) : (q.signageType||'—');
     html+=`<tr><td style="font-weight:700;color:#0A0A0A;">${q.quoteNum}</td><td style="color:#888;">${date}</td><td>${q.clientName||'—'}</td><td style="color:#888;">${q.contact||'—'}</td><td style="color:#888;">${qTypeLabel}</td><td style="font-weight:600;">${php(q.totalAmount)}</td><td>${badgeHtml(q.status||'Pending')}</td><td style="white-space:nowrap;display:flex;gap:4px;">${actions}</td></tr>`;
   });
   html+='</tbody></table>';
@@ -1185,6 +1194,19 @@ function buildQuoteMessage(q) {
       q.ratePerSqft>0 ? 'Rate: ' + php(q.ratePerSqft) + ' / sq.ft' : '',
       q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
       q.withFrame === 'Yes' ? 'With Frame: Yes' : '',
+      q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
+      q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
+      q.designService === 'Yes' ? 'Design Service: Yes' : '',
+      q.designFee>0 ? 'Design / Artwork Fee: ' + php(q.designFee) : '',
+    ];
+  } else if (qn.startsWith('NP-')) {
+    title = '🪪 NAME PLATE QUOTATION';
+    specs = [
+      'Material: ' + (q.npMaterial || '—'),
+      q.npText ? 'Name / Title: ' + q.npText : '',
+      'Quantity: ' + (q.quantity||0) + ' pc(s)',
+      q.unitPrice  ? 'Unit Price: ' + php(q.unitPrice) + ' / pc' : '',
+      q.baseAmount ? 'Base Amount: ' + php(q.baseAmount) : '',
       q.rushOrder === 'Yes' ? 'Rush Order: Yes' : '',
       q.rushFee>0 ? 'Rush Fee: ' + php(q.rushFee) : '',
       q.designService === 'Yes' ? 'Design Service: Yes' : '',
@@ -1624,6 +1646,29 @@ ${String(q.quoteNum).startsWith('BQ-') ? `
     ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
     ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
     ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
+` : String(q.quoteNum).startsWith('NP-') ? `
+  ${(q.items && q.items.length > 1) ? `
+    ${row('Product', '<span style="font-weight:600;">Name Plate — '+q.items.length+' designs</span>')}
+    ${q.items.map((it, idx) => `
+      <tr><td colspan="2" style="padding:8px 0 2px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#E8151B;border-top:1px solid #E5E5E5;">NAME PLATE ${idx+1}</td></tr>
+      ${row('Material', it.npMaterial||'—')}
+      ${it.npText?row('Name / Title', it.npText):''}
+      ${row('Quantity', (it.quantity||0)+' pc(s)')}
+      ${it.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+      ${it.designService==='Yes'?row('Design Service','✓ Yes'):''}
+      ${row('Subtotal', '<strong>'+php(it.itemTotal)+'</strong>')}
+    `).join('')}
+  ` : `
+    ${row('Material', '<span style="font-weight:600;">'+(q.npMaterial || 'Name Plate')+'</span>')}
+    ${q.npText?row('Name / Title', q.npText):''}
+    ${row('Quantity', (q.quantity||0)+' pc(s)')}
+    ${q.unitPrice>0?row('Unit Price', php(q.unitPrice)+' / pc'):''}
+    ${row('Base Amount', php(q.baseAmount))}
+    ${q.rushOrder==='Yes'?row('Rush Order','✓ Yes'):''}
+    ${q.rushFee>0?row('Rush Fee',php(q.rushFee)):''}
+    ${q.designService==='Yes'?row('Design Service','✓ Yes'):''}
+    ${q.designFee>0?row('Design / Artwork Fee',php(q.designFee)):''}
+  `}
 ` : String(q.quoteNum).startsWith('PLQ-') ? `
   ${(q.items && q.items.length > 1) ? `
     ${row('Product', '<span style="font-weight:600;">Acrylic Plaque — '+q.items.length+' designs</span>')}
@@ -1768,6 +1813,7 @@ const PORTAL_PRODUCTS = [
   { id:'callingcard', icon:'📇', label:'Calling Card', active:true, page:'customer-callingcard'                                                                                  },
   { id:'lifesizestandee', icon:'🧍', label:'Life-Size Standee', active:true, page:'customer-lifesizestandee'                                                                      },
   { id:'canvas', icon:'🖼️', label:'Canvas Print', active:true, page:'customer-canvas'                                                                                            },
+  { id:'nameplate', icon:'🪪', label:'Name Plate', active:true, page:'customer-nameplate'                                                                                        },
   { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', active:true, page:'customer-acrylicplaque'                                                                          },
   { id:'acrylicdisplay', icon:'🧊', label:'Acrylic Display', active:true, page:'customer-acrylicdisplay'                                                                        },
 ];

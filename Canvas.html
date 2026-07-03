@@ -215,7 +215,7 @@ const d = {
   // Step 0 — Client Info
   clientName: '', contact: '', email: '', dateNeeded: '',
   // Step 1 — Canvas Specs
-  width: '', height: '', quantity: 1,
+  width: '', height: '', unit: 'ft', quantity: 1,
   material: '',          // optional finishing / type (e.g. Matte, Glossy, Stretched)
   withFrame: '',         // 'Yes' / 'No' (optional — does not affect price)
   rushOrder: '',
@@ -226,8 +226,24 @@ const d = {
 };
 
 // ─── CALCULATIONS ─────────────────────────────────────────────────
-function areaPerPc() { return (parseFloat(d.width)||0) * (parseFloat(d.height)||0); }
+// Convert an entered dimension to feet based on the selected unit,
+// so the sq.ft billing (× rate) works for any measurement system.
+function toFeet(val) {
+  const n = parseFloat(val) || 0;
+  const u = d.unit || 'ft';
+  if (u === 'in') return n / 12;
+  if (u === 'cm') return n / 30.48;
+  if (u === 'm')  return n * 3.280839895;
+  return n; // ft
+}
+function areaPerPc() { return toFeet(d.width) * toFeet(d.height); }
 function totalQty()  { return parseInt(d.quantity)||1; }
+function dimText() {
+  const u = d.unit || 'ft';
+  let t = (parseFloat(d.width)||'?') + ' × ' + (parseFloat(d.height)||'?') + ' ' + u + ' × ' + totalQty() + ' pc(s)';
+  if (u !== 'ft' && areaPerPc() > 0) t += '  (= ' + toFeet(d.width).toFixed(2) + ' × ' + toFeet(d.height).toFixed(2) + ' ft)';
+  return t;
+}
 function sqft()      { return areaPerPc() * totalQty(); }
 function baseAmt()   { return sqft() * (PRICING.ratePerSqft || 0); }
 function rushFeeAmt()  { return d.rushOrder === 'Yes' ? (PRICING.rushFee || 150) : 0; }
@@ -259,8 +275,9 @@ function liveCompute() {
   d.width    = v('f_width');
   d.height   = v('f_height');
   d.quantity = v('f_quantity');
+  if (document.getElementById('f_unit')) d.unit = v('f_unit') || 'ft';
   const sv = document.getElementById('sqftVal');     if (sv) sv.textContent = sqft() > 0 ? sqft().toFixed(2) : '—';
-  const dl = document.getElementById('dimLabel');    if (dl) dl.textContent = (parseFloat(d.width)||'?') + ' × ' + (parseFloat(d.height)||'?') + ' ft × ' + totalQty() + ' pc(s)';
+  const dl = document.getElementById('dimLabel');    if (dl) dl.textContent = dimText();
   const bv = document.getElementById('baseVal');     if (bv) bv.textContent = '= ' + php(baseAmt());
   const cp = document.getElementById('costPreview'); if (cp) cp.innerHTML   = costPreviewHtml();
 }
@@ -345,15 +362,21 @@ function renderBody() {
     el.innerHTML = `
       <div class="flex flex-col gap-5">
         <div>
-          <label class="field-label" style="margin-bottom:10px;">Canvas Size (in feet) <span class="req">*</span></label>
-          <div class="grid gap-5" style="grid-template-columns:1fr 1fr 1fr;">
+          <label class="field-label" style="margin-bottom:10px;">Canvas Size <span class="req">*</span></label>
+          <div class="grid gap-5" style="grid-template-columns:1fr 1fr 0.6fr 0.8fr;">
             <div class="flex flex-col gap-1">
-              <label class="field-label">Width (ft) <span class="req">*</span></label>
+              <label class="field-label">Width <span class="req">*</span></label>
               <input class="field-input" id="f_width" type="number" min="0" step="any" value="${esc(d.width)}" placeholder="e.g. 2" oninput="liveCompute()">
             </div>
             <div class="flex flex-col gap-1">
-              <label class="field-label">Height (ft) <span class="req">*</span></label>
+              <label class="field-label">Height <span class="req">*</span></label>
               <input class="field-input" id="f_height" type="number" min="0" step="any" value="${esc(d.height)}" placeholder="e.g. 3" oninput="liveCompute()">
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="field-label">Unit <span class="req">*</span></label>
+              <select class="field-input" id="f_unit" style="font-weight:700;" onchange="d.unit=this.value;liveCompute();">
+                ${['ft','in','cm','m'].map(u=>`<option value="${u}" ${d.unit===u?'selected':''}>${u}</option>`).join('')}
+              </select>
             </div>
             <div class="flex flex-col gap-1">
               <label class="field-label">Quantity <span class="req">*</span></label>
@@ -365,8 +388,8 @@ function renderBody() {
         <div class="computed-box">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
-              <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#666;">Total Billable Area</div>
-              <div style="font-size:12px;color:#555;margin-top:2px;" id="dimLabel">${parseFloat(d.width)||'?'} × ${parseFloat(d.height)||'?'} ft × ${totalQty()} pc(s)</div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#666;">Total Billable Area (auto-converted to sq ft)</div>
+              <div style="font-size:12px;color:#555;margin-top:2px;" id="dimLabel">${dimText()}</div>
             </div>
             <div style="text-align:right;">
               <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:#E8151B;line-height:1;" id="sqftVal">${sqft()>0?sqft().toFixed(2):'—'}</div>
@@ -434,7 +457,7 @@ function renderBody() {
       <table class="q-table">
         <tr><td colspan="2" class="sec-label">CANVAS SPECIFICATIONS</td></tr>
         <tr><td>Product</td><td>Canvas Print</td></tr>
-        <tr><td>Dimensions</td><td>${(parseFloat(d.width)||0).toFixed(2)} × ${(parseFloat(d.height)||0).toFixed(2)} ft</td></tr>
+        <tr><td>Dimensions</td><td>${(parseFloat(d.width)||0).toFixed(2)} × ${(parseFloat(d.height)||0).toFixed(2)} ${esc(d.unit||'ft')}${(d.unit||'ft')!=='ft' ? ' (= '+toFeet(d.width).toFixed(2)+' × '+toFeet(d.height).toFixed(2)+' ft)' : ''}</td></tr>
         <tr><td>Total Area</td><td><strong>${sqft().toFixed(2)} sq ft</strong></td></tr>
         <tr><td>Quantity</td><td>${totalQty()} pc(s)</td></tr>
         ${d.material?`<tr><td>Finishing / Type</td><td>${esc(d.material)}</td></tr>`:''}
@@ -570,6 +593,7 @@ function saveStep() {
   if (step === 0) { d.clientName=v('f_name'); d.contact=v('f_contact'); d.email=v('f_email'); d.dateNeeded=v('f_dateneeded'); }
   if (step === 1) {
     d.width=v('f_width'); d.height=v('f_height'); d.quantity=v('f_quantity');
+    if (document.getElementById('f_unit'))     d.unit     = v('f_unit') || 'ft';
     if (document.getElementById('f_material')) d.material = v('f_material');
     if (document.getElementById('f_notes'))    d.notes    = v('f_notes');
   }
@@ -619,7 +643,7 @@ function render() {
 function resetForm() {
   if (!confirm('Start a new quotation? Current data will be cleared.')) return;
   d.clientName=''; d.contact=''; d.email=''; d.dateNeeded='';
-  d.width=''; d.height=''; d.quantity=1; d.material=''; d.withFrame='';
+  d.width=''; d.height=''; d.unit='ft'; d.quantity=1; d.material=''; d.withFrame='';
   d.rushOrder=''; d.designService='';
   d.notes=''; d.taxType='non-vat';
   step=0; render();
@@ -656,7 +680,8 @@ function buildMessengerText() {
   lines.push('📅 Date Needed: ' + dateStr);
   lines.push('');
   lines.push('📐 SPECIFICATIONS');
-  lines.push('• Dimensions: ' + (parseFloat(d.width)||0).toFixed(2) + ' × ' + (parseFloat(d.height)||0).toFixed(2) + ' ft');
+  lines.push('• Dimensions: ' + (parseFloat(d.width)||0).toFixed(2) + ' × ' + (parseFloat(d.height)||0).toFixed(2) + ' ' + (d.unit||'ft')
+    + ((d.unit||'ft')!=='ft' ? ' (= ' + toFeet(d.width).toFixed(2) + ' × ' + toFeet(d.height).toFixed(2) + ' ft)' : ''));
   lines.push('• Total Area: ' + sqft().toFixed(2) + ' sq ft');
   lines.push('• Quantity: ' + totalQty() + ' pc(s)');
   if (d.material)  lines.push('• Finishing / Type: ' + d.material);
@@ -678,7 +703,8 @@ function buildMessengerText() {
 }
 function buildJobOrderText() {
   const parts = [
-    'Dimensions: ' + (parseFloat(d.width)||0).toFixed(2) + ' × ' + (parseFloat(d.height)||0).toFixed(2) + ' ft',
+    'Dimensions: ' + (parseFloat(d.width)||0).toFixed(2) + ' × ' + (parseFloat(d.height)||0).toFixed(2) + ' ' + (d.unit||'ft')
+      + ((d.unit||'ft')!=='ft' ? ' (= ' + toFeet(d.width).toFixed(2) + ' × ' + toFeet(d.height).toFixed(2) + ' ft)' : ''),
     'Area: ' + sqft().toFixed(2) + ' sq ft',
     'Quantity: ' + totalQty() + ' pc(s)',
   ];
@@ -747,8 +773,8 @@ function saveToSheet() {
     email:         d.email,
     dateNeeded:    d.dateNeeded,
     productType:   'Canvas',
-    width:         parseFloat(d.width)||0,
-    height:        parseFloat(d.height)||0,
+    width:         parseFloat(toFeet(d.width).toFixed(4)),   // stored in feet — sheet cols are "Width/Height (ft)"
+    height:        parseFloat(toFeet(d.height).toFixed(4)),
     quantity:      totalQty(),
     sqft:          sqft(),
     ratePerSqft:   PRICING.ratePerSqft||0,

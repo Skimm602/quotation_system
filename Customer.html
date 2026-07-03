@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, callingcard: null, lifesizestandee: null, canvas: null, acrylicplaque: null, acrylicdisplay: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, callingcard: null, lifesizestandee: null, canvas: null, nameplate: null, acrylicplaque: null, acrylicdisplay: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -120,6 +120,7 @@ const PRODUCTS = [
   { id:'callingcard',icon:'📇', label:'Calling Card',  sub:'1-side / Back-to-back' },
   { id:'lifesizestandee', icon:'🧍', label:'Standee',  sub:'Per sq.ft · Sintra'    },
   { id:'canvas',     icon:'🖼️', label:'Canvas Print', sub:'Per sq.ft'             },
+  { id:'nameplate',  icon:'🪪', label:'Name Plate',   sub:'Acrylic / Metal / Sheet'},
   { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', sub:'Acrylic / Crystal'  },
   { id:'acrylicdisplay', icon:'🧊', label:'Acrylic Display', sub:'Per sq.ft · thickness' },
 ];
@@ -186,6 +187,8 @@ const d = {
   stdWidth:'', stdHeight:'', stdQty:1, stdMaterial:'', stdEasel:'No', stdRush:'No', stdDesign:'No',
   // canvas print
   cnvWidth:'', cnvHeight:'', cnvQty:1, cnvFinish:'', cnvFrame:'No', cnvRush:'No', cnvDesign:'No',
+  // name plate
+  npMaterial:'', npText:'', npQty:10, npRush:'No', npDesign:'No',
   // acrylic plaque
   plaqueMaterial:'', plaqueType:'', plaqueText:'', plaqueQty:1, plaqueRush:'No', plaqueDesign:'No',
   // proof of payment (optional, sent as email attachment)
@@ -260,6 +263,17 @@ function cnvEstHtml() {
   const sq = cnvSqft();
   return (sq > 0)
     ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${sq.toFixed(2)} sq.ft × ₱${cnvRate().toLocaleString('en-PH')} = ₱${(sq*cnvRate()).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function npTypeObj() {
+  const list = (PRICING.nameplate || {}).types || [];
+  return list.find(t => t.name === d.npMaterial) || null;
+}
+function npEstHtml() {
+  const t   = npTypeObj();
+  const qty = parseInt(d.npQty) || 0;
+  return (t && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
     : '';
 }
 function plaqueEstHtml() {
@@ -747,6 +761,16 @@ function calcCanvasTotal() {
   const des  = d.cnvDesign === 'Yes' ? (p.designFee || 250) : 0;
   return base + rush + des;
 }
+function calcNamePlateTotal() {
+  const p   = PRICING.nameplate || {};
+  const t   = npTypeObj();
+  const qty = parseInt(d.npQty) || 0;
+  if (!t || !qty) return 0;
+  const base = (t.price || 0) * qty;
+  const rush = d.npRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+  const des  = d.npDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
 
 function plaqueMaterials() {
   const s = [];
@@ -793,6 +817,7 @@ function calcTotal() {
   if (selectedProduct === 'callingcard') return calcCallingCardTotal();
   if (selectedProduct === 'lifesizestandee') return calcLifeSizeStandeeTotal();
   if (selectedProduct === 'canvas') return calcCanvasTotal();
+  if (selectedProduct === 'nameplate') return calcNamePlateTotal();
   if (selectedProduct === 'acrylicplaque') return calcAcrylicPlaqueTotal();
   return 0;
 }
@@ -914,6 +939,7 @@ function renderSpecs() {
   if (selectedProduct === 'callingcard') return renderCallingCardSpecs();
   if (selectedProduct === 'lifesizestandee') return renderStandeeSpecs();
   if (selectedProduct === 'canvas') return renderCanvasSpecs();
+  if (selectedProduct === 'nameplate') return renderNamePlateSpecs();
   if (selectedProduct === 'acrylicplaque') return renderAcrylicPlaqueSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
 }
@@ -1314,6 +1340,67 @@ function renderCanvasSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.cnvDesign==='Yes'?' on':''}" onclick="d.cnvDesign='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.cnvDesign==='No'?' on':''}"  onclick="d.cnvDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── NAME PLATE SPECS ──────────────────────────────────────────────
+const NP_ICONS = { 'Acrylic':'🟦', 'Metal':'⬜', 'Sheet':'📄' };
+function selectNpMaterial(idx) {
+  const list = (PRICING.nameplate || {}).types || [];
+  if (list[idx]) d.npMaterial = list[idx].name;
+  renderForm();
+}
+function renderNamePlateSpecs() {
+  const p     = PRICING.nameplate || {};
+  const types = p.types || [];
+
+  const typeCards = types.map((t, idx) => {
+    const sel  = d.npMaterial === t.name;
+    const icon = NP_ICONS[t.name] || '🪪';
+    return `<div class="opt-card${sel?' active':''}" onclick="selectNpMaterial(${idx})">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${icon} ${esc(t.name)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">₱${(t.price||0).toLocaleString('en-PH')}/pc</div>
+        ${t.specs ? `<div style="font-size:10px;color:#AAA;margin-top:2px;">${esc(t.specs)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const estLine = npEstHtml();
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Material *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${typeCards}</div>
+      </div>
+      <div>
+        <label class="field-label">Name / Title Text <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="np_text" value="${esc(d.npText||'')}" placeholder="e.g. JUAN DELA CRUZ — Manager"
+          oninput="d.npText=this.value;">
+      </div>
+      <div>
+        <label class="field-label">Quantity (pcs) <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(min 10)</span></label>
+        <input type="number" class="field-input" id="np_qty" value="${d.npQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.npQty=parseInt(this.value)||1;updateEst('np_est',npEstHtml);" inputmode="numeric">
+        <div id="np_est">${estLine}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.npRush==='Yes'?' on':''}" onclick="d.npRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.npRush==='No'?' on':''}"  onclick="d.npRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Design / Layout Service? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.designFee||250).toLocaleString()})</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.npDesign==='Yes'?' on':''}" onclick="d.npDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.npDesign==='No'?' on':''}"  onclick="d.npDesign='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -3218,6 +3305,11 @@ function renderReview() {
     if (d.cnvFrame  === 'Yes') specSummary += ' · Frame';
     if (d.cnvRush   === 'Yes') specSummary += ' · Rush';
     if (d.cnvDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'nameplate') {
+    specSummary = `Name Plate · ${esc(d.npMaterial)||'—'} × ${d.npQty||0} pc(s)`;
+    if (d.npText) specSummary += ` · "${esc(d.npText)}"`;
+    if (d.npRush   === 'Yes') specSummary += ' · Rush';
+    if (d.npDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'acrylicplaque') {
     specSummary = `Acrylic Plaque · ${esc(d.plaqueMaterial)||'—'} ${esc(d.plaqueType)||''} × ${d.plaqueQty||0} pc(s)`;
     if (d.plaqueText) specSummary += ` · "${esc(d.plaqueText)}"`;
@@ -3524,6 +3616,12 @@ function nextStep() {
       d.cnvFinish = v('cnv_fin') || d.cnvFinish;
       if (!d.cnvWidth || !d.cnvHeight) { toast('Please enter the size (width × height).','error'); return; }
       if (!d.cnvQty || d.cnvQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'nameplate') {
+      d.npText = v('np_text') || d.npText;
+      d.npQty  = parseInt(v('np_qty')) || d.npQty;
+      if (!d.npMaterial || !npTypeObj()) { toast('Please select a material.','error'); return; }
+      if (!d.npQty || d.npQty < 1)       { toast('Quantity must be at least 1.','error'); return; }
     }
     if (selectedProduct === 'acrylicplaque') {
       d.plaqueText = v('plq_text') || d.plaqueText;
@@ -4082,6 +4180,26 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'nameplate') {
+    const p    = PRICING.nameplate || {};
+    const t    = npTypeObj() || { price: 0 };
+    const up   = t.price || 0;
+    const qty  = parseInt(d.npQty) || 1;
+    const base = up * qty;
+    const rush = d.npRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+    const des  = d.npDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      npMaterial:    d.npMaterial,
+      npText:        d.npText,
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.npRush,   rushFee:   rush,
+      designService: d.npDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   if (selectedProduct === 'acrylicplaque') {
     const p    = PRICING.acrylicplaque || {};
     const t    = plaqueTypeObj() || { price: 0 };
@@ -4282,6 +4400,12 @@ function buildMessengerText(qn) {
     if (d.cnvFrame  === 'Yes') specsLine += '\nWith Frame: Yes';
     if (d.cnvRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.cnvDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'nameplate') {
+    specsLine = 'Name Plate · ' + (d.npMaterial || '—');
+    if (d.npText) specsLine += '\nName / Title: ' + d.npText;
+    specsLine += '\nQuantity: ' + (d.npQty || 0) + ' pc(s)';
+    if (d.npRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.npDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'acrylicplaque') {
     specsLine = 'Acrylic Plaque · ' + (d.plaqueMaterial || '—') + (d.plaqueType ? ' ' + d.plaqueType : '');
     if (d.plaqueText) specsLine += '\nName / Engraving Text: ' + d.plaqueText;
@@ -4384,6 +4508,7 @@ function resetAll() {
   d.ccType=''; d.ccText=''; d.ccQty=1; d.ccRush='No'; d.ccDesign='No';
   d.stdWidth=''; d.stdHeight=''; d.stdQty=1; d.stdMaterial=''; d.stdEasel='No'; d.stdRush='No'; d.stdDesign='No';
   d.cnvWidth=''; d.cnvHeight=''; d.cnvQty=1; d.cnvFinish=''; d.cnvFrame='No'; d.cnvRush='No'; d.cnvDesign='No';
+  d.npMaterial=''; d.npText=''; d.npQty=10; d.npRush='No'; d.npDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
