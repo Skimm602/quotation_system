@@ -32,6 +32,7 @@ const CALLINGCARD_SHEET       = 'Calling Card Quotations';
 const STANDEE_SHEET           = 'Standees';
 const CANVAS_SHEET            = 'Canvas Quotations';
 const NAMEPLATE_SHEET         = 'Name Plate Quotations';
+const FOLDABLEFAN_SHEET       = 'Foldable Fan Quotations';
 const CUSTOMER_SHEET          = 'Customer Quotations';
 const CUSTOMER_INFO_SHEET     = 'Customer Info';
 const CUSTOMER_SS_ID          = '1SKuJe0ocRgiTLMOtqp9gerdOkGDiP-86Z6QiWXu4R5Y';
@@ -363,6 +364,9 @@ function doGet(e) {
   }
   if (page === 'nameplate') {
     return serveWithToken_('NamePlate', 'Quotation System — Name Plate', token, appUrl);
+  }
+  if (page === 'foldablefan') {
+    return serveWithToken_('FoldableFan', 'Quotation System — Foldable Fan', token, appUrl);
   }
   if (role === 'sales' || role === 'staff') {
     return serveWithToken_('Index', 'Quotation System — Quotation', token, appUrl);
@@ -1974,8 +1978,57 @@ function getDashboardData(token) {
       });
     }
 
+    // ── FOLDABLE FAN QUOTES ─────────────────────────────────────
+    let foldableFanQuotes = [];
+    const ffSheet = ss.getSheetByName(FOLDABLEFAN_SHEET);
+    if (ffSheet) {
+      const fdata  = ffSheet.getDataRange().getValues();
+      const fStart = fdata.length > 0 && String(fdata[0][0]).startsWith('FF-') ? 0 : 1;
+      foldableFanQuotes = fdata.slice(fStart).filter(r => r[0] && String(r[0]).startsWith('FF-')).map(row => {
+        let dateStr = '';
+        try { dateStr = row[1] ? new Date(row[1]).toISOString() : ''; } catch(e) {}
+        const ptLabel = String(row[15] || '');
+        const ffType  = String(row[6] || '');
+        return {
+          quoteNum:         String(row[0]  || ''),
+          date:             dateStr,
+          clientName:       String(row[2]  || ''),
+          contact:          String(row[3]  || ''),
+          email:            String(row[4]  || ''),
+          dateNeeded:       String(row[5]  || ''),
+          ffType:           ffType,
+          ffText:           String(row[7] || ''),
+          quantity:         row[8]  || 0,
+          unitPrice:        parseFloat(row[9])  || 0,
+          baseAmount:       parseFloat(row[10]) || 0,
+          rushOrder:        String(row[11] || ''),
+          rushFee:          parseFloat(row[12]) || 0,
+          designService:    String(row[13] || ''),
+          designFee:        parseFloat(row[14]) || 0,
+          paymentTermLabel: ptLabel,
+          paymentTermValue: ptLabel.includes('No Down') ? 0 : ptLabel.includes('25%') ? 0.25 : ptLabel.includes('Full') ? 1 : 0.5,
+          totalAmount:      parseFloat(row[16]) || 0,
+          notes:            String(row[17] || ''),
+          salesStaff:       String(row[18] || ''),
+          status:           String(row[19] || 'Pending'),
+          approvedBy:       String(row[20] || ''),
+          taxType:          String(row[21] || 'non-vat'),
+          taxAmount:        parseFloat(row[22]) || 0,
+          items: (function(){ try { const j = String(row[23]||''); if (!j || j==='[]') return []; return JSON.parse(j); } catch(e){ return []; } })(),
+          quoteType:        'foldablefan',
+          signageType:      'Foldable Fan — ' + ffType,
+          address: '', delivery: '', lighting: '', material: '',
+          mounting: '', mountSurcharge: 0, complexitySurcharge: 0,
+          addonDesign: String(row[13] || ''), addonDesignFee: parseFloat(row[14]) || 0,
+          addonRush:   String(row[11] || ''), addonRushFee:   parseFloat(row[12]) || 0,
+          addonElec: '', addonElecFee: 0,
+          addonTransport: '', addonTransportFee: 0,
+        };
+      });
+    }
+
     // ── COMBINE & FILTER ────────────────────────────────────────
-    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...meshCapQuotes, ...callingCardQuotes, ...standeeQuotes, ...canvasQuotes, ...namePlateQuotes, ...acrylicDisplayQuotes];
+    const allQuotes = [...quotes, ...tarpQuotes, ...receiptQuotes, ...bookbindQuotes, ...frameQuotes, ...tshirtQuotes, ...mugQuotes, ...stickerQuotes, ...risoQuotes, ...uvPrintQuotes, ...totebagQuotes, ...ticketQuotes, ...newsprintQuotes, ...souvenirQuotes, ...keychainQuotes, ...acrylicSignQuotes, ...acrylicPlateQuotes, ...certificateQuotes, ...acrylicPlaqueQuotes, ...calendarQuotes, ...meshCapQuotes, ...callingCardQuotes, ...standeeQuotes, ...canvasQuotes, ...namePlateQuotes, ...foldableFanQuotes, ...acrylicDisplayQuotes];
 
     const filtered = (role === 'sales' || role === 'staff')
       ? allQuotes.filter(q => q.salesStaff === session.username || q.salesStaff === session.name)
@@ -2003,7 +2056,7 @@ function getQuoteForPDF(token, quoteNum) {
   // ── Newer products (Mug, Sticker, Risograph, Tote Bag, Tickets,
   //     Newsletter/Newspaper, Souvenir, Keychain) — reuse the dashboard
   //     data builder, which already returns a render-ready quote object. ──
-  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'MC-', 'CC-', 'STD-', 'CNV-', 'NP-', 'PLQ-', 'AD-'];
+  const PDF_VIA_DASHBOARD = ['MUG-', 'STK-', 'RG-', 'UV-', 'TB-', 'TKT-', 'NL-', 'SP-', 'KC-', 'AS-', 'AP-', 'CERT-', 'CAL-', 'MC-', 'CC-', 'STD-', 'CNV-', 'NP-', 'FF-', 'PLQ-', 'AD-'];
   if (PDF_VIA_DASHBOARD.some(function(p){ return qn.indexOf(p) === 0; })) {
     try {
       const dash = getDashboardData(token);
@@ -2373,6 +2426,7 @@ function updateQuoteStatus(token, quoteNum, status) {
   const isStandee = String(quoteNum).startsWith('STD-');
   const isCanvas = String(quoteNum).startsWith('CNV-');
   const isNamePlate = String(quoteNum).startsWith('NP-');
+  const isFoldableFan = String(quoteNum).startsWith('FF-');
   const isAcrylicPlaque = String(quoteNum).startsWith('PLQ-');
   const isAcrylicDisplay = String(quoteNum).startsWith('AD-');
 
@@ -2742,6 +2796,22 @@ function updateQuoteStatus(token, quoteNum, status) {
       }
     }
     throw new Error('Name Plate order not found: ' + quoteNum);
+  }
+
+  if (isFoldableFan) {
+    const sheet = ss.getSheetByName(FOLDABLEFAN_SHEET);
+    if (!sheet) throw new Error('Foldable Fan Quotations sheet not found.');
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === quoteNum) {
+        sheet.getRange(i+1, 20).setValue(status);  // col T = Status
+        sheet.getRange(i+1, 21).setValue(session.name + ' — ' + new Date().toLocaleString('en-PH'));  // col U = Approved By
+        const color = status === 'Approved' ? '#E6FFF3' : status === 'Rejected' ? '#FFF0F0' : '#FFFFFF';
+        sheet.getRange(i+1, 1, 1, 23).setBackground(color);
+        return { success: true };
+      }
+    }
+    throw new Error('Foldable Fan order not found: ' + quoteNum);
   }
 
   if (isAcrylicPlaque) {
@@ -3443,6 +3513,7 @@ function getPublicPricing() {
     lifesizestandee:(function(){ try{ return getLifeSizeStandeePricing(); }catch(e){ return null; } })(),
     canvas:(function(){ try{ return getCanvasPricing(); }catch(e){ return null; } })(),
     nameplate:(function(){ try{ return getNamePlatePricing(); }catch(e){ return null; } })(),
+    foldablefan:(function(){ try{ return getFoldableFanPricing(); }catch(e){ return null; } })(),
     acrylicplaque:(function(){ try{ return getAcrylicPlaquePricing(); }catch(e){ return null; } })(),
     acrylicdisplay:(function(){ try{ return getAcrylicDisplayPricing(); }catch(e){ return null; } })(),
   };
@@ -3584,6 +3655,9 @@ function submitCustomerRequest(data) {
     } else if (data.productType === 'nameplate') {
       specs = 'Name Plate · ' + (data.npMaterial || '—') + ' × ' + (data.quantity || 1) + ' pc(s)';
       if (data.npText) specs += ' | Text: ' + data.npText;
+    } else if (data.productType === 'foldablefan') {
+      specs = 'Foldable Fan · ' + (data.ffType || '—') + ' × ' + (data.quantity || 1) + ' pc(s)';
+      if (data.ffText) specs += ' | Design: ' + data.ffText;
     } else if (data.productType === 'acrylicplaque') {
       specs = 'Acrylic Plaque · ' + (data.plaqueMaterial || '—')
             + (data.plaqueType ? ' ' + data.plaqueType : '') + ' × ' + (data.quantity || 1) + ' pc(s)';
@@ -3877,6 +3951,10 @@ function buildSpecsEmailDetail_(data, fallbackSpecs) {
     } else if (t === 'nameplate') {
       add('Material', data.npMaterial);
       add('Name / Title Text', data.npText);
+
+    } else if (t === 'foldablefan') {
+      add('Print Method', data.ffType);
+      add('Design / Logo Note', data.ffText);
 
     } else if (t === 'acrylicdisplay') {
       add('Thickness', data.acdisplayType || data.thickness);
@@ -7150,6 +7228,138 @@ function saveNamePlateOrder(data) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  GET FOLDABLE FAN PRICING  (live from the "Foldable Fan" price-DB tab)
+// ══════════════════════════════════════════════════════════════════
+//  Tab layout = print-method rows, name in col A and price in col B:
+//    Sublimation | ₱ 50/pc   ·   DTF | ₱ 80/pc
+//  Rows without a price (e.g. "Minimum order : 20 pcs.") become the
+//  shared `specs` string. Rush = ₱250 or 5%; Design ₱250.
+function getFoldableFanPricing() {
+  const DEF_SPECS = 'Minimum order: 20 pcs.';
+  const defaults = {
+    types: [
+      { name: 'Sublimation', price: 50, unit: 'pc', specs: DEF_SPECS },
+      { name: 'DTF',         price: 80, unit: 'pc', specs: DEF_SPECS },
+    ],
+    rushFlat: 250, rushPct: 0.05, designFee: 250,
+  };
+
+  function num(raw) {
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    const m = String(raw).replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) || 0 : 0;
+  }
+  function txt(raw) { return String(raw == null ? '' : raw).trim(); }
+
+  try {
+    const ss = getPriceDbSS_();
+    let sheet = ss.getSheetByName('Foldable Fan')
+             || ss.getSheetByName('Foldable Fans')
+             || ss.getSheetByName('FoldableFan')
+             || ss.getSheetByName('Foldable Fan ');
+    if (!sheet) {
+      const all = ss.getSheets();
+      for (let i = 0; i < all.length; i++) {
+        if (/foldable/i.test(all[i].getName())) { sheet = all[i]; break; }
+      }
+    }
+    if (!sheet) return defaults;
+
+    const rows = sheet.getDataRange().getValues();
+    const types = [];
+    const specParts = [];
+    for (let r = 0; r < rows.length; r++) {
+      const name  = txt(rows[r][0]);
+      const price = num(rows[r][1]);
+      if (!name) continue;
+      if (price > 0) types.push({ name: name, price: price, unit: 'pc' });
+      else specParts.push(name);
+    }
+    if (!types.length) return defaults;
+    const specs = specParts.join(' · ') || DEF_SPECS;
+    types.forEach(function(t){ t.specs = specs; });
+    return { types: types, rushFlat: defaults.rushFlat, rushPct: defaults.rushPct, designFee: defaults.designFee };
+  } catch (e) {
+    Logger.log('getFoldableFanPricing error: ' + e);
+    return defaults;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SAVE FOLDABLE FAN ORDER  (appends to the main SS Foldable Fan tab)
+// ══════════════════════════════════════════════════════════════════
+function saveFoldableFanOrder(data) {
+  const ss    = getMainSS_();
+  let   sheet = ss.getSheetByName(FOLDABLEFAN_SHEET);
+  if (!sheet) sheet = ss.insertSheet(FOLDABLEFAN_SHEET);
+
+  const headers = [
+    'Quote #', 'Date', 'Client Name', 'Contact', 'Email', 'Date Needed',
+    'Print Method', 'Design / Logo Note', 'Quantity',
+    'Unit Price', 'Base Amount',
+    'Rush Order', 'Rush Fee', 'Design Service', 'Design Fee',
+    'Payment Term', 'Total Amount',
+    'Special Instructions', 'Sales Staff',
+    'Status', 'Approved By', 'Tax Type', 'Tax Amount', 'Items JSON',
+  ];
+
+  const firstCell = sheet.getLastRow() > 0 ? String(sheet.getRange(1, 1).getValue()) : '';
+  if (sheet.getLastRow() === 0 || firstCell.startsWith('FF-')) {
+    if (firstCell.startsWith('FF-')) sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground('#E8151B').setFontColor('#fff')
+      .setFontWeight('bold').setFontSize(11);
+    sheet.setFrozenRows(1);
+  }
+
+  lockQuoteNumbering_();
+  const lastRow  = sheet.getLastRow();
+  const quoteNum = 'FF-' + String(lastRow).padStart(4, '0');
+
+  const session   = data.token ? getSessionData_(data.token) : null;
+  const staffName = session ? (session.username || session.name) : (data.salesStaff || '');
+
+  const qty       = parseInt(data.quantity)    || 1;
+  const unitP     = parseFloat(data.unitPrice) || 0;
+  const baseAmt   = parseFloat(data.baseAmount) || (unitP * qty);
+  const rushFee   = parseFloat(data.rushFee)   || 0;
+  const designFee = parseFloat(data.designFee) || 0;
+  const totalAmt  = parseFloat(data.totalAmount) > 0 ? parseFloat(data.totalAmount) : (baseAmt + rushFee + designFee);
+
+  sheet.appendRow([
+    quoteNum,                                   // A  - Quote #
+    new Date(),                                 // B  - Date
+    data.clientName    || '',                   // C  - Client Name
+    data.contact       || '',                   // D  - Contact
+    data.email         || '',                   // E  - Email
+    data.dateNeeded    || '',                   // F  - Date Needed
+    data.ffType        || '',                   // G  - Print Method
+    data.ffText        || '',                   // H  - Design / Logo Note
+    qty,                                        // I  - Quantity
+    parseFloat(unitP.toFixed(2)),               // J  - Unit Price
+    parseFloat(baseAmt.toFixed(2)),             // K  - Base Amount
+    data.rushOrder     || '',                   // L  - Rush Order
+    parseFloat(rushFee.toFixed(2)),             // M  - Rush Fee
+    data.designService || '',                   // N  - Design Service
+    parseFloat(designFee.toFixed(2)),           // O  - Design Fee
+    '',                                         // P  - Payment Term
+    parseFloat(totalAmt.toFixed(2)),            // Q  - Total Amount
+    data.notes         || '',                   // R  - Special Instructions
+    staffName,                                  // S  - Sales Staff
+    data.status || 'Pending',                   // T  - Status
+    '',                                         // U  - Approved By
+    data.taxType       || 'non-vat',            // V  - Tax Type
+    parseFloat(data.taxAmount) || 0,            // W  - Tax Amount
+    (data.items && data.items.length) ? JSON.stringify(data.items) : '[]',  // X - Items JSON
+  ]);
+
+  sheet.getRange(sheet.getLastRow(), 10, 1, 8).setNumberFormat('₱#,##0.00');
+  try { notifyQuoteSaved_(quoteNum, 'Foldable Fan', data); } catch(_) {}
+  return quoteNum;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  GET PAYMENT TERMS  (live from the "Payment Terms" price-DB tab)
 // ══════════════════════════════════════════════════════════════════
 //  Tab rows = label | downpayment fraction (e.g. "50% Downpayment" | 0.5).
@@ -7625,6 +7835,7 @@ function savePaymentTerm(token, quoteNum, termLabel, termValue) {
   else if (quoteNum.startsWith('STD-'))  sheetName = STANDEE_SHEET;
   else if (quoteNum.startsWith('CNV-'))  sheetName = CANVAS_SHEET;
   else if (quoteNum.startsWith('NP-'))   sheetName = NAMEPLATE_SHEET;
+  else if (quoteNum.startsWith('FF-'))   sheetName = FOLDABLEFAN_SHEET;
   else throw new Error('Unknown quote type');
 
   const sh = ss.getSheetByName(sheetName);
@@ -7658,6 +7869,7 @@ else if (quoteNum.startsWith('CC-'))   ptCol = 16; // col P
 else if (quoteNum.startsWith('STD-'))  ptCol = 19; // col S
 else if (quoteNum.startsWith('CNV-'))  ptCol = 19; // col S
 else if (quoteNum.startsWith('NP-'))   ptCol = 16; // col P
+else if (quoteNum.startsWith('FF-'))   ptCol = 16; // col P
 
 // Find the row
 for (let i = 1; i < data.length; i++) {

@@ -83,7 +83,7 @@ textarea.field-input { min-height: 80px; resize: vertical; }
 const APP_URL = (document.getElementById('app-url')||{}).value || '';
 
 // ── PRICING ──────────────────────────────────────────────────────
-let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, callingcard: null, lifesizestandee: null, canvas: null, nameplate: null, acrylicplaque: null, acrylicdisplay: null };
+let PRICING = { mug: null, tshirt: null, tarp: null, frame: null, bookbind: null, sticker: null, risograph: null, uvprint: null, receipt: null, signage: null, totebag: null, ticket: null, newsprint: null, souvenir: null, keychain: null, acrylicsign: null, acrylicplate: null, certificate: null, calendar: null, meshcap: null, callingcard: null, lifesizestandee: null, canvas: null, nameplate: null, foldablefan: null, acrylicplaque: null, acrylicdisplay: null };
 let pricingLoaded = false;
 
 google.script.run
@@ -121,6 +121,7 @@ const PRODUCTS = [
   { id:'lifesizestandee', icon:'🧍', label:'Standee',  sub:'Per sq.ft · Sintra'    },
   { id:'canvas',     icon:'🖼️', label:'Canvas Print', sub:'Per sq.ft'             },
   { id:'nameplate',  icon:'🪪', label:'Name Plate',   sub:'Acrylic / Metal / Sheet'},
+  { id:'foldablefan',icon:'🪭', label:'Foldable Fan', sub:'Sublimation / DTF'      },
   { id:'acrylicplaque', icon:'🏆', label:'Acrylic Plaque', sub:'Acrylic / Crystal'  },
   { id:'acrylicdisplay', icon:'🧊', label:'Acrylic Display', sub:'Per sq.ft · thickness' },
 ];
@@ -189,6 +190,8 @@ const d = {
   cnvWidth:'', cnvHeight:'', cnvQty:1, cnvFinish:'', cnvFrame:'No', cnvRush:'No', cnvDesign:'No',
   // name plate
   npMaterial:'', npText:'', npQty:10, npRush:'No', npDesign:'No',
+  // foldable fan
+  ffType:'', ffText:'', ffQty:20, ffRush:'No', ffDesign:'No',
   // acrylic plaque
   plaqueMaterial:'', plaqueType:'', plaqueText:'', plaqueQty:1, plaqueRush:'No', plaqueDesign:'No',
   // proof of payment (optional, sent as email attachment)
@@ -272,6 +275,17 @@ function npTypeObj() {
 function npEstHtml() {
   const t   = npTypeObj();
   const qty = parseInt(d.npQty) || 0;
+  return (t && qty)
+    ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+    : '';
+}
+function ffTypeObj() {
+  const list = (PRICING.foldablefan || {}).types || [];
+  return list.find(t => t.name === d.ffType) || null;
+}
+function ffEstHtml() {
+  const t   = ffTypeObj();
+  const qty = parseInt(d.ffQty) || 0;
   return (t && qty)
     ? `<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">${qty} pc(s) × ₱${(t.price||0).toLocaleString('en-PH')} = ₱${((t.price||0)*qty).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
     : '';
@@ -771,6 +785,16 @@ function calcNamePlateTotal() {
   const des  = d.npDesign === 'Yes' ? (p.designFee || 250) : 0;
   return base + rush + des;
 }
+function calcFoldableFanTotal() {
+  const p   = PRICING.foldablefan || {};
+  const t   = ffTypeObj();
+  const qty = parseInt(d.ffQty) || 0;
+  if (!t || !qty) return 0;
+  const base = (t.price || 0) * qty;
+  const rush = d.ffRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+  const des  = d.ffDesign === 'Yes' ? (p.designFee || 250) : 0;
+  return base + rush + des;
+}
 
 function plaqueMaterials() {
   const s = [];
@@ -818,6 +842,7 @@ function calcTotal() {
   if (selectedProduct === 'lifesizestandee') return calcLifeSizeStandeeTotal();
   if (selectedProduct === 'canvas') return calcCanvasTotal();
   if (selectedProduct === 'nameplate') return calcNamePlateTotal();
+  if (selectedProduct === 'foldablefan') return calcFoldableFanTotal();
   if (selectedProduct === 'acrylicplaque') return calcAcrylicPlaqueTotal();
   return 0;
 }
@@ -940,6 +965,7 @@ function renderSpecs() {
   if (selectedProduct === 'lifesizestandee') return renderStandeeSpecs();
   if (selectedProduct === 'canvas') return renderCanvasSpecs();
   if (selectedProduct === 'nameplate') return renderNamePlateSpecs();
+  if (selectedProduct === 'foldablefan') return renderFoldableFanSpecs();
   if (selectedProduct === 'acrylicplaque') return renderAcrylicPlaqueSpecs();
   return '<p style="color:#888;">Unknown product.</p>';
 }
@@ -1401,6 +1427,67 @@ function renderNamePlateSpecs() {
         <div style="display:flex;gap:8px;">
           <button class="yn-btn yes${d.npDesign==='Yes'?' on':''}" onclick="d.npDesign='Yes';renderForm();">Yes</button>
           <button class="yn-btn no${d.npDesign==='No'?' on':''}"  onclick="d.npDesign='No';renderForm();">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── FOLDABLE FAN SPECS ────────────────────────────────────────────
+const FF_ICONS = { 'Sublimation':'🎨', 'DTF':'🖨️' };
+function selectFfType(idx) {
+  const list = (PRICING.foldablefan || {}).types || [];
+  if (list[idx]) d.ffType = list[idx].name;
+  renderForm();
+}
+function renderFoldableFanSpecs() {
+  const p     = PRICING.foldablefan || {};
+  const types = p.types || [];
+
+  const typeCards = types.map((t, idx) => {
+    const sel  = d.ffType === t.name;
+    const icon = FF_ICONS[t.name] || '🪭';
+    return `<div class="opt-card${sel?' active':''}" onclick="selectFfType(${idx})">
+      <input type="radio" ${sel?'checked':''} readonly>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${icon} ${esc(t.name)}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px;">₱${(t.price||0).toLocaleString('en-PH')}/pc</div>
+        ${t.specs ? `<div style="font-size:10px;color:#AAA;margin-top:2px;">${esc(t.specs)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const estLine = ffEstHtml();
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Print Method *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">${typeCards}</div>
+      </div>
+      <div>
+        <label class="field-label">Design / Logo Note <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input class="field-input" id="ff_text" value="${esc(d.ffText||'')}" placeholder="e.g. Wedding souvenir — Juan & Maria, full-color print"
+          oninput="d.ffText=this.value;">
+      </div>
+      <div>
+        <label class="field-label">Quantity (pcs) <span style="color:#CCC;font-weight:400;text-transform:none;letter-spacing:0;">(min 20)</span></label>
+        <input type="number" class="field-input" id="ff_qty" value="${d.ffQty}" min="1"
+          style="font-size:20px;font-weight:700;text-align:center;max-width:160px;"
+          oninput="d.ffQty=parseInt(this.value)||1;updateEst('ff_est',ffEstHtml);" inputmode="numeric">
+        <div id="ff_est">${estLine}</div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Rush Order? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.rushFlat||250).toLocaleString()} or ${((p.rushPct||0.05)*100)}% whichever higher)</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.ffRush==='Yes'?' on':''}" onclick="d.ffRush='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.ffRush==='No'?' on':''}"  onclick="d.ffRush='No';renderForm();">No</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">Design / Layout Service? <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(₱${(p.designFee||250).toLocaleString()})</span></label>
+        <div style="display:flex;gap:8px;">
+          <button class="yn-btn yes${d.ffDesign==='Yes'?' on':''}" onclick="d.ffDesign='Yes';renderForm();">Yes</button>
+          <button class="yn-btn no${d.ffDesign==='No'?' on':''}"  onclick="d.ffDesign='No';renderForm();">No</button>
         </div>
       </div>
     </div>`;
@@ -3310,6 +3397,11 @@ function renderReview() {
     if (d.npText) specSummary += ` · "${esc(d.npText)}"`;
     if (d.npRush   === 'Yes') specSummary += ' · Rush';
     if (d.npDesign === 'Yes') specSummary += ' · Design';
+  } else if (selectedProduct === 'foldablefan') {
+    specSummary = `Foldable Fan · ${esc(d.ffType)||'—'} × ${d.ffQty||0} pc(s)`;
+    if (d.ffText) specSummary += ` · "${esc(d.ffText)}"`;
+    if (d.ffRush   === 'Yes') specSummary += ' · Rush';
+    if (d.ffDesign === 'Yes') specSummary += ' · Design';
   } else if (selectedProduct === 'acrylicplaque') {
     specSummary = `Acrylic Plaque · ${esc(d.plaqueMaterial)||'—'} ${esc(d.plaqueType)||''} × ${d.plaqueQty||0} pc(s)`;
     if (d.plaqueText) specSummary += ` · "${esc(d.plaqueText)}"`;
@@ -3622,6 +3714,12 @@ function nextStep() {
       d.npQty  = parseInt(v('np_qty')) || d.npQty;
       if (!d.npMaterial || !npTypeObj()) { toast('Please select a material.','error'); return; }
       if (!d.npQty || d.npQty < 1)       { toast('Quantity must be at least 1.','error'); return; }
+    }
+    if (selectedProduct === 'foldablefan') {
+      d.ffText = v('ff_text') || d.ffText;
+      d.ffQty  = parseInt(v('ff_qty')) || d.ffQty;
+      if (!d.ffType || !ffTypeObj()) { toast('Please select a print method.','error'); return; }
+      if (!d.ffQty || d.ffQty < 1)   { toast('Quantity must be at least 1.','error'); return; }
     }
     if (selectedProduct === 'acrylicplaque') {
       d.plaqueText = v('plq_text') || d.plaqueText;
@@ -4200,6 +4298,26 @@ function submitRequest() {
     });
   }
 
+  if (selectedProduct === 'foldablefan') {
+    const p    = PRICING.foldablefan || {};
+    const t    = ffTypeObj() || { price: 0 };
+    const up   = t.price || 0;
+    const qty  = parseInt(d.ffQty) || 1;
+    const base = up * qty;
+    const rush = d.ffRush   === 'Yes' ? Math.max(p.rushFlat || 250, (p.rushPct || 0.05) * base) : 0;
+    const des  = d.ffDesign === 'Yes' ? (p.designFee || 250) : 0;
+    Object.assign(payload, {
+      ffType:        d.ffType,
+      ffText:        d.ffText,
+      quantity:      qty,
+      unitPrice:     up,
+      baseAmount:    base,
+      rushOrder:     d.ffRush,   rushFee:   rush,
+      designService: d.ffDesign, designFee: des,
+      totalAmount:   base + rush + des,
+    });
+  }
+
   if (selectedProduct === 'acrylicplaque') {
     const p    = PRICING.acrylicplaque || {};
     const t    = plaqueTypeObj() || { price: 0 };
@@ -4406,6 +4524,12 @@ function buildMessengerText(qn) {
     specsLine += '\nQuantity: ' + (d.npQty || 0) + ' pc(s)';
     if (d.npRush   === 'Yes') specsLine += '\nRush Order: Yes';
     if (d.npDesign === 'Yes') specsLine += '\nDesign Service: Yes';
+  } else if (selectedProduct === 'foldablefan') {
+    specsLine = 'Foldable Fan · ' + (d.ffType || '—');
+    if (d.ffText) specsLine += '\nDesign / Logo Note: ' + d.ffText;
+    specsLine += '\nQuantity: ' + (d.ffQty || 0) + ' pc(s)';
+    if (d.ffRush   === 'Yes') specsLine += '\nRush Order: Yes';
+    if (d.ffDesign === 'Yes') specsLine += '\nDesign Service: Yes';
   } else if (selectedProduct === 'acrylicplaque') {
     specsLine = 'Acrylic Plaque · ' + (d.plaqueMaterial || '—') + (d.plaqueType ? ' ' + d.plaqueType : '');
     if (d.plaqueText) specsLine += '\nName / Engraving Text: ' + d.plaqueText;
@@ -4509,6 +4633,7 @@ function resetAll() {
   d.stdWidth=''; d.stdHeight=''; d.stdQty=1; d.stdMaterial=''; d.stdEasel='No'; d.stdRush='No'; d.stdDesign='No';
   d.cnvWidth=''; d.cnvHeight=''; d.cnvQty=1; d.cnvFinish=''; d.cnvFrame='No'; d.cnvRush='No'; d.cnvDesign='No';
   d.npMaterial=''; d.npText=''; d.npQty=10; d.npRush='No'; d.npDesign='No';
+  d.ffType=''; d.ffText=''; d.ffQty=20; d.ffRush='No'; d.ffDesign='No';
   d.proofFile = { name: '', mime: '', base64: '' };
   render();
   window.scrollTo({ top:0, behavior:'smooth' });
