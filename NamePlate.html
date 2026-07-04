@@ -142,7 +142,13 @@ function loadPricing() {
     .getNamePlatePricing();
 }
 
-const NP_ICONS = { 'Acrylic':'🟦', 'Metal':'⬜', 'Sheet':'📄' };
+function npIcon(name) {
+  const k = String(name || '').toLowerCase();
+  if (k.indexOf('acrylic') >= 0) return '🟦';
+  if (k.indexOf('metal')   >= 0) return '⬜';
+  if (k.indexOf('sheet')   >= 0) return '📄';
+  return '🪪';
+}
 
 // ─── STATE ────────────────────────────────────────────────────────
 let step = 0;
@@ -300,7 +306,7 @@ function renderBody() {
 
     const typeCards = (PRICING.types || []).map(function(tp, idx) {
       const sel = d.npMaterial === tp.name;
-      const icon = NP_ICONS[tp.name] || '🪪';
+      const icon = npIcon(tp.name);
       return `<div class="opt-card ${sel?'selected':''}" onclick="selectType(${idx})">
         <input type="radio" ${sel?'checked':''} readonly style="accent-color:#E8151B;">
         <div style="flex:1;">

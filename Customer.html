@@ -1372,7 +1372,13 @@ function renderCanvasSpecs() {
 }
 
 // ── NAME PLATE SPECS ──────────────────────────────────────────────
-const NP_ICONS = { 'Acrylic':'🟦', 'Metal':'⬜', 'Sheet':'📄' };
+function npIcon(name) {
+  const k = String(name || '').toLowerCase();
+  if (k.indexOf('acrylic') >= 0) return '🟦';
+  if (k.indexOf('metal')   >= 0) return '⬜';
+  if (k.indexOf('sheet')   >= 0) return '📄';
+  return '🪪';
+}
 function selectNpMaterial(idx) {
   const list = (PRICING.nameplate || {}).types || [];
   if (list[idx]) d.npMaterial = list[idx].name;
@@ -1384,7 +1390,7 @@ function renderNamePlateSpecs() {
 
   const typeCards = types.map((t, idx) => {
     const sel  = d.npMaterial === t.name;
-    const icon = NP_ICONS[t.name] || '🪪';
+    const icon = npIcon(t.name);
     return `<div class="opt-card${sel?' active':''}" onclick="selectNpMaterial(${idx})">
       <input type="radio" ${sel?'checked':''} readonly>
       <div style="flex:1;">
