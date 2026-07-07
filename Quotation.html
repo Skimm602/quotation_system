@@ -392,12 +392,7 @@
       if (q.coverColor) descParts.push('Cover Color: ' + q.coverColor);
       if (q.textColor) descParts.push('Text Color: ' + q.textColor);
       if (q.fontStyle) descParts.push('Font Style: ' + q.fontStyle);
-      if (q.printingNeeded === 'Yes') {
-        let printInfo = 'Printing Needed';
-        if (q.printedMaterialsReady) printInfo += ' — Materials Ready: ' + q.printedMaterialsReady;
-        if (q.fileFinal) printInfo += ', File Final: ' + q.fileFinal;
-        descParts.push(printInfo);
-      }
+      if (q.printedMaterialsReady) descParts.push('Printed Materials Ready: ' + q.printedMaterialsReady);
       const bindingUnitPrice = parseFloat(q.bindingPrice) || 0;
       const bindingTotal = bindingUnitPrice * bQty;
       rows += `<tr>
@@ -407,6 +402,16 @@
         <td class="right">${php(bindingUnitPrice)}</td>
         <td class="right">${php(bindingTotal)}</td>
       </tr>`;
+      const printingFee = parseFloat(q.printingFee) || 0;
+      if (printingFee > 0) {
+        rows += `<tr>
+          <td class="center">${lineNum++}</td>
+          <td style="line-height:1.75;">Printing Service${q.printingType ? '<br>' + q.printingType : ''}</td>
+          <td class="center">${bQty}</td>
+          <td class="right">${php(printingFee / bQty)}</td>
+          <td class="right">${php(printingFee)}</td>
+        </tr>`;
+      }
       const rushFee = parseFloat(q.rushFee) || 0;
       if (rushFee > 0) {
         rows += `<tr>

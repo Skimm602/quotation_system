@@ -8108,6 +8108,12 @@ function getBookbindPricing() {
     'Softbound without lettering': 100,
     'Ring bind':                   100,
     'Rush fee':                    150,
+    // Printing services are priced PER PAGE
+    'Printing BW':                          5,
+    'Printing Laser - Color':               30,
+    'Printing Laser - Color - A4 and Long': 35,
+    'Printing Color - Ink Jet':             15,
+    'Printing Color - Ink Jet A4 and Long': 20,
   };
   try {
     const ss    = getPriceDbSS_();
@@ -8116,7 +8122,8 @@ function getBookbindPricing() {
     const rows = sheet.getDataRange().getValues();
     const result = JSON.parse(JSON.stringify(defaults));
     for (let i = 1; i < rows.length; i++) {
-      const type = String(rows[i][0] || '').trim();
+      // Collapse doubled spaces so sheet typos don't create duplicate keys
+      const type = String(rows[i][0] || '').replace(/\s+/g, ' ').trim();
       const raw  = rows[i][1];
       const price = typeof raw === 'number'
         ? raw

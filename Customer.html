@@ -143,7 +143,7 @@ const d = {
   bindType:'', bindQty:1, bindRush:'No', bindPages:'',
   bindPaperSize:'A4', bindOrientation:'Portrait', bindBindingSide:'Left',
   bindCoverColor:'', bindCoverColorOther:'', bindTextColor:'', bindFontStyle:'',
-  bindMaterialsReady:'Yes', bindPrintType:'',
+  bindMaterialsReady:'Yes', bindPrintType:'', bindColorPages:[],
   // receipt
   receiptPrintType:'', receiptCopies:'', receiptSizeDiv:'', receiptQty:1, receiptRush:'No',
   receiptColors:['White'], receiptPerforation:'Yes', receiptNumbering:'Yes', receiptStartNo:'',
@@ -422,13 +422,43 @@ function calcFrameTotal() {
   return (rate * sqft * q) + rush;
 }
 
+// Bookbind printing is priced PER PAGE; colored page groups can use a different printing type
+function bbPages()     { return parseInt(d.bindPages) || 0; }
+function bbColorSum()  { return (d.bindColorPages||[]).reduce(function(s,g){ return s + (parseInt(g.pages)||0); }, 0); }
+function bbRemaining() { return Math.max(0, bbPages() - bbColorSum()); }
+function bbPrintCostPerBook() {
+  const p = PRICING.bookbind || {};
+  if (d.bindMaterialsReady !== 'No') return 0;
+  let cost = 0;
+  (d.bindColorPages||[]).forEach(function(g){ cost += (parseInt(g.pages)||0) * (p[g.type]||0); });
+  if (d.bindPrintType) cost += bbRemaining() * (p[d.bindPrintType]||0);
+  return cost;
+}
+function bbPrintSummary() {
+  if (d.bindMaterialsReady !== 'No') return '';
+  const parts = [];
+  (d.bindColorPages||[]).forEach(function(g){
+    const pg = parseInt(g.pages)||0;
+    if (!pg || !g.type) return;
+    parts.push(pg + ' pg(s) ' + (g.color ? g.color + ' ' : '') + '— ' + g.type);
+  });
+  if (d.bindPrintType) {
+    const rp = bbRemaining();
+    if (parts.length) {
+      if (rp > 0) parts.push(rp + ' pg(s) — ' + d.bindPrintType);
+    } else {
+      parts.push((bbPages() ? bbPages() + ' pg(s) — ' : '') + d.bindPrintType);
+    }
+  }
+  return parts.join(' + ');
+}
+
 function calcBookbindTotal() {
   const p = PRICING.bookbind || {};
   if (!d.bindType || !d.bindQty) return 0;
-  const price   = p[d.bindType] || 0;
-  const printFee= (d.bindMaterialsReady === 'No' && d.bindPrintType) ? (p[d.bindPrintType] || 0) : 0;
-  const rush    = d.bindRush === 'Yes' ? (p['Rush fee'] || 150) : 0;
-  return ((price + printFee) * d.bindQty) + rush;
+  const price = p[d.bindType] || 0;
+  const rush  = d.bindRush === 'Yes' ? (p['Rush fee'] || 150) : 0;
+  return ((price + bbPrintCostPerBook()) * d.bindQty) + rush;
 }
 
 function calcReceiptTotal() {
@@ -2968,6 +2998,45 @@ function renderFrameSpecs() {
 }
 
 // ── BOOKBINDING SPECS ─────────────────────────────────────────────
+function bbAddColorPage() {
+  (d.bindColorPages = d.bindColorPages || []).push({ pages:'', type:'', color:'' });
+  renderForm();
+}
+function bbRmColorPage(i) {
+  d.bindColorPages.splice(i, 1);
+  renderForm();
+}
+function bbSetColorPage(i, field, val) {
+  if (d.bindColorPages[i]) d.bindColorPages[i][field] = val;
+  updateEst('bb_print_est', bbPrintEstHtml);
+}
+function bbColorPagesHtml(printKeys) {
+  const rows = (d.bindColorPages||[]).map(function(g, i){
+    const opts = ['<option value="">— printing type —</option>'].concat(printKeys.map(function(pt){
+      return '<option value="'+esc(pt)+'" '+(g.type===pt?'selected':'')+'>'+esc(pt)+'</option>';
+    })).join('');
+    return '<div style="display:grid;grid-template-columns:70px minmax(0,1fr) 96px 32px;gap:6px;align-items:center;">'
+      + '<input class="field-input" type="number" min="1" inputmode="numeric" value="'+esc(g.pages)+'" placeholder="pgs" oninput="bbSetColorPage('+i+',\'pages\',this.value)">'
+      + '<select class="field-input" onchange="bbSetColorPage('+i+',\'type\',this.value)">'+opts+'</select>'
+      + '<input class="field-input" value="'+esc(g.color)+'" placeholder="Color" oninput="bbSetColorPage('+i+',\'color\',this.value)">'
+      + '<button onclick="bbRmColorPage('+i+')" title="Remove" style="height:38px;border:1px solid #E0E0E0;border-radius:4px;background:#FAFAFA;color:#CC1015;font-weight:700;cursor:pointer;">✕</button>'
+      + '</div>';
+  }).join('');
+  return '<div style="margin-top:10px;background:#FAFAFA;border:1px dashed #D4D4D4;border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;">'
+    + '<label class="field-label" style="margin-bottom:0;">Colored Pages <span style="color:#888;font-weight:400;">(optional — e.g. out of 100 pages, 20 pages are Blue)</span></label>'
+    + rows
+    + '<button onclick="bbAddColorPage()" style="align-self:flex-start;padding:7px 12px;border:1px solid #E8151B;border-radius:4px;background:#fff;color:#E8151B;font-size:12px;font-weight:700;cursor:pointer;">+ ADD COLORED PAGES</button>'
+    + '</div>';
+}
+function bbPrintEstHtml() {
+  if (d.bindMaterialsReady !== 'No') return '';
+  if (!bbPages()) return '<div style="font-size:11px;color:#8A6D00;margin-top:6px;">Enter the number of pages above to estimate the printing cost.</div>';
+  if (bbColorSum() > bbPages()) return '<div style="font-size:11px;color:#CC1015;margin-top:6px;">Colored pages ('+bbColorSum()+') exceed the total pages ('+bbPages()+').</div>';
+  const cost = bbPrintCostPerBook();
+  if (!cost) return '';
+  return '<div style="font-size:11px;color:#1A6A3A;margin-top:6px;">Printing: '+esc(bbPrintSummary())+' = '+php(cost)+'/book</div>';
+}
+
 function renderBookbindSpecs() {
   const p = PRICING.bookbind || {};
   const isBinding = k => !k.toLowerCase().startsWith('printing') && k !== 'Rush fee';
@@ -2995,14 +3064,17 @@ function renderBookbindSpecs() {
 
   const printSection = d.bindMaterialsReady === 'No' ? `
     <div>
-      <label class="field-label" style="margin-bottom:8px;">Printing Type *</label>
+      <label class="field-label" style="margin-bottom:8px;">Printing Type * <span style="color:#888;font-weight:400;">(per page${(d.bindColorPages||[]).length?' — for the remaining pages':''})</span></label>
       <div style="display:flex;flex-direction:column;gap:6px;">
         ${printKeys.length ? printKeys.map(pt => `
           <div class="opt-card${d.bindPrintType===pt?' active':''}" onclick="d.bindPrintType='${pt.replace(/'/g,"\\'")}';renderForm();">
             <input type="radio" ${d.bindPrintType===pt?'checked':''} readonly>
-            <span style="font-size:13px;font-weight:600;">${esc(pt)}</span>
+            <span style="font-size:13px;font-weight:600;flex:1;">${esc(pt)}</span>
+            <span style="font-size:12px;font-weight:700;color:#E8151B;white-space:nowrap;">${php(p[pt]||0)}/pg</span>
           </div>`).join('') : '<div style="font-size:13px;color:#AAA;">Loading…</div>'}
       </div>
+      ${printKeys.length ? bbColorPagesHtml(printKeys) : ''}
+      <div id="bb_print_est">${bbPrintEstHtml()}</div>
     </div>` : '';
 
   const sizeOpts = ['A4','A5','Short (8.5×11)','Long (8.5×13)','Custom']
@@ -3027,7 +3099,7 @@ function renderBookbindSpecs() {
         <div>
           <label class="field-label">Number of Pages</label>
           <input type="number" class="field-input" id="bb_pages" value="${esc(d.bindPages||'')}" min="1"
-            placeholder="e.g. 100" oninput="d.bindPages=this.value;" inputmode="numeric">
+            placeholder="e.g. 100" oninput="d.bindPages=this.value;updateEst('bb_print_est',bbPrintEstHtml);" inputmode="numeric">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -3388,7 +3460,7 @@ function renderReview() {
     if (resolvedColor)   specSummary += ` · ${esc(resolvedColor)} cover`;
     if (d.bindTextColor) specSummary += ` · ${esc(d.bindTextColor)} text`;
     if (d.bindFontStyle) specSummary += ` · ${esc(d.bindFontStyle)}`;
-    if (d.bindMaterialsReady === 'No' && d.bindPrintType) specSummary += ' · Print: ' + esc(d.bindPrintType);
+    if (d.bindMaterialsReady === 'No' && bbPrintSummary()) specSummary += ' · Print: ' + esc(bbPrintSummary());
     if (d.bindRush === 'Yes') specSummary += ' · Rush';
   } else if (selectedProduct === 'receipt') {
     const sdLbl = {'1':'Full Page','2':'Half Page','3':'Third Page','4':'Quarter Page','6':'Sixth Page','8':'Eighth Page'};
@@ -3668,7 +3740,15 @@ function nextStep() {
       if (d.bindCoverColor === 'Other') d.bindCoverColorOther = v('bb_color_other') || d.bindCoverColorOther;
       if (d.bindCoverColor === 'Other' && !d.bindCoverColorOther.trim()) { toast('Please specify your cover color.','error'); return; }
       if (!d.bindMaterialsReady)                                { toast('Please answer: Printed Materials Ready?','error'); return; }
-      if (d.bindMaterialsReady === 'No' && !d.bindPrintType)   { toast('Please select a printing type.','error'); return; }
+      if (d.bindMaterialsReady === 'No') {
+        if (!bbPages()) { toast('Please enter the number of pages — printing is priced per page.','error'); return; }
+        const groups = d.bindColorPages || [];
+        for (let i = 0; i < groups.length; i++) {
+          if (!(parseInt(groups[i].pages)||0) || !groups[i].type) { toast('Colored pages row ' + (i+1) + ': enter the page count and printing type.','error'); return; }
+        }
+        if (bbColorSum() > bbPages()) { toast('Colored pages (' + bbColorSum() + ') exceed the total pages (' + bbPages() + ').','error'); return; }
+        if (!d.bindPrintType && bbRemaining() > 0) { toast('Please select a printing type for the remaining ' + bbRemaining() + ' page(s).','error'); return; }
+      }
     }
     if (selectedProduct === 'receipt') {
       d.receiptQty     = parseInt(v('rc_qty')) || d.receiptQty;
@@ -3957,14 +4037,14 @@ function submitRequest() {
   if (selectedProduct === 'bookbind') {
     const p         = PRICING.bookbind || {};
     const price     = p[d.bindType] || 0;
-    const printFee  = (d.bindMaterialsReady === 'No' && d.bindPrintType) ? (p[d.bindPrintType] || 0) : 0;
+    const printFee  = bbPrintCostPerBook();   // per book, per-page pricing incl. colored pages
     const rush      = d.bindRush === 'Yes' ? (p['Rush fee'] || 150) : 0;
     const base      = (price + printFee) * d.bindQty;
     Object.assign(payload, {
       bindingType: d.bindType, coverColor: d.bindCoverColor === 'Other' ? (d.bindCoverColorOther || 'Other') : d.bindCoverColor,
       pages: d.bindPages, paperSize: d.bindPaperSize, orientation: d.bindOrientation,
       bindingSide: d.bindBindingSide, textColor: d.bindTextColor, fontStyle: d.bindFontStyle,
-      printedMaterialsReady: d.bindMaterialsReady, printingType: d.bindPrintType,
+      printedMaterialsReady: d.bindMaterialsReady, printingType: bbPrintSummary(),
       quantity: d.bindQty,
       pricePerVol: price, printingFee: printFee * d.bindQty,
       baseAmount: base, rushOrder: d.bindRush, rushFee: rush,
@@ -4520,7 +4600,7 @@ function buildMessengerText(qn) {
     if (bbCover)          specsLine += '\nCover Color: ' + bbCover;
     if (d.bindTextColor)  specsLine += '\nText Color: ' + d.bindTextColor;
     if (d.bindFontStyle)  specsLine += '\nFont Style: ' + d.bindFontStyle;
-    if (d.bindMaterialsReady === 'No' && d.bindPrintType) specsLine += '\nPrinting: ' + d.bindPrintType;
+    if (d.bindMaterialsReady === 'No' && bbPrintSummary()) specsLine += '\nPrinting: ' + bbPrintSummary();
     if (d.bindRush === 'Yes') specsLine += '\nRush Order: Yes';
   } else if (selectedProduct === 'receipt') {
     const sdL = {'1':'Full Page','2':'Half Page','3':'Third Page','4':'Quarter Page','6':'Sixth Page','8':'Eighth Page'};
