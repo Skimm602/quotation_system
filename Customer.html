@@ -453,6 +453,17 @@ function bbPrintSummary() {
   return parts.join(' + ');
 }
 
+// Spec-only note (no pricing) — used when materials are already printed but colored pages were noted
+function bbColorNote() {
+  const parts = [];
+  (d.bindColorPages||[]).forEach(function(g){
+    const pg = parseInt(g.pages)||0;
+    if (!pg) return;
+    parts.push(pg + ' pg(s)' + (g.color ? ' ' + g.color : ''));
+  });
+  return parts.join(', ');
+}
+
 function calcBookbindTotal() {
   const p = PRICING.bookbind || {};
   if (!d.bindType || !d.bindQty) return 0;
@@ -3073,7 +3084,6 @@ function renderBookbindSpecs() {
             <span style="font-size:12px;font-weight:700;color:#E8151B;white-space:nowrap;">${php(p[pt]||0)}/pg</span>
           </div>`).join('') : '<div style="font-size:13px;color:#AAA;">Loading…</div>'}
       </div>
-      ${printKeys.length ? bbColorPagesHtml(printKeys) : ''}
       <div id="bb_print_est">${bbPrintEstHtml()}</div>
     </div>` : '';
 
@@ -3102,6 +3112,7 @@ function renderBookbindSpecs() {
             placeholder="e.g. 100" oninput="d.bindPages=this.value;updateEst('bb_print_est',bbPrintEstHtml);" inputmode="numeric">
         </div>
       </div>
+      ${printKeys.length ? bbColorPagesHtml(printKeys) : ''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
           <label class="field-label">Paper Size</label>
@@ -3461,6 +3472,7 @@ function renderReview() {
     if (d.bindTextColor) specSummary += ` · ${esc(d.bindTextColor)} text`;
     if (d.bindFontStyle) specSummary += ` · ${esc(d.bindFontStyle)}`;
     if (d.bindMaterialsReady === 'No' && bbPrintSummary()) specSummary += ' · Print: ' + esc(bbPrintSummary());
+    if (d.bindMaterialsReady !== 'No' && bbColorNote()) specSummary += ' · Colored pages: ' + esc(bbColorNote());
     if (d.bindRush === 'Yes') specSummary += ' · Rush';
   } else if (selectedProduct === 'receipt') {
     const sdLbl = {'1':'Full Page','2':'Half Page','3':'Third Page','4':'Quarter Page','6':'Sixth Page','8':'Eighth Page'};
@@ -3739,6 +3751,7 @@ function nextStep() {
       if (!d.bindCoverColor)                                    { toast('Please select a cover color.','error'); return; }
       if (d.bindCoverColor === 'Other') d.bindCoverColorOther = v('bb_color_other') || d.bindCoverColorOther;
       if (d.bindCoverColor === 'Other' && !d.bindCoverColorOther.trim()) { toast('Please specify your cover color.','error'); return; }
+      if (bbPages() && bbColorSum() > bbPages())                { toast('Colored pages (' + bbColorSum() + ') exceed the total pages (' + bbPages() + ').','error'); return; }
       if (!d.bindMaterialsReady)                                { toast('Please answer: Printed Materials Ready?','error'); return; }
       if (d.bindMaterialsReady === 'No') {
         if (!bbPages()) { toast('Please enter the number of pages — printing is priced per page.','error'); return; }
@@ -4044,7 +4057,8 @@ function submitRequest() {
       bindingType: d.bindType, coverColor: d.bindCoverColor === 'Other' ? (d.bindCoverColorOther || 'Other') : d.bindCoverColor,
       pages: d.bindPages, paperSize: d.bindPaperSize, orientation: d.bindOrientation,
       bindingSide: d.bindBindingSide, textColor: d.bindTextColor, fontStyle: d.bindFontStyle,
-      printedMaterialsReady: d.bindMaterialsReady, printingType: bbPrintSummary(),
+      printedMaterialsReady: d.bindMaterialsReady,
+      printingType: bbPrintSummary() || (bbColorNote() ? 'Colored pages: ' + bbColorNote() : ''),
       quantity: d.bindQty,
       pricePerVol: price, printingFee: printFee * d.bindQty,
       baseAmount: base, rushOrder: d.bindRush, rushFee: rush,
@@ -4601,6 +4615,7 @@ function buildMessengerText(qn) {
     if (d.bindTextColor)  specsLine += '\nText Color: ' + d.bindTextColor;
     if (d.bindFontStyle)  specsLine += '\nFont Style: ' + d.bindFontStyle;
     if (d.bindMaterialsReady === 'No' && bbPrintSummary()) specsLine += '\nPrinting: ' + bbPrintSummary();
+    if (d.bindMaterialsReady !== 'No' && bbColorNote()) specsLine += '\nColored Pages: ' + bbColorNote();
     if (d.bindRush === 'Yes') specsLine += '\nRush Order: Yes';
   } else if (selectedProduct === 'receipt') {
     const sdL = {'1':'Full Page','2':'Half Page','3':'Third Page','4':'Quarter Page','6':'Sixth Page','8':'Eighth Page'};

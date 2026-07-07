@@ -236,6 +236,17 @@ function printingSummary() {
   return parts.join(' + ');
 }
 
+// Spec-only note (no pricing) — used when materials are already printed but colored pages were noted
+function colorPagesNote() {
+  const parts = [];
+  d.colorPages.forEach(function(g){
+    const pg = parseInt(g.pages)||0;
+    if (!pg) return;
+    parts.push(pg + ' pg(s)' + (g.color ? ' ' + g.color : ''));
+  });
+  return parts.join(', ');
+}
+
 function addColorPage() {
   d.colorPages.push({ pages:'', type:'', color:'' });
   renderBody();
@@ -249,7 +260,32 @@ function setColorPage(i, field, val) {
   updatePgBreakdown();
 }
 function remainingHintText() {
-  return 'The remaining ' + (totalPages() ? remainingPages() + ' of ' + totalPages() + ' ' : '') + 'page(s) use the Printing Type selected above.';
+  return 'The remaining ' + (totalPages() ? remainingPages() + ' of ' + totalPages() + ' ' : '') + 'page(s) use the main Printing Type'
+    + (step === 1 ? ' (selected in the next step).' : ' selected above.');
+}
+
+// Shared colored-pages block — rendered in Step 1 (under Number of Pages) and Step 2 (with printing)
+function colorPagesSectionHtml() {
+  const printingOpts = Object.keys(PRICES).filter(function(k){ return k.toLowerCase().startsWith('printing'); });
+  if (!printingOpts.length) return '';
+  const colorRows = d.colorPages.map(function(g, i){
+    const typeOpts = ['<option value="">— printing type —</option>'].concat(printingOpts.map(function(pt){
+      return '<option value="'+esc(pt)+'" '+(g.type===pt?'selected':'')+'>'+esc(pt)+' — '+php(PRICES[pt]||0)+'/pg</option>';
+    })).join('');
+    return '<div style="display:grid;grid-template-columns:76px minmax(0,1fr) 110px 34px;gap:6px;align-items:center;">'
+      + '<input class="field-input" type="number" min="1" value="'+esc(g.pages)+'" placeholder="pgs" oninput="setColorPage('+i+',\'pages\',this.value)">'
+      + '<select class="field-input" onchange="setColorPage('+i+',\'type\',this.value)">'+typeOpts+'</select>'
+      + '<input class="field-input" value="'+esc(g.color)+'" placeholder="Color (Blue…)" oninput="setColorPage('+i+',\'color\',this.value)">'
+      + '<button onclick="rmColorPage('+i+')" title="Remove" style="height:34px;border:1px solid #E0E0E0;border-radius:3px;background:#FAFAFA;color:#CC1015;font-weight:700;cursor:pointer;">✕</button>'
+      + '</div>';
+  }).join('');
+  return `
+      <div class="flex flex-col gap-2" style="background:#FAFAFA;border:1px dashed #D4D4D4;border-radius:3px;padding:12px 14px;">
+        <label class="field-label" style="margin-bottom:2px;">Colored Pages <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(optional — e.g. out of ${totalPages()||100} pages, 20 pages are Blue)</span></label>
+        ${colorRows}
+        <button onclick="addColorPage()" style="align-self:flex-start;padding:8px 14px;border:1px solid #E8151B;border-radius:3px;background:#fff;color:#E8151B;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.04em;">+ ADD COLORED PAGES</button>
+        ${d.colorPages.length ? `<div id="pg-remaining-hint" style="font-size:11px;color:#999;">${remainingHintText()}</div>` : ''}
+      </div>`;
 }
 function updatePgBreakdown() {
   const el = document.getElementById('pg-breakdown');
@@ -469,8 +505,9 @@ function renderBody() {
           </div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Number of Pages</label>
-            <input class="field-input" id="f_pages" type="number" min="1" value="${d.pages||''}" placeholder="e.g. 100" oninput="d.pages=this.value;">
+            <input class="field-input" id="f_pages" type="number" min="1" value="${d.pages||''}" placeholder="e.g. 100" oninput="d.pages=this.value;updatePgBreakdown();">
           </div>
+          <div style="grid-column:1/-1;">${colorPagesSectionHtml()}</div>
           <div class="flex flex-col gap-1">
             <label class="field-label">Paper Size</label>
             <select class="field-input" id="f_size" onchange="d.paperSize=this.value;">${sizeOpts}</select>
@@ -529,26 +566,6 @@ function renderBody() {
 
     const printingOpts = Object.keys(PRICES).filter(function(k){ return k.toLowerCase().startsWith('printing'); });
 
-    const colorRows = d.colorPages.map(function(g, i){
-      const typeOpts = ['<option value="">— printing type —</option>'].concat(printingOpts.map(function(pt){
-        return '<option value="'+esc(pt)+'" '+(g.type===pt?'selected':'')+'>'+esc(pt)+' — '+php(PRICES[pt]||0)+'/pg</option>';
-      })).join('');
-      return '<div style="display:grid;grid-template-columns:76px minmax(0,1fr) 110px 34px;gap:6px;align-items:center;">'
-        + '<input class="field-input" type="number" min="1" value="'+esc(g.pages)+'" placeholder="pgs" oninput="setColorPage('+i+',\'pages\',this.value)">'
-        + '<select class="field-input" onchange="setColorPage('+i+',\'type\',this.value)">'+typeOpts+'</select>'
-        + '<input class="field-input" value="'+esc(g.color)+'" placeholder="Color (Blue…)" oninput="setColorPage('+i+',\'color\',this.value)">'
-        + '<button onclick="rmColorPage('+i+')" title="Remove" style="height:34px;border:1px solid #E0E0E0;border-radius:3px;background:#FAFAFA;color:#CC1015;font-weight:700;cursor:pointer;">✕</button>'
-        + '</div>';
-    }).join('');
-
-    const colorPagesSection = printingOpts.length ? `
-      <div class="flex flex-col gap-2" style="background:#FAFAFA;border:1px dashed #D4D4D4;border-radius:3px;padding:12px 14px;">
-        <label class="field-label" style="margin-bottom:2px;">Colored Pages <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(optional — e.g. out of ${totalPages()||100} pages, 20 pages are Blue)</span></label>
-        ${colorRows}
-        <button onclick="addColorPage()" style="align-self:flex-start;padding:8px 14px;border:1px solid #E8151B;border-radius:3px;background:#fff;color:#E8151B;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.04em;">+ ADD COLORED PAGES</button>
-        <div id="pg-remaining-hint" style="font-size:11px;color:#999;">${remainingHintText()}</div>
-      </div>` : '';
-
     const printingSection = d.printedMaterialsReady === 'No' ? `
       <div class="flex flex-col gap-2">
         <label class="field-label" style="margin-bottom:2px;">Printing Type <span style="font-size:10px;color:#888;text-transform:none;letter-spacing:0;">(per page — applies to ${d.colorPages.length?'the remaining pages':'all pages'})</span></label>
@@ -565,7 +582,7 @@ function renderBody() {
               : '<div class="info-strip" style="background:#FFF8E6;border-color:#F0D98C;color:#8A6D00;">'
                 + '<span>⚠</span><span>No printing options are configured. Add rows starting with “Printing” (e.g. “Printing BW”) to the <strong>BookBind</strong> price sheet, then reload this page.</span>'
                 + '</div>')}
-        ${colorPagesSection}
+        ${colorPagesSectionHtml()}
         <div id="pg-breakdown">${printBreakdownHtml()}</div>
       </div>` : '';
 
@@ -621,6 +638,7 @@ function renderBody() {
         <tr><td colspan="2" class="sec-label">PRINTING & OPTIONS</td></tr>
         <tr><td>Printed Materials Ready</td><td>${d.printedMaterialsReady||'—'}</td></tr>
         ${d.printedMaterialsReady==='No'?`<tr><td>Printing</td><td>${esc(printingSummary())||'—'}</td></tr>`:''}
+        ${d.printedMaterialsReady!=='No'&&colorPagesNote()?`<tr><td>Colored Pages</td><td>${esc(colorPagesNote())}</td></tr>`:''}
         <tr><td>Rush Order</td><td>${d.rushOrder||'—'}</td></tr>
 
         <tr><td colspan="2" class="sec-label">COST BREAKDOWN</td></tr>
@@ -793,6 +811,7 @@ function next() {
     if (d.bindType === 'Softbound' && !d.withLettering) { showToast('⚠ Please select "With Lettering" or "Without Lettering".', 'error'); return; }
     if (!d.coverColor) { showToast('⚠ Please select a Cover Color.', 'error'); return; }
     if (d.coverColor === 'Other' && !(d.coverColorOther||'').trim()) { showToast('⚠ Please specify the Cover Color.', 'error'); return; }
+    if (totalPages() && colorPagesSum() > totalPages()) { showToast('⚠ Colored pages (' + colorPagesSum() + ') exceed the total pages (' + totalPages() + ').', 'error'); return; }
   }
   if (step === 2) {
     if (!d.printedMaterialsReady) { showToast('⚠ Please indicate if printed materials are ready.', 'error'); return; }
@@ -876,6 +895,7 @@ function buildMessengerText() {
   if (d.fontStyle) lines.push('• Font Style: ' + d.fontStyle);
   if (d.printedMaterialsReady) lines.push('• Printed Materials Ready: ' + d.printedMaterialsReady);
   if (d.printedMaterialsReady === 'No' && printingSummary()) lines.push('• Printing Service: ' + printingSummary());
+  if (d.printedMaterialsReady !== 'No' && colorPagesNote()) lines.push('• Colored Pages: ' + colorPagesNote());
   lines.push('• Rush Order: ' + (d.rushOrder || 'No'));
   if (d.notes) lines.push('• Notes: ' + d.notes);
   lines.push('');
@@ -906,6 +926,7 @@ function buildJobOrderText() {
   if (cover) parts.push('Cover: ' + cover);
   if (d.textColor) parts.push('Text Color: ' + d.textColor);
   if (d.printedMaterialsReady==='No' && printingSummary()) parts.push('Printing: ' + printingSummary());
+  if (d.printedMaterialsReady!=='No' && colorPagesNote()) parts.push('Colored Pages: ' + colorPagesNote());
   parts.push('Rush Order: ' + (d.rushOrder==='Yes'?'Yes':'No'));
   parts.push('Price ' + php(unit) + ' x ' + qty + ' = ' + php(unit*qty));
   return ['JOB ORDER', 'Date Needed: ' + (d.dateNeeded || '—'), 'Bookbinding', parts.join(', ') + (d.notes ? ', Notes: ' + d.notes : ''), 'TOTAL: ' + php(grandTotal())].join('\n');
@@ -972,7 +993,8 @@ function saveToSheet() {
     textColor:             d.textColor,
     fontStyle:             d.fontStyle,
     printedMaterialsReady: d.printedMaterialsReady,
-    printingType:          d.printedMaterialsReady === 'No' ? printingSummary() : '',
+    printingType:          d.printedMaterialsReady === 'No' ? printingSummary()
+                             : (colorPagesNote() ? 'Colored pages: ' + colorPagesNote() : ''),
     printingFee:           printingFeeAmt(),
     rushOrder:             d.rushOrder,
     bindingPrice:          bindingUnitPrice(),
